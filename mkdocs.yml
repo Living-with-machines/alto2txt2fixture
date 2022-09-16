@@ -1,0 +1,25 @@
+repo_name: Living
+repo_url: https://github.com/Living-with-machines/alto2txt2fixture
+
+site_name: alto2txt2fixture
+site_dir: _build
+site_author: Kalle Westerling
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  palette:
+    primary: black
+    accent: teal
+  icon:
+    repo: fontawesome/brands/github-alt
+
+nav:
+  - alto2txt2fixture: index.md
+  - Tutorial - User Guide:
+    - First Steps: tutorial/first-steps.md
+  - Running the Program: running.md
+  - Understanding the Results: understanding-results.md
+
+markdown_extensions:
+  - admonition
