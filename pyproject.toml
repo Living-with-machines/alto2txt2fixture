@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "alto2txt2fixture"
+version = "0.1.0"
+description = ""
+authors = ["Kalle Westerling <kalle.westerling@bl.uk>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+tqdm = "^4.64.1"
+pandas = "^1.4.4"
+colorama = "^0.4.5"
+numpy = "^1.23.3"
+pytz = "^2022.2.1"
+rich = "^12.5.1"
+
+[tool.poetry.dev-dependencies]
+mkdocs = "^1.3.1"
+mkdocs-material = "^8.5.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+run = "run:run"
