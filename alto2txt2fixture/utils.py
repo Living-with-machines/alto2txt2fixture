@@ -96,7 +96,7 @@ def clear_cache(dir):
 
 def get_path_from(p):
     """Guarantees that p is set to Path"""
-    """TODO: This function also exists in alto2txt2fixture. Consolidate."""
+    """ #1: This function also exists in alto2txt2fixture. Consolidate."""
     if isinstance(p, str):
         p = Path(p)
 
@@ -108,7 +108,7 @@ def get_path_from(p):
 
 def get_size_from_path(p, raw=False):
     """Returns a nice string for any given file size. Accepts a string or a Path as first argument."""
-    """TODO: This function also exists in alto2txt2fixture. Consolidate."""
+    """TODO #1: This function also exists in alto2txt2fixture. Consolidate."""
 
     p = get_path_from(p)
 
