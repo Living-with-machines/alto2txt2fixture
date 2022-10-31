@@ -1,8 +1,8 @@
 from .jisc import get_jisc_title, setup_jisc_papers
+from .log import error, warning
 from .patterns import PUBLICATION_CODE
-from .utils import get_now, write_json, get_size_from_path
-from .log import error, warning, success
 from .types import dotdict
+from .utils import get_now, write_json, get_size_from_path
 
 from pathlib import Path
 from tqdm import tqdm

@@ -1,8 +1,10 @@
-import json
-import gc
+from .utils import NOW_str
+
 from pathlib import Path
 from tqdm import tqdm
-from .utils import NOW_str
+
+import gc
+import json
 
 
 def fixtures(filelist=[], model="", translate={}, rename={}, uniq_keys=[]):

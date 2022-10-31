@@ -5,8 +5,8 @@ from pathlib import Path
 from numpy import array_split
 
 import datetime
-import pytz
 import json
+import pytz
 
 
 def get_now(as_str=False):

@@ -1,10 +1,5 @@
 from argparse import ArgumentParser
 
-from .parser import parse
-from .router import route
-from .utils import clear_cache
-from .settings import settings, show_setup
-
 
 def parse_args(argv=None):
     parser = ArgumentParser()
