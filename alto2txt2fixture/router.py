@@ -701,7 +701,7 @@ def route(collections, cache_home, mountpoint, jisc_papers_path, report_dir):
             )
 
         for archive in collection.archives:
-            with archive as a:
+            with archive as _:
                 [
                     (
                         doc.item.write_to_cache(),
