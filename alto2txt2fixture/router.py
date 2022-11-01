@@ -676,7 +676,13 @@ class Collection:
             )
 
 
-def route(collections, cache_home, mountpoint, jisc_papers_path, report_dir):
+def route(
+    collections: list,
+    cache_home: str,
+    mountpoint: str,
+    jisc_papers_path: str,
+    report_dir: str,
+) -> None:
     global CACHE_HOME
     global MNT
     global REPORT_DIR
@@ -713,3 +719,5 @@ def route(collections, cache_home, mountpoint, jisc_papers_path, report_dir):
                     )
                     for doc in archive.documents
                 ]
+
+    return
