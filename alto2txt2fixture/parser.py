@@ -69,6 +69,8 @@ def fixtures(
 
 
 def reset_fixture_dir(output: str) -> None:
+    """Resets the fixture directory (removes all JSON files inside of it, after making sure it exists)."""
+
     if not isinstance(output, str):
         raise RuntimeError("`output` directory needs to be specified as a string.")
 
@@ -83,7 +85,11 @@ def reset_fixture_dir(output: str) -> None:
         return
 
     print("\nClearing up the fixture directory")
+
+    # Ensure directory exists
     output.mkdir(parents=True, exist_ok=True)
+
+    # Drop all JSON files
     [x.unlink() for x in Path(output).glob("*.json")]
 
     return

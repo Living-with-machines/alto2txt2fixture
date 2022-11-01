@@ -19,16 +19,16 @@ class Cache:
     def __init__(self):
         pass
 
-    def as_dict(self):
-        pass
-
     def __str__(self):
         return str(self.as_dict())
 
-    def get_cache_path(self):
+    def as_dict(self) -> dict:
+        return {}
+
+    def get_cache_path(self) -> Path:
         return Path(f"{CACHE_HOME}/{self.collection}/{self.kind}/{self.id}.json")
 
-    def write_to_cache(self):
+    def write_to_cache(self) -> None:
         try:
             if self.get_cache_path().exists():
                 return True
@@ -42,13 +42,22 @@ class Cache:
         with open(self.get_cache_path(), "w+") as f:
             f.write(json.dumps(self.as_dict()))
 
-        return True
+        return
 
 
 class Newspaper(Cache):
     kind = "newspaper"
 
-    def __init__(self, root="", collection="", meta=None, jisc_papers=None):
+    def __init__(
+        self,
+        root: ET = None,
+        collection: str = "",
+        meta: dotdict = dotdict(),
+        jisc_papers: pd.DataFrame = None,
+    ):
+        if not isinstance(root, ET):
+            raise RuntimeError("root provided must be of type xml.etree.ElementTree")
+
         self.publication = root.find("./publication")
         self.input_sub_path = root.find("./process/input_sub_path").text
         self.issue_date = self.publication.find("./issue/date").text
@@ -74,7 +83,7 @@ class Newspaper(Cache):
         self.zip_file = Path(meta.path).name
 
     @property
-    def title(self):
+    def title(self) -> str:
         if not self._title:
             try:
                 self._title = (
@@ -117,7 +126,7 @@ class Newspaper(Cache):
 
         return self._title
 
-    def as_dict(self):
+    def as_dict(self) -> dict:
         if not self._newspaper:
             self._newspaper = dict(
                 **dict(publication_code=self.publication_code, title=self.title),
@@ -129,14 +138,14 @@ class Newspaper(Cache):
             )
         return self._newspaper
 
-    def publication_code_from_input_sub_path(self):
+    def publication_code_from_input_sub_path(self) -> str:
         g = PUBLICATION_CODE.findall(self.input_sub_path)
         if len(g) == 1:
             return g[0]
         return None
 
     @property
-    def publication_code(self):
+    def publication_code(self) -> str:
         if not self._publication_code:
             self._publication_code = self.publication.attrib.get("id")
             if len(self._publication_code) != 7:
@@ -205,14 +214,14 @@ class Newspaper(Cache):
         return self._publication_code
 
     @property
-    def number_paths(self):
+    def number_paths(self) -> list:
         number_paths = [x for x in self.publication_code.lstrip("0")[:2]]
         if len(number_paths) == 1:
             number_paths = ["0"] + number_paths
 
         return number_paths
 
-    def get_cache_path(self):
+    def get_cache_path(self) -> Path:
         return Path(
             f"{CACHE_HOME}/{self.collection}/"
             + "/".join(self.number_paths)
@@ -225,14 +234,20 @@ class Item(Cache):
 
     def __init__(
         self,
-        root="",
-        issue_code="",
-        digitisation={},
-        ingest={},
-        collection="",
-        newspaper=None,
-        meta=None,
+        root: ET = None,
+        issue_code: str = "",
+        digitisation: dict = {},
+        ingest: dict = {},
+        collection: str = "",
+        newspaper: Newspaper = None,
+        meta: dotdict = dotdict(),
     ):
+        if not isinstance(root, ET):
+            raise RuntimeError("root provided must be of type xml.etree.ElementTree")
+
+        if not isinstance(newspaper, Newspaper):
+            raise RuntimeError("newspaper provided must be of type router.Newspaper")
+
         self.root = root
         self.issue_code = issue_code
         self.digitisation = digitisation
@@ -257,7 +272,7 @@ class Item(Cache):
             self._item_elem = self.root.find("./publication/issue/item")
         return self._item_elem
 
-    def as_dict(self):
+    def as_dict(self) -> dict:
         if not self._item:
             self._item = {
                 f"{x.tag}": x.text or ""
@@ -292,31 +307,38 @@ class Item(Cache):
         return self._item
 
     @property
-    def item_code(self):
+    def item_code(self) -> str:
         if not self._item_code:
             self._item_code = self.issue_code + "-" + self.item_elem.attrib.get("id")
 
         return self._item_code
 
-    def get_cache_path(self):
+    def get_cache_path(self) -> Path:
         return Path(
             f"{CACHE_HOME}/{self.collection}/"
             + "/".join(self.newspaper.number_paths)
             + f"/{self.newspaper.publication_code}/items.jsonl"
         )
 
-    def write_to_cache(self):
+    def write_to_cache(self) -> None:
         self.get_cache_path().parent.mkdir(parents=True, exist_ok=True)
 
-        with open(self.get_cache_path(), "a+") as f:
+        with open(self.get_cache_path(), "a+") as f:]]]]]]]]]]]]]]]==============
             f.write(json.dumps(self.as_dict()) + "\n")
+
+        return
 
 
 class Issue(Cache):
     kind = "issue"
 
     def __init__(
-        self, publication, newspaper=None, collection="", input_sub_path="", meta=None
+        self,
+        publication: ET.Element,
+        newspaper: Newspaper = None,
+        collection: str = "",
+        input_sub_path: str = "",
+        meta: dotdict = dotdict(),
     ):
         self.publication = publication
         self.newspaper = newspaper
@@ -334,20 +356,20 @@ class Issue(Cache):
             self.meta.issue_paths.append(path)
 
     @property
-    def issue_date(self):
+    def issue_date(self) -> str:
         if not self._issue_date:
             self._issue_date = self.publication.find("./issue/date").text
         return self._issue_date
 
     @property
-    def issue_code(self):
+    def issue_code(self) -> str:
         return (
             self.newspaper.publication_code.replace("-", "")
             + "-"
             + self.issue_date.replace("-", "")
         )
 
-    def as_dict(self):
+    def as_dict(self) -> dict:
         if not self._issue:
             self._issue = {
                 "issue_code": self.issue_code,
@@ -358,7 +380,7 @@ class Issue(Cache):
 
         return self._issue
 
-    def get_cache_path(self):
+    def get_cache_path(self) -> Path:
         return Path(
             f"{CACHE_HOME}/{self.collection}/"
             + "/".join(self.newspaper.number_paths)
@@ -369,18 +391,21 @@ class Issue(Cache):
 class Ingest(Cache):
     kind = "ingest"
 
-    def __init__(self, root=None, collection=None):
+    def __init__(self, root: ET = None, collection: str = ""):
+        if not isinstance(root, ET):
+            raise RuntimeError("root provided must be of type xml.etree.ElementTree")
+
         self.root = root
         self.collection = collection
 
-    def as_dict(self):
+    def as_dict(self) -> dict:
         return {
             f"lwm_tool_{x.tag}": x.text or ""
             for x in self.root.findall("./process/lwm_tool/*")
         }
 
     @property
-    def id(self):
+    def id(self) -> str:
         return (
             self.as_dict().get("lwm_tool_name")
             + "-"
@@ -391,11 +416,14 @@ class Ingest(Cache):
 class Digitisation(Cache):
     kind = "digitisation"
 
-    def __init__(self, root=None, collection=None):
+    def __init__(self, root: ET = None, collection: str = ""):
+        if not isinstance(root, ET):
+            raise RuntimeError("root provided must be of type xml.etree.ElementTree")
+
         self.root = root
         self.collection = collection
 
-    def as_dict(self):
+    def as_dict(self) -> dict:
         dic = {
             x.tag: x.text or ""
             for x in self.root.findall("./process/*")
@@ -413,7 +441,7 @@ class Digitisation(Cache):
         return dic
 
     @property
-    def id(self):
+    def id(self) -> str:
         return (
             self.as_dict().get("software").replace("/", "---")
             if self.as_dict().get("software")
@@ -424,15 +452,15 @@ class Digitisation(Cache):
 class DataProvider(Cache):
     kind = "data-provider"
 
-    def __init__(self, collection=None):
+    def __init__(self, collection: str = None):
         self.collection = collection
 
-    def as_dict(self):
+    def as_dict(self) -> dict:
         return {"name": self.collection, "collection": "newspapers", "source_note": ""}
 
     @property
-    def id(self):
-        return self.as_dict().get("name")
+    def id(self) -> str:
+        return self.as_dict().get("name", "")
 
 
 class Document:
@@ -467,13 +495,13 @@ class Document:
         self._data_provider = None
 
     @property
-    def publication(self):
+    def publication(self) -> ET.Element:
         if not self._publication_elem:
             self._publication_elem = self.root.find("./publication")
         return self._publication_elem
 
     @property
-    def issue(self):
+    def issue(self) -> Issue:
         if not self._issue:
             self._issue = Issue(
                 publication=self.publication,
@@ -485,27 +513,27 @@ class Document:
         return self._issue
 
     @property
-    def input_sub_path(self):
+    def input_sub_path(self) -> str:
         if not self._input_sub_path:
             self._input_sub_path = self.root.find("./process/input_sub_path").text
         return self._input_sub_path
 
     @property
-    def data_provider(self):
+    def data_provider(self) -> DataProvider:
         if not self._data_provider:
             self._data_provider = DataProvider(collection=self.collection)
 
         return self._data_provider
 
     @property
-    def ingest(self):
+    def ingest(self) -> Ingest:
         if not self._ingest:
             self._ingest = Ingest(root=self.root, collection=self.collection)
 
         return self._ingest
 
     @property
-    def digitisation(self):
+    def digitisation(self) -> Digitisation:
         if not self._digitisation:
             self._digitisation = Digitisation(
                 root=self.root, collection=self.collection
@@ -514,7 +542,7 @@ class Document:
         return self._digitisation
 
     @property
-    def item(self):
+    def item(self) -> Item:
         if not self._item:
             self._item = Item(
                 root=self.root,
@@ -529,7 +557,7 @@ class Document:
         return self._item
 
     @property
-    def newspaper(self):
+    def newspaper(self) -> Newspaper:
         if not self._newspaper:
             self._newspaper = Newspaper(
                 root=self.root,
@@ -541,7 +569,13 @@ class Document:
 
 
 class Archive:
-    def __init__(self, path="", collection="", report_id=None, jisc_papers=None):
+    def __init__(
+        self,
+        path: str = "",
+        collection: str = "",
+        report_id: str = None,
+        jisc_papers: pd.DataFrame = None,
+    ):
         self.path = Path(path)
 
         if not self.path.exists():
@@ -648,7 +682,7 @@ class Archive:
 
 
 class Collection:
-    def __init__(self, name="hmd", jisc_papers=None):
+    def __init__(self, name: str = "hmd", jisc_papers: pd.DataFrame = None):
         self.name = name
         self.jisc_papers = jisc_papers
         self.dir = Path(f"{MNT}/{self.name}-alto2txt/metadata")
