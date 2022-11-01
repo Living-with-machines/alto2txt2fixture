@@ -52,18 +52,16 @@ The “Activities” bar will now show you the progress and speed:
 !!! attention "This option will only work on a Linux or UNIX computer"
     If you have a mac, your only option is the one below.
 
-#### Step 1: Install `blobfuse`
+#### Step 1: Install BlobFuse
 
-TODO: Write this section.
+Follow [the instructions for installing BlobFuse](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-how-to-mount-container-linux#install-blobfuse-v1) and the instructions for [how to prepare your drive for mounting](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-how-to-mount-container-linux#prepare-for-mounting).
 
 #### Step 2: Set up SAS tokens
 
-TODO: Write this section.
+Follow [the instructions for setting up access to your Azure storage account](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-how-to-mount-container-linux#authorize-access-to-your-storage-account).
 
-#### Step 3: Create local scripts to facilitate easier connection next time
-
-TODO: Write this section.
-
-#### Step 4: Run the scripts
+#### Step 3: Mount your blobs
 
 TODO: Write this section.
+
+_Note that you can also search on the internet for ideas on how to create local scripts to facilitate easier connection next time._

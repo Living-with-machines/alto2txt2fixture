@@ -6,7 +6,7 @@ The program should run automatically with the following command:
 $ poetry run
 ```
 
-Alternatively, if you want to add optional parameters and don’t want to use the standard `poetry` script to run, you can use the (somewhat convoluted) `poetry run run.py` and provide any optional parameters (see below). For example:
+Alternatively, if you want to add optional parameters and don’t want to use the standard `poetry` script to run, you can use the (somewhat convoluted) `poetry run run.py` and provide any optional parameters. You can see a list of all the “Optional parameters” below. For example, if you want to only include the `hmd` collection:
 
 ```sh
 $ poetry run run.py --collections hmd
