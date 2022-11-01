@@ -24,16 +24,16 @@ def fixtures(
                 seen.add(key)
                 yield item
             else:
-                pass  # drop it if duplicate
+                # Drop it if duplicate
+                pass
 
     filelist = sorted(filelist, key=lambda x: str(x).split("/")[:-1])
     count = len(filelist)
 
-    # process JSONL
+    # Process JSONL
     if [x for x in filelist if ".jsonl" in x.name]:
         pk = 0
-        # because of the size of these lists, we cannot use tqdm on a list comprehension here
-        # TODO #1: explore whether we can add tqdm on the logic below
+        # In the future, we might want to show progress here (tqdm or suchlike)
         for file in filelist:
             for line in file.read_text().splitlines():
                 pk += 1
@@ -46,7 +46,7 @@ def fixtures(
 
         return
     else:
-        # process JSON
+        # Process JSON
         pks = [x for x in range(1, count + 1)]
 
         if len(uniq_keys):
@@ -117,29 +117,21 @@ def get_fields(
     if isinstance(file, Path):
         try:
             fields = json.loads(file.read_text())
-        except:
-            print("here...")
-            print(file)
-            raise RuntimeError()
+        except Exception as e:
+            raise RuntimeError(f"Cannot interpret JSON ({e}): {file}")
     elif isinstance(file, str):
         if "\n" in file:
-            raise RuntimeError("File has new lines.")
+            raise RuntimeError("File has multiple lines.")
         try:
             fields = json.loads(file)
         except json.decoder.JSONDecodeError as e:
-            print(f"Cannot interpret JSON ({e}):")
-            print(file)
-            # try:
-            #     print(file.read_text())
-            # except:
-            #     pass
-            raise RuntimeError()
+            raise RuntimeError(f"Cannot interpret JSON ({e}): {file}")
     elif isinstance(file, dict):
         fields = file
     else:
         raise RuntimeError(f"Cannot process type {type(file)}.")
 
-    # fix relational fields for any file
+    # Fix relational fields for any file
     for key in [key for key in fields.keys() if "__" in key]:
         parts = key.split("__")
 
@@ -173,6 +165,7 @@ def get_fields(
 
     fields["created_at"] = NOW_str
     fields["updated_at"] = NOW_str
+
     try:
         fields["item_type"] = str(fields["item_type"]).upper()
     except KeyError:

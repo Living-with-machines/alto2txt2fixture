@@ -1,10 +1,10 @@
 from .settings import settings
 from .patterns import PUBLICATION_CODE
 
-import pandas as pd
 from pathlib import Path
+from datetime import datetime
 
-import datetime
+import pandas as pd
 
 
 def setup_jisc_papers(path: str = settings.JISC_PAPERS_CSV) -> pd.DataFrame:
@@ -53,7 +53,7 @@ def setup_jisc_papers(path: str = settings.JISC_PAPERS_CSV) -> pd.DataFrame:
         ],
     )
     jisc_papers["start_date"] = jisc_papers.apply(
-        lambda x: datetime.datetime(
+        lambda x: datetime(
             year=int(x.StartY),
             month=months[x.StartM.strip(".").strip()],
             day=int(x.StartD),
@@ -61,7 +61,7 @@ def setup_jisc_papers(path: str = settings.JISC_PAPERS_CSV) -> pd.DataFrame:
         axis=1,
     )
     jisc_papers["end_date"] = jisc_papers.apply(
-        lambda x: datetime.datetime(
+        lambda x: datetime(
             year=int(x.EndY), month=months[x.EndM.strip(".").strip()], day=int(x.EndD)
         ),
         axis=1,
@@ -87,8 +87,13 @@ def setup_jisc_papers(path: str = settings.JISC_PAPERS_CSV) -> pd.DataFrame:
 
 
 def get_jisc_title(
-    title, issue_date, jisc_papers, input_sub_path, publication_code, abbr=None
-):
+    title: str,
+    issue_date: str,
+    jisc_papers: pd.DataFrame,
+    input_sub_path: str,
+    publication_code: str,
+    abbr: str = None,
+) -> str:
     """
     Takes an input_sub_path, a publication_code, and an (optional) abbreviation for any newspaper, and tries to
     locate the title in the jisc_papers DataFrame provided (usually loaded with the setup_jisc_papers function
@@ -96,12 +101,13 @@ def get_jisc_title(
 
     Returns a string (or crashes).
     """
-    # first option, search the input_sub_path for a valid-looking publication_code
+
+    # First option, search the input_sub_path for a valid-looking publication_code
     g = PUBLICATION_CODE.findall(input_sub_path)
 
     if len(g) == 1:
         publication_code = g[0]
-        # let's see if we can find title:
+        # Let's see if we can find title:
         title = (
             jisc_papers[
                 jisc_papers.publication_code == publication_code
@@ -112,16 +118,15 @@ def get_jisc_title(
             == 1
             else title
         )
-        # print("TITLE2", title)
         return title
 
-    # second option, look through JISC papers for best match (on publication_code if we have it, but abbr more importantly if we have it)
+    # Second option, look through JISC papers for best match (on publication_code if we have it, but abbr more importantly if we have it)
     if abbr:
         _publication_code = publication_code
         publication_code = abbr
 
     if jisc_papers.abbr[jisc_papers.abbr == publication_code].count():
-        date = datetime.datetime.strptime(issue_date, "%Y-%m-%d")
+        date = datetime.strptime(issue_date, "%Y-%m-%d")
         mask = (
             (jisc_papers.abbr == publication_code)
             & (date >= jisc_papers.start_date)
@@ -131,14 +136,12 @@ def get_jisc_title(
         if filtered.publication_code.count() == 1:
             publication_code = filtered.publication_code.to_list()[0]
             title = filtered.title.to_list()[0]
-            # print("TITLE3", title)
             return title
 
-    # last option: let's find all the possible titles in the jisc_papers for the abbreviation, and if it's just one unique title, let's pick it!
+    # Last option: let's find all the possible titles in the jisc_papers for the abbreviation, and if it's just one unique title, let's pick it!
     if abbr:
         test = list({x for x in jisc_papers[jisc_papers.abbr == abbr].title})
         if len(test) == 1:
-            # print("TITLE4", test[0])
             return test[0]
         else:
             mask1 = (jisc_papers.abbr == publication_code) & (
@@ -147,12 +150,10 @@ def get_jisc_title(
             test1 = jisc_papers.loc[mask1]
             test1 = list({x for x in jisc_papers[jisc_papers.abbr == abbr].title})
             if len(test) == 1:
-                # print("TITLE5", test1[0])
                 return test1[0]
 
-    # fallback: if abbreviation is set, we'll return that:
+    # Fallback: if abbreviation is set, we'll return that:
     if abbr:
-        # print("TITLE6", abbr)
         # For these exceptions, see issue comment:
         # https://github.com/alan-turing-institute/Living-with-Machines/issues/2453#issuecomment-1050652587
         if abbr == "IPJL":
@@ -166,5 +167,4 @@ def get_jisc_title(
 
         return abbr
 
-    print("TITLE NOT FOUND")
-    exit()
+    raise RuntimeError(f"Title {title} could not be found.")

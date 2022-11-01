@@ -90,7 +90,7 @@ class Newspaper(Cache):
             if self._title:
                 return self._title
 
-            # we probably have a JISC title so we will go ahead and pick from filename following alto2txt convention
+            # We probably have a JISC title so we will go ahead and pick from filename following alto2txt convention
             if not self.zip_file:
                 self._title = ""
                 warning(
@@ -143,37 +143,37 @@ class Newspaper(Cache):
                 if self._publication_code == "NCBL1001":
                     self._publication_code = self.publication_code_from_input_sub_path()
                     if not self._publication_code:
-                        # fallback option
+                        # Fallback option
                         self._publication_code = "0000499"
                 elif self._publication_code == "NCBL1002":
                     self._publication_code = self.publication_code_from_input_sub_path()
                     if not self._publication_code:
-                        # fallback option
+                        # Fallback option
                         self._publication_code = "0000499"
                 elif self._publication_code == "NCBL1023":
                     self._publication_code = self.publication_code_from_input_sub_path()
                     if not self._publication_code:
-                        # fallback option
+                        # Fallback option
                         self._publication_code = "0000152"
                 elif self._publication_code == "NCBL1024":
                     self._publication_code = self.publication_code_from_input_sub_path()
                     if not self._publication_code:
-                        # fallback option
+                        # Fallback option
                         self._publication_code = "0000171"
                 elif self._publication_code == "NCBL1029":
                     self._publication_code = self.publication_code_from_input_sub_path()
                     if not self._publication_code:
-                        # fallback option
+                        # Fallback option
                         self._publication_code = "0000165"
                 elif self._publication_code == "NCBL1034":
                     self._publication_code = self.publication_code_from_input_sub_path()
                     if not self._publication_code:
-                        # fallback option
+                        # Fallback option
                         self._publication_code = "0000160"
                 elif self._publication_code == "NCBL1035":
                     self._publication_code = self.publication_code_from_input_sub_path()
                     if not self._publication_code:
-                        # fallback option
+                        # Fallback option
                         self._publication_code = "0000185"
                 elif (
                     len(self._publication_code) == 4 or "NCBL" in self._publication_code
@@ -583,17 +583,17 @@ class Archive:
 
     def __enter__(self):
         self.meta.start = get_now()
-        # info(f"Processing {self.path.name}...")
 
     def __exit__(self, exc_type, exc_value, exc_tb):
+        # In the future, we might want to handle exceptions here: (exc_type, exc_value, exc_tb)
+
         self.meta.end = get_now()
         self.meta.seconds = (self.meta.end - self.meta.start).seconds
         self.meta.microseconds = (self.meta.end - self.meta.start).microseconds
         self.meta.start = str(self.meta.start)
         self.meta.end = str(self.meta.end)
+
         write_json(self.report, self.meta, add_created=False)
-        # success(f"Report created: {self.report}...")
-        # TODO #1: Handle exceptions: (exc_type, exc_value, exc_tb)
 
         if self.meta.item_paths:
             for item_doc in self.meta.item_paths:
