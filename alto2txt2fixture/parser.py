@@ -1,3 +1,4 @@
+from typing import Union
 from .utils import NOW_str
 
 from pathlib import Path
@@ -7,7 +8,13 @@ import gc
 import json
 
 
-def fixtures(filelist=[], model="", translate={}, rename={}, uniq_keys=[]):
+def fixtures(
+    filelist: list = [],
+    model: str = "",
+    translate: dict = {},
+    rename: dict = {},
+    uniq_keys: dict = [],
+) -> None:
     def uniq(filelist, keys=[]):
         seen = set()
         for item in filelist:
@@ -61,20 +68,28 @@ def fixtures(filelist=[], model="", translate={}, rename={}, uniq_keys=[]):
         return
 
 
-def reset_fixture_dir(output) -> None:
+def reset_fixture_dir(output: str) -> None:
+    if not isinstance(output, str):
+        raise RuntimeError("`output` directory needs to be specified as a string.")
+
+    output = Path(output)
+
     y = input(
-        f"This command will automatically empty the fixture directory ({Path(output).absolute()}). Do you want to proceed? [y/N]"
+        f"This command will automatically empty the fixture directory ({output.absolute()}). Do you want to proceed? [y/N]"
     )
+
     if not y.lower() == "y":
-        Path(output).mkdir(parents=True, exist_ok=True)
+        output.mkdir(parents=True, exist_ok=True)
         return
 
     print("\nClearing up the fixture directory")
-    Path(output).mkdir(parents=True, exist_ok=True)
+    output.mkdir(parents=True, exist_ok=True)
     [x.unlink() for x in Path(output).glob("*.json")]
 
+    return
 
-def get_translator(fields=[("", "", [])]):
+
+def get_translator(fields: list = [("", "", [])]) -> dict:
     _ = dict()
     for field in fields:
         start, finish, lst = field
@@ -93,7 +108,12 @@ def get_translator(fields=[("", "", [])]):
     return _
 
 
-def get_fields(file, translate={}, rename={}, allow_null=False):
+def get_fields(
+    file: Union[Path, str, dict],
+    translate: dict = {},
+    rename: dict = {},
+    allow_null: bool = False,
+) -> dict:
     if isinstance(file, Path):
         try:
             fields = json.loads(file.read_text())
@@ -173,7 +193,7 @@ def get_fields(file, translate={}, rename={}, allow_null=False):
     return fields
 
 
-def save_fixture(generator=None, prefix="") -> None:
+def save_fixture(generator: list = [], prefix: str = "") -> None:
     internal_counter = 1
     counter = 1
     lst = []
@@ -194,8 +214,12 @@ def save_fixture(generator=None, prefix="") -> None:
     else:
         Path(f"{OUTPUT}/{prefix}-{counter}.json").write_text(json.dumps(lst))
 
+    return
 
-def parse(collections, cache_home, output, max_elements_per_file):
+
+def parse(
+    collections: list, cache_home: str, output: str, max_elements_per_file: int
+) -> None:
     global CACHE_HOME
     global OUTPUT
     global MAX_ELEMENTS_PER_FILE
@@ -334,3 +358,5 @@ def parse(collections, cache_home, output, max_elements_per_file):
         rename=rename,
     )
     save_fixture(item_json, "Item")
+
+    return

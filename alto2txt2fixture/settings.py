@@ -40,7 +40,7 @@ settings = dotdict(
 settings.SKIP_FILE_SIZE *= 1e9
 
 
-def show_setup(clear=True, **kwargs):
+def show_setup(clear: bool = True, **kwargs) -> None:
     if clear and os.name == "posix":
         os.system("clear")
     elif clear:
@@ -55,3 +55,5 @@ def show_setup(clear=True, **kwargs):
 
     console = Console()
     console.print(table)
+
+    return

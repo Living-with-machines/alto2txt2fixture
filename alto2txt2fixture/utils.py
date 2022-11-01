@@ -3,28 +3,31 @@ from .log import error, info
 
 from pathlib import Path
 from numpy import array_split
+from typing import Union
 
 import datetime
 import json
 import pytz
 
 
-def get_now(as_str=False):
+def get_now(as_str: bool = False) -> Union[datetime.datetime, str]:
     now = datetime.datetime.now(tz=pytz.UTC)
+
     if as_str:
         return str(now)
+
     return now
 
 
-NOW_str = get_now(True)
+NOW_str = get_now(as_str=True)
 
 
-def get_key(x=dict(), on=[]):
+def get_key(x: dict = dict(), on: list = []) -> str:
     """See create_lookup"""
     return f"{'-'.join([str(x['fields'][y]) for y in on])}"
 
 
-def create_lookup(lst=[], on=[]):
+def create_lookup(lst: list = [], on: list = []) -> dict:
     return {get_key(x, on): x["pk"] for x in lst}
 
 
@@ -34,13 +37,16 @@ glob_filter = lambda p: [
 ]
 
 
-def lock(lockfile):
+def lock(lockfile: Path) -> None:
     """Writes a '.' to a lockfile, after making sure the parent directory exists."""
     lockfile.parent.mkdir(parents=True, exist_ok=True)
+
     lockfile.write_text("")
 
+    return
 
-def get_lockfile(collection, kind, dic):
+
+def get_lockfile(collection: str, kind: str, dic: dict) -> Path:
     """
     Provides the path to any given lockfile, which controls whether any existing files should be overwritten or not.
     Arguments passed:
@@ -69,7 +75,7 @@ def get_lockfile(collection, kind, dic):
     return p
 
 
-def get_chunked_zipfiles(path):
+def get_chunked_zipfiles(path: Path) -> list:
     zipfiles = sorted(
         path.glob("*.zip"),
         key=lambda x: x.stat().st_size,
@@ -85,18 +91,20 @@ def get_chunked_zipfiles(path):
     return chunks
 
 
-def clear_cache(dir):
+def clear_cache(dir: str) -> None:
     y = input(
         f"Do you want to erase the cache path now that the files have been generated ({Path(dir).absolute()})? [y/N]"
     )
+
     if y.lower() == "y":
         info("Clearing up the cache directory")
         [x.unlink() for x in Path(dir).glob("*.json")]
 
+    return
 
-def get_path_from(p):
+
+def get_path_from(p: Union[str, Path]) -> Path:
     """Guarantees that p is set to Path"""
-    """ #1: This function also exists in alto2txt2fixture. Consolidate."""
     if isinstance(p, str):
         p = Path(p)
 
@@ -106,13 +114,13 @@ def get_path_from(p):
     return p
 
 
-def get_size_from_path(p, raw=False):
+def get_size_from_path(p: Union[str, Path], raw: bool = False) -> Union[str, int]:
     """Returns a nice string for any given file size. Accepts a string or a Path as first argument."""
-    """TODO #1: This function also exists in alto2txt2fixture. Consolidate."""
 
     p = get_path_from(p)
 
     bytes = p.stat().st_size
+
     if raw:
         return bytes
 
@@ -127,7 +135,7 @@ def get_size_from_path(p, raw=False):
     return rel_size
 
 
-def write_json(p, o, add_created=True):
+def write_json(p: Union[str, Path], o: dict, add_created: bool = True) -> None:
     """
     Easier access to writing JSON files.
     Checks whether parent exists.
@@ -163,10 +171,12 @@ def write_json(p, o, add_created=True):
 
     p.parent.mkdir(parents=True, exist_ok=True)
 
-    return p.write_text(json.dumps(o))
+    p.write_text(json.dumps(o))
+
+    return
 
 
-def load_json(p, crash=False):
+def load_json(p: Union[str, Path], crash: bool = False) -> dict:
     """
     Easier access to reading JSON files.
     Accepts a string or Path as first argument.
@@ -181,10 +191,16 @@ def load_json(p, crash=False):
     except json.JSONDecodeError:
         msg = f"Error: {p.read_text()}"
         error(msg, crash=crash)
-        return {}
+
+    return {}
 
 
-def list_json_files(p, drill=False, exclude_names=[], include_names=[]):
+def list_json_files(
+    p: Union[str, Path],
+    drill: bool = False,
+    exclude_names: list = [],
+    include_names: list = [],
+) -> list:
     """
     Easily access a list of all JSON files in a directory.
     Accepts a string or Path as first argument.
@@ -206,7 +222,12 @@ def list_json_files(p, drill=False, exclude_names=[], include_names=[]):
     return files
 
 
-def load_multiple_json(p, drill=False, filter_na=True, crash=False):
+def load_multiple_json(
+    p: Union[str, Path],
+    drill: bool = False,
+    filter_na: bool = True,
+    crash: bool = False,
+) -> list:
     """
     Easier loading of a bunch of JSON files.
     Accepts a string or Path as first argument.
@@ -217,5 +238,7 @@ def load_multiple_json(p, drill=False, filter_na=True, crash=False):
     """
 
     files = list_json_files(p, drill=drill)
+
     content = [load_json(x, crash=crash) for x in files]
+
     return [x for x in content if x] if filter_na else content

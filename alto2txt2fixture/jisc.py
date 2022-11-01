@@ -1,13 +1,13 @@
 from .settings import settings
 from .patterns import PUBLICATION_CODE
 
-from pandas import read_csv
+import pandas as pd
 from pathlib import Path
 
 import datetime
 
 
-def setup_jisc_papers(path=settings.JISC_PAPERS_CSV):
+def setup_jisc_papers(path: str = settings.JISC_PAPERS_CSV) -> pd.DataFrame:
     """
     Creates a DataFrame with correct informations based on the JISC_PAPERS_CSV from the settings.
 
@@ -38,7 +38,7 @@ def setup_jisc_papers(path=settings.JISC_PAPERS_CSV):
         "Dec.": 12,
     }
 
-    jisc_papers = read_csv(
+    jisc_papers = pd.read_csv(
         path,
         usecols=[
             "Newspaper Title",
