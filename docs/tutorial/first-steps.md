@@ -62,6 +62,6 @@ Follow [the instructions for setting up access to your Azure storage account](ht
 
 #### Step 3: Mount your blobs
 
-TODO: Write this section.
+TODO #3: Write this section.
 
 _Note that you can also search on the internet for ideas on how to create local scripts to facilitate easier connection next time._

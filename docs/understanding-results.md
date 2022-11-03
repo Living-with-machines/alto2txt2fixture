@@ -22,9 +22,9 @@ Here is an explanation of each of the keys in the dictionary:
 | `path`              | The input path for the zip file that is being converted.                                               | `string`          |
 | `bytes`             | The size of the input zip file represented in bytes.                                                   | `integer`         |
 | `size`              | The size of the input zip file represented in a human-readable string.                                 | `string`          |
-| `contents`          | #TODO                                                                                                  | `integer`         |
+| `contents`          | #TODO #3                                                                                               | `integer`         |
 | `start`             | Date and time when processing started (see also `end` below).                                          | `datestring`      |
-| `newspaper_paths`   | #TODO                                                                                                  | `list` (`string`) |
+| `newspaper_paths`   | #TODO #3                                                                                               | `list` (`string`) |
 | `publication_codes` | A list of the NLPs that are contained in the input zip file.                                           | `list` (`string`) |
 | `issue_paths`       | A list of all the issue paths that are contained in the cache directory.                               | `list` (`string`) |
 | `item_paths`        | A list of all the item paths that are contained in the cache directory.                                | `list` (`string`) |
