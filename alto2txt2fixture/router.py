@@ -323,7 +323,7 @@ class Item(Cache):
     def write_to_cache(self) -> None:
         self.get_cache_path().parent.mkdir(parents=True, exist_ok=True)
 
-        with open(self.get_cache_path(), "a+") as f:]]]]]]]]]]]]]]]==============
+        with open(self.get_cache_path(), "a+") as f:
             f.write(json.dumps(self.as_dict()) + "\n")
 
         return
