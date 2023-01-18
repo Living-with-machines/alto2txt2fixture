@@ -4,7 +4,7 @@
 
 ## Documentation
 
-You can find the documentation in the [`docs`](docs) directory.
+You can find the documentation in the [`docs`](docs) directory, available [using MkDocs](https://www.mkdocs.org/getting-started/).
 
 In short, however, the program should run automatically with the following two commands.
 
