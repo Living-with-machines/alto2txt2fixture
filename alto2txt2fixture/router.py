@@ -5,6 +5,7 @@ from .types import dotdict
 from .utils import get_now, write_json, get_size_from_path
 
 from pathlib import Path
+from typing import Optional
 from tqdm import tqdm
 from xml.etree import ElementTree as ET
 
@@ -16,47 +17,104 @@ import zipfile
 
 
 class Cache:
+    """
+    The Cache class provides a blueprint for creating and managing cache data.
+    The class has several methods that help in getting the cache path,
+    converting the data to a dictionary, and writing the cache data to a file.
+
+    It is inherited by many other classes in this document.
+    """
+
     def __init__(self):
+        """
+        Initializes the Cache class object.
+        """
         pass
 
     def __str__(self):
+        """
+        Returns the string representation of the cache data as a dictionary.
+        """
         return str(self.as_dict())
 
     def as_dict(self) -> dict:
+        """
+        Converts the cache data to a dictionary and returns it.
+        """
         return {}
 
     def get_cache_path(self) -> Path:
-        return Path(f"{CACHE_HOME}/{self.collection}/{self.kind}/{self.id}.json")
+        """
+        Returns the cache path, which is used to store the cache data.
+        The path is normally constructed using some of the object's
+        properties (collection, kind, and id) but can be changed when
+        inherited.
+        """
+        return Path(
+            f"{CACHE_HOME}/{self.collection}/{self.kind}/{self.id}.json"
+        )
 
     def write_to_cache(self) -> None:
+        """
+        Writes the cache data to a file at the specified cache path. The cache
+        data is first converted to a dictionary using the as_dict method. If
+        the cache path already exists, the function returns True.
+        """
+
+        path = self.get_cache_path()
+
         try:
-            if self.get_cache_path().exists():
+            if path.exists():
                 return True
         except AttributeError:
             error(
-                f"Error occurred when getting cache path for {self.kind}: {self.get_cache_path()}. It was not of expected type Path but of type {type(self.get_cache_path())}:",
+                f"Error occurred when getting cache path for {self.kind}: \
+                {path}. It was not of expected type Path but \
+                of type {type(path)}:",
             )
 
-        self.get_cache_path().parent.mkdir(parents=True, exist_ok=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(self.get_cache_path(), "w+") as f:
+        with open(path, "w+") as f:
             f.write(json.dumps(self.as_dict()))
 
         return
 
 
 class Newspaper(Cache):
+    """
+    The Newspaper class extends the Cache class and represents a newspaper.
+    The class has several properties and methods that allow the creation of a
+    newspaper object and the manipulation of its data.
+
+    :param root: An xml element that represents the root of the publication
+    :type root: xml.etree.ElementTree.Element
+    :param collection: A string that represents the collection of the
+        publication
+    :type collection: str
+    :param meta: A dotdict object that holds metadata about the publication
+    :type meta: dotdict
+    :param jisc_papers: A pandas DataFrame object that holds information about
+        the JISC papers
+    :type jisc_papers: Optional[pandas.DataFrame]
+    """
+
     kind = "newspaper"
+    """A string that represents the type of the object, set to "newspaper"."""
 
     def __init__(
         self,
-        root: ET = None,
+        root: ET.Element,
         collection: str = "",
         meta: dotdict = dotdict(),
-        jisc_papers: pd.DataFrame = None,
+        jisc_papers: Optional[pd.DataFrame] = None,
     ):
-        if not isinstance(root, ET):
-            raise RuntimeError("root provided must be of type xml.etree.ElementTree")
+        """Constructor method."""
+
+        if not isinstance(root, ET.Element):
+            raise RuntimeError(
+                f"Expected root to be xml.etree.Element: {type(root)}"
+            )
 
         self.publication = root.find("./publication")
         self.input_sub_path = root.find("./process/input_sub_path").text
@@ -72,18 +130,24 @@ class Newspaper(Cache):
         path = str(self.get_cache_path())
         if not self.meta.newspaper_paths:
             self.meta.newspaper_paths = []
-        elif not path in self.meta.newspaper_paths:
+        elif path not in self.meta.newspaper_paths:
             self.meta.newspaper_paths.append(path)
 
         if not self.meta.publication_codes:
             self.meta.publication_codes = [self.publication_code]
-        elif not self.publication_code in self.meta.publication_codes:
+        elif self.publication_code not in self.meta.publication_codes:
             self.meta.publication_codes.append(self.publication_code)
 
         self.zip_file = Path(meta.path).name
 
     @property
     def title(self) -> str:
+        """
+        A property that returns the title of the newspaper.
+
+        :return: The title of the newspaper
+        :rtype: str
+        """
         if not self._title:
             try:
                 self._title = (
@@ -99,18 +163,21 @@ class Newspaper(Cache):
             if self._title:
                 return self._title
 
-            # We probably have a JISC title so we will go ahead and pick from filename following alto2txt convention
+            # We probably have a JISC title so we will go ahead and pick from
+            # filename following alto2txt convention
             if not self.zip_file:
                 self._title = ""
                 warning(
-                    "JISC title found but zip file name was not passed so title cannot be correctly processed."
+                    "JISC title found but zip file name was not passed so \
+                    title cannot be correctly processed."
                 )
                 return ""
 
             if not isinstance(self.jisc_papers, pd.DataFrame):
                 self._title = ""
                 warning(
-                    "JISC title found but zip file name was not passed so title cannot be correctly processed."
+                    "JISC title found but zip file name was not passed so \
+                    title cannot be correctly processed."
                 )
                 return ""
 
@@ -127,9 +194,19 @@ class Newspaper(Cache):
         return self._title
 
     def as_dict(self) -> dict:
+        """
+        A method that returns a dictionary representation of the newspaper
+        object.
+
+        :return: Dictionary representation of the Newspaper object
+        :rtype: dict
+        """
+
         if not self._newspaper:
             self._newspaper = dict(
-                **dict(publication_code=self.publication_code, title=self.title),
+                **dict(
+                    publication_code=self.publication_code, title=self.title
+                ),
                 **{
                     x.tag: x.text or ""
                     for x in self.publication.findall("*")
@@ -139,6 +216,14 @@ class Newspaper(Cache):
         return self._newspaper
 
     def publication_code_from_input_sub_path(self) -> str:
+        """
+        A method that returns the publication code from the input sub-path of
+        the publication process.
+
+        :return: The code of the publication
+        :rtype: str
+        """
+
         g = PUBLICATION_CODE.findall(self.input_sub_path)
         if len(g) == 1:
             return g[0]
@@ -146,46 +231,67 @@ class Newspaper(Cache):
 
     @property
     def publication_code(self) -> str:
+        """
+        A property that returns the code of the publication.
+
+        :return: The code of the publication
+        :rtype: str
+        """
         if not self._publication_code:
             self._publication_code = self.publication.attrib.get("id")
             if len(self._publication_code) != 7:
                 if self._publication_code == "NCBL1001":
-                    self._publication_code = self.publication_code_from_input_sub_path()
+                    self._publication_code = (
+                        self.publication_code_from_input_sub_path()
+                    )
                     if not self._publication_code:
                         # Fallback option
                         self._publication_code = "0000499"
                 elif self._publication_code == "NCBL1002":
-                    self._publication_code = self.publication_code_from_input_sub_path()
+                    self._publication_code = (
+                        self.publication_code_from_input_sub_path()
+                    )
                     if not self._publication_code:
                         # Fallback option
                         self._publication_code = "0000499"
                 elif self._publication_code == "NCBL1023":
-                    self._publication_code = self.publication_code_from_input_sub_path()
+                    self._publication_code = (
+                        self.publication_code_from_input_sub_path()
+                    )
                     if not self._publication_code:
                         # Fallback option
                         self._publication_code = "0000152"
                 elif self._publication_code == "NCBL1024":
-                    self._publication_code = self.publication_code_from_input_sub_path()
+                    self._publication_code = (
+                        self.publication_code_from_input_sub_path()
+                    )
                     if not self._publication_code:
                         # Fallback option
                         self._publication_code = "0000171"
                 elif self._publication_code == "NCBL1029":
-                    self._publication_code = self.publication_code_from_input_sub_path()
+                    self._publication_code = (
+                        self.publication_code_from_input_sub_path()
+                    )
                     if not self._publication_code:
                         # Fallback option
                         self._publication_code = "0000165"
                 elif self._publication_code == "NCBL1034":
-                    self._publication_code = self.publication_code_from_input_sub_path()
+                    self._publication_code = (
+                        self.publication_code_from_input_sub_path()
+                    )
                     if not self._publication_code:
                         # Fallback option
                         self._publication_code = "0000160"
                 elif self._publication_code == "NCBL1035":
-                    self._publication_code = self.publication_code_from_input_sub_path()
+                    self._publication_code = (
+                        self.publication_code_from_input_sub_path()
+                    )
                     if not self._publication_code:
                         # Fallback option
                         self._publication_code = "0000185"
                 elif (
-                    len(self._publication_code) == 4 or "NCBL" in self._publication_code
+                    len(self._publication_code) == 4
+                    or "NCBL" in self._publication_code
                 ):
                     g = PUBLICATION_CODE.findall(self.input_sub_path)
                     if len(g) == 1:
@@ -204,49 +310,95 @@ class Newspaper(Cache):
                 self._publication_code = f"{self._publication_code}".zfill(7)
 
             if not self._publication_code:
-                raise RuntimeError(f"Publication code is non-existent.")
+                raise RuntimeError("Publication code is non-existent.")
 
             if not len(self._publication_code) == 7:
                 raise RuntimeError(
-                    f"Publication code is of wrong length: {len(self._publication_code)} ({self._publication_code})."
+                    f"Publication code is of wrong length: \
+                    {len(self._publication_code)} ({self._publication_code})."
                 )
 
         return self._publication_code
 
     @property
     def number_paths(self) -> list:
+        """
+        Returns the nested directories in which we want to save the cache file.
+
+        :returns: List of the desired directories in descending order
+        :rtype: list
+        """
+
         number_paths = [x for x in self.publication_code.lstrip("0")[:2]]
+
         if len(number_paths) == 1:
             number_paths = ["0"] + number_paths
 
         return number_paths
 
     def get_cache_path(self) -> Path:
+        """
+        Returns the path to the cache file for the newspaper object.
+
+        :returns: Path to the cache file for the newspaper object
+        :rtype: pathlib.Path
+        """
+        json_file = f"/{self.publication_code}/{self.publication_code}.json"
+
         return Path(
             f"{CACHE_HOME}/{self.collection}/"
             + "/".join(self.number_paths)
-            + f"/{self.publication_code}/{self.publication_code}.json"
+            + json_file
         )
 
 
 class Item(Cache):
+    """
+    The Newspaper class extends the Cache class and represents a newspaper
+    item, i.e. an article. The class has several properties and methods that
+    allow the creation of an article object and the manipulation of its data.
+
+    :param root: An xml element that represents the root of the publication
+    :type root: xml.etree.ElementTree.Element
+    :param issue_code: A string that represents the issue code
+    :type issue_code: str
+    :param digitisation: TODO
+    :type digitisation: dict
+    :param ingest: TODO
+    :type ingest: dict
+    :param collection: A string that represents the collection of the
+        publication
+    :type collection: str
+    :param newspaper: The parent newspaper
+    :type newspaper: Optional[router.Newspaper]
+    :param meta: TODO
+    :type meta: dotdict
+    """
+
     kind = "item"
+    """A string that represents the type of the object, set to "item"."""
 
     def __init__(
         self,
-        root: ET = None,
+        root: ET.Element,
         issue_code: str = "",
         digitisation: dict = {},
         ingest: dict = {},
         collection: str = "",
-        newspaper: Newspaper = None,
+        newspaper: Optional[Newspaper] = None,
         meta: dotdict = dotdict(),
     ):
-        if not isinstance(root, ET):
-            raise RuntimeError("root provided must be of type xml.etree.ElementTree")
+        """Constructor method."""
+
+        if not isinstance(root, ET.Element):
+            raise RuntimeError(
+                f"Expected root to be xml.etree.Element: {type(root)}"
+            )
 
         if not isinstance(newspaper, Newspaper):
-            raise RuntimeError("newspaper provided must be of type router.Newspaper")
+            raise RuntimeError(
+                "Expected newspaper to be of type router.Newspaper"
+            )
 
         self.root = root
         self.issue_code = issue_code
@@ -263,16 +415,29 @@ class Item(Cache):
         path = str(self.get_cache_path())
         if not self.meta.item_paths:
             self.meta.item_paths = [path]
-        elif not path in self.meta.item_paths:
+        elif path not in self.meta.item_paths:
             self.meta.item_paths.append(path)
 
     @property
     def item_elem(self):
+        """
+        Sets up and saves the issue XML item for easy access as a property.
+        """
+
         if not self._item_elem:
             self._item_elem = self.root.find("./publication/issue/item")
+
         return self._item_elem
 
     def as_dict(self) -> dict:
+        """
+        A method that returns a dictionary representation of the item object
+        (i.e. article).
+
+        :return: Dictionary representation of the Item object
+        :rtype: dict
+        """
+
         if not self._item:
             self._item = {
                 f"{x.tag}": x.text or ""
@@ -308,12 +473,23 @@ class Item(Cache):
 
     @property
     def item_code(self) -> str:
+        """
+        Sets up and saves the item code for easy access as property.
+        """
         if not self._item_code:
-            self._item_code = self.issue_code + "-" + self.item_elem.attrib.get("id")
+            self._item_code = (
+                self.issue_code + "-" + self.item_elem.attrib.get("id")
+            )
 
         return self._item_code
 
     def get_cache_path(self) -> Path:
+        """
+        Returns the path to the cache file for the item (article) object.
+
+        :returns: Path to the cache file for the article object
+        :rtype: pathlib.Path
+        """
         return Path(
             f"{CACHE_HOME}/{self.collection}/"
             + "/".join(self.newspaper.number_paths)
@@ -321,25 +497,55 @@ class Item(Cache):
         )
 
     def write_to_cache(self) -> None:
-        self.get_cache_path().parent.mkdir(parents=True, exist_ok=True)
+        """
+        Special cache-write function that appends rather than writes at the
+        end of the process.
 
-        with open(self.get_cache_path(), "a+") as f:
+        :returns: None
+        :rtype: None
+        """
+        path = self.get_cache_path()
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(path, "a+") as f:
             f.write(json.dumps(self.as_dict()) + "\n")
 
         return
 
 
 class Issue(Cache):
+    """
+    The Issue class extends the Cache class and represents a newspaper issue.
+    The class has several properties and methods that allow the creation of an
+    issue object and the manipulation of its data.
+
+    :param root: An xml element that represents the root of the publication
+    :type root: xml.etree.ElementTree.Element
+    :param newspaper: The parent newspaper
+    :type newspaper: Optional[router.Newspaper]
+    :param collection: A string that represents the collection of the
+        publication
+    :type collection: str
+    :param input_sub_path: TODO
+    :type collection: str
+    :param meta: TODO
+    :type meta: dotdict
+    """
+
     kind = "issue"
+    """A string that represents the type of the object, set to "issue"."""
 
     def __init__(
         self,
         publication: ET.Element,
-        newspaper: Newspaper = None,
+        newspaper: Optional[Newspaper] = None,
         collection: str = "",
         input_sub_path: str = "",
         meta: dotdict = dotdict(),
     ):
+        """Constructor method."""
+
         self.publication = publication
         self.newspaper = newspaper
         self.collection = collection
@@ -352,17 +558,25 @@ class Issue(Cache):
         path = str(self.get_cache_path())
         if not self.meta.issue_paths:
             self.meta.issue_paths = [path]
-        elif not path in self.meta.issue_paths:
+        elif path not in self.meta.issue_paths:
             self.meta.issue_paths.append(path)
 
     @property
     def issue_date(self) -> str:
+        """
+        Sets up and saves the issue date for easy access as property.
+        """
+
         if not self._issue_date:
             self._issue_date = self.publication.find("./issue/date").text
+
         return self._issue_date
 
     @property
     def issue_code(self) -> str:
+        """
+        Sets up and saves the issue code for easy access as property.
+        """
         return (
             self.newspaper.publication_code.replace("-", "")
             + "-"
@@ -370,35 +584,78 @@ class Issue(Cache):
         )
 
     def as_dict(self) -> dict:
+        """
+        A method that returns a dictionary representation of the issue
+        object.
+
+        :return: Dictionary representation of the Issue object
+        :rtype: dict
+        """
+
         if not self._issue:
-            self._issue = {
-                "issue_code": self.issue_code,
-                "issue_date": self.issue_date,
-                "publication__publication_code": self.newspaper.publication_code,
-                "input_sub_path": self.input_sub_path,
-            }
+            self._issue = dict(
+                issue_code=self.issue_code,
+                issue_date=self.issue_date,
+                publication__publication_code=self.newspaper.publication_code,
+                input_sub_path=self.input_sub_path,
+            )
 
         return self._issue
 
     def get_cache_path(self) -> Path:
+        """
+        Returns the path to the cache file for the issue object.
+
+        :returns: Path to the cache file for the issue object
+        :rtype: pathlib.Path
+        """
+
+        json_file = (
+            f"/{self.newspaper.publication_code}/issues/{self.issue_code}.json"
+        )
+
         return Path(
             f"{CACHE_HOME}/{self.collection}/"
             + "/".join(self.newspaper.number_paths)
-            + f"/{self.newspaper.publication_code}/issues/{self.issue_code}.json"
+            + json_file
         )
 
 
 class Ingest(Cache):
-    kind = "ingest"
+    """
+    The Ingest class extends the Cache class and represents a newspaper ingest.
+    The class has several properties and methods that allow the creation of an
+    ingest object and the manipulation of its data.
 
-    def __init__(self, root: ET = None, collection: str = ""):
-        if not isinstance(root, ET):
-            raise RuntimeError("root provided must be of type xml.etree.ElementTree")
+    :param root: An xml element that represents the root of the publication
+    :type root: xml.etree.ElementTree.Element
+    :param collection: A string that represents the collection of the
+        publication
+    :type collection: str
+    """
+
+    kind = "ingest"
+    """A string that represents the type of the object, set to "ingest"."""
+
+    def __init__(self, root: ET.Element, collection: str = ""):
+        """Constructor method."""
+
+        if not isinstance(root, ET.Element):
+            raise RuntimeError(
+                f"Expected root to be xml.etree.Element: {type(root)}"
+            )
 
         self.root = root
         self.collection = collection
 
     def as_dict(self) -> dict:
+        """
+        A method that returns a dictionary representation of the ingest
+        object.
+
+        :return: Dictionary representation of the Ingest object
+        :rtype: dict
+        """
         return {
             f"lwm_tool_{x.tag}": x.text or ""
             for x in self.root.findall("./process/lwm_tool/*")
@@ -406,24 +663,46 @@ class Ingest(Cache):
 
     @property
     def id(self) -> str:
-        return (
-            self.as_dict().get("lwm_tool_name")
-            + "-"
-            + self.as_dict().get("lwm_tool_version")
-        )
+        dic = self.as_dict()
+        return dic.get("lwm_tool_name") + "-" + dic.get("lwm_tool_version")
 
 
 class Digitisation(Cache):
-    kind = "digitisation"
+    """
+    The Digitisation class extends the Cache class and represents a newspaper
+    digitisation. The class has several properties and methods that allow
+    creation of an digitisation object and the manipulation of its data.
 
-    def __init__(self, root: ET = None, collection: str = ""):
-        if not isinstance(root, ET):
-            raise RuntimeError("root provided must be of type xml.etree.ElementTree")
+    :param root: An xml element that represents the root of the publication
+    :type root: xml.etree.ElementTree.Element
+    :param collection: A string that represents the collection of the
+        publication
+    :type collection: str
+    """
+
+    kind = "digitisation"
+    """A string that represents the type of the object, set to
+    "digitisation"."""
+
+    def __init__(self, root: ET.Element, collection: str = ""):
+        """Constructor method."""
+
+        if not isinstance(root, ET.Element):
+            raise RuntimeError(
+                f"Expected root to be xml.etree.Element: {type(root)}"
+            )
 
         self.root = root
         self.collection = collection
 
     def as_dict(self) -> dict:
+        """
+        A method that returns a dictionary representation of the digitisation
+        object.
+
+        :return: Dictionary representation of the Digitising object
+        :rtype: dict
+        """
         dic = {
             x.tag: x.text or ""
             for x in self.root.findall("./process/*")
@@ -442,21 +721,46 @@ class Digitisation(Cache):
 
     @property
     def id(self) -> str:
+        dic = self.as_dict()
         return (
-            self.as_dict().get("software").replace("/", "---")
-            if self.as_dict().get("software")
+            dic.get("software").replace("/", "---")
+            if dic.get("software")
             else None
         )
 
 
 class DataProvider(Cache):
+    """
+    The DataProvider class extends the Cache class and represents a newspaper
+    data provider. The class has several properties and methods that allow
+    creation of a data provider object and the manipulation of its data.
+
+    :param collection: A string that represents the collection of the
+        publication
+    :type collection: str
+    """
+
     kind = "data-provider"
+    """A string that represents the type of the object, set to
+    "data-provider"."""
 
     def __init__(self, collection: str = None):
+        """Constructor method."""
         self.collection = collection
 
     def as_dict(self) -> dict:
-        return {"name": self.collection, "collection": "newspapers", "source_note": ""}
+        """
+        A method that returns a dictionary representation of the data provider
+        object.
+
+        :return: Dictionary representation of the DataProvider object
+        :rtype: dict
+        """
+        return {
+            "name": self.collection,
+            "collection": "newspapers",
+            "source_note": "",
+        }
 
     @property
     def id(self) -> str:
@@ -464,7 +768,30 @@ class DataProvider(Cache):
 
 
 class Document:
+    """
+    The Document class is a representation of a document that contains
+    information about a publication, newspaper, item, digitisation, and
+    ingest. This class holds all the relevant information about a document in
+    a structured manner and provides properties that can be used to access
+    different aspects of the document.
+
+    :param collection: A string that represents the collection of the
+        publication
+    :type collection: str
+    :param root: An xml element that represents the root of the publication
+    :type root: xml.etree.ElementTree.Element
+    :param zip_file: A path to a valid zip file
+    :type zip_file: str
+    :param jisc_papers: A pandas DataFrame object that holds information about
+        the JISC papers
+    :type jisc_papers: Optional[pandas.DataFrame]
+    :param meta: TODO
+    :type meta: dotdict
+    """
+
     def __init__(self, *args, **kwargs):
+        """Constructor method."""
+
         self.collection = kwargs.get("collection")
         if not self.collection or not isinstance(self.collection, str):
             raise RuntimeError("A valid collection must be passed")
@@ -496,6 +823,10 @@ class Document:
 
     @property
     def publication(self) -> ET.Element:
+        """
+        This property returns an ElementTree object representing the
+        publication information in the XML document.
+        """
         if not self._publication_elem:
             self._publication_elem = self.root.find("./publication")
         return self._publication_elem
@@ -515,7 +846,9 @@ class Document:
     @property
     def input_sub_path(self) -> str:
         if not self._input_sub_path:
-            self._input_sub_path = self.root.find("./process/input_sub_path").text
+            self._input_sub_path = self.root.find(
+                "./process/input_sub_path"
+            ).text
         return self._input_sub_path
 
     @property
@@ -569,30 +902,68 @@ class Document:
 
 
 class Archive:
+    """
+    The Archive class represents a zip archive of XML files. The class is used
+    to extract information from a ZIP archive, and it contains several methods
+    to process the data contained in the archive.
+
+    .. describe:: open(Archive) context manager
+
+        Archive can be opened with a context manager, which creates a meta
+        object, with timings for the object. When closed, it will save the
+        meta JSON to the correct paths.
+
+    .. describe:: len(Archive)
+
+        Getting the length of the Archive returns the number of files inside
+        the zip archive.
+
+    :param path: The path to the zip archive.
+    :type path: str
+    :param collection: The collection of the XML files in the archive. Default
+        is "".
+    :type collection: str, optional
+    :param report_id: The report ID for the archive. If not provided, a random
+        UUID is generated.
+    :type report_id: str, optional
+    :param jisc_papers: A DataFrame of JISC papers.
+    :type jisc_papers: pandas.DataFrame, optional
+    :raises RuntimeError: If the ``path`` does not exist
+    """
+
     def __init__(
         self,
-        path: str = "",
+        path: str,
         collection: str = "",
-        report_id: str = None,
-        jisc_papers: pd.DataFrame = None,
+        report_id: Optional[str] = None,
+        jisc_papers: Optional[pd.DataFrame] = None,
     ):
+        """Constructor method."""
+
         self.path = Path(path)
 
         if not self.path.exists():
             raise RuntimeError("Path does not exist.")
 
         self.size = get_size_from_path(self.path)
+        """The size of the archive, in human-readable format."""
+
         self.size_raw = get_size_from_path(self.path, raw=True)
+        """The raw size of the archive, in bytes."""
+
         self.zip_file = zipfile.ZipFile(self.path)
         self.collection = collection
 
         self.roots = self.get_roots()
+        """The root elements of the XML documents contained in the archive."""
+
         self.meta = dotdict(
             path=str(self.path),
             bytes=self.size_raw,
             size=self.size,
             contents=len(self.filelist),
         )
+        """Metadata about the archive, such as its path, size, and number of contents."""
 
         if not report_id:
             self.report_id = str(uuid.uuid4())
@@ -602,9 +973,13 @@ class Archive:
         self.jisc_papers = jisc_papers
 
         self.report_parent = Path(f"{REPORT_DIR}/{self.report_id}")
+        """The parent directory of the report file for the archive."""
+
         self.report = (
-            self.report_parent / f"{self.path.stem.replace('_metadata', '')}.json"
+            self.report_parent
+            / f"{self.path.stem.replace('_metadata', '')}.json"
         )
+        """The file path of the report file for the archive."""
 
     def __len__(self):
         return len(self.filelist)
@@ -619,7 +994,8 @@ class Archive:
         self.meta.start = get_now()
 
     def __exit__(self, exc_type, exc_value, exc_tb):
-        # In the future, we might want to handle exceptions here: (exc_type, exc_value, exc_tb)
+        # In the future, we might want to handle exceptions here:
+        # (exc_type, exc_value, exc_tb)
 
         self.meta.end = get_now()
         self.meta.seconds = (self.meta.end - self.meta.start).seconds
@@ -639,7 +1015,9 @@ class Archive:
                                 json.loads(x)
                                 for x in {
                                     line
-                                    for line in Path(item_doc).read_text().splitlines()
+                                    for line in Path(item_doc)
+                                    .read_text()
+                                    .splitlines()
                                 }
                                 if x
                             ]
@@ -650,13 +1028,18 @@ class Archive:
 
     @property
     def filelist(self):
+        """Returns the list of files in the zip file"""
         return self.zip_file.filelist
 
     @property
     def documents(self):
+        """Property that calls the ``get_documents`` method"""
         return self.get_documents()
 
     def get_roots(self):
+        """
+        Yields the root elements of the XML documents contained in the archive.
+        """
         for xml_file in tqdm(self.filelist, leave=False, colour="blue"):
             with self.zip_file.open(xml_file) as f:
                 xml = f.read()
@@ -664,6 +1047,20 @@ class Archive:
                     yield ET.fromstring(xml)
 
     def get_documents(self):
+        """
+        A generator that yields instances of the Document class for each XML
+        file in the ZIP archive.
+
+        It uses the tqdm library to display a progress bar in the terminal
+        while it is running.
+
+        If the contents of the ZIP file are not empty, the method creates an
+        instance of the Document class by passing the root element of the XML
+        file, the collection name, meta information about the archive, and the
+        JISC papers data frame (if provided) to the constructor of the
+        ``Document`` class. The instance of the ``Document`` class is then
+        returned by the generator.
+        """
         for xml_file in tqdm(
             self.filelist,
             desc=f"{Path(self.zip_file.filename).stem} ({self.meta.size})",
@@ -682,7 +1079,25 @@ class Archive:
 
 
 class Collection:
-    def __init__(self, name: str = "hmd", jisc_papers: pd.DataFrame = None):
+    """
+    A Collection represents a group of newspaper archives from any passed
+    alto2txt metadata output.
+
+    A Collection is initialised with a name and an optional pandas DataFrame
+    of JISC papers. The `archives` property returns an iterable of the
+    `Archive` objects within the collection.
+
+    :param name: Name of the collection (default "hmd")
+    :type name: str
+    :param jisc_papers: DataFrame of JISC papers, optional
+    :type jisc_papers: pandas.DataFrame
+    """
+
+    def __init__(
+        self, name: str = "hmd", jisc_papers: Optional[pd.DataFrame] = None
+    ):
+        """Constructor method."""
+
         self.name = name
         self.jisc_papers = jisc_papers
         self.dir = Path(f"{MNT}/{self.name}-alto2txt/metadata")
@@ -717,6 +1132,19 @@ def route(
     jisc_papers_path: str,
     report_dir: str,
 ) -> None:
+    """
+    This function is responsible for setting up the path for the alto2txt
+    mountpoint, setting up the JISC papers and routing the collections for
+    processing.
+
+    :param collections: List of collection names
+    :param cache_home: Directory path for the cache
+    :param mountpoint: Directory path for the alto2txt mountpoint
+    :param jisc_papers_path: Path to the JISC papers
+    :param report_dir: Path to the report directory
+    :return: None
+    """
+
     global CACHE_HOME
     global MNT
     global REPORT_DIR
@@ -727,7 +1155,8 @@ def route(
     MNT = Path(mountpoint) if isinstance(mountpoint, str) else mountpoint
     if not MNT.exists():
         error(
-            f"The mountpoint provided for alto2txt does not exist. Either create a local copy or blobfuse it to `{MNT.absolute()}`."
+            f"The mountpoint provided for alto2txt does not exist. Either \
+            create a local copy or blobfuse it to `{MNT.absolute()}`."
         )
 
     jisc_papers = setup_jisc_papers(path=jisc_papers_path)
@@ -737,7 +1166,8 @@ def route(
 
         if collection.empty:
             error(
-                f"It looks like {collection_name} is empty in the alto2txt mountpoint: `{collection.dir.absolute()}`."
+                f"It looks like {collection_name} is empty in the alto2txt \
+                mountpoint: `{collection.dir.absolute()}`."
             )
 
         for archive in collection.archives:
