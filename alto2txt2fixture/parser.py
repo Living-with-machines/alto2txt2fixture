@@ -16,9 +16,16 @@ def fixtures(
     uniq_keys: dict = [],
 ) -> None:
     def uniq(filelist, keys=[]):
+        def get_key_from(item, x):
+            result = json.loads(item.read_text()).get(x, None)
+            if not result:
+                print(f"[WARN] Could not find key {x} in {item}")
+                result = ""
+            return result
+
         seen = set()
         for item in filelist:
-            key = "-".join([json.loads(item.read_text()).get(x) for x in keys])
+            key = "-".join([get_key_from(item, x) for x in keys])
 
             if key not in seen:
                 seen.add(key)
