@@ -31,7 +31,7 @@ class Cache:
         """
         pass
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Returns the string representation of the cache data as a dictionary.
         """
@@ -87,16 +87,16 @@ class Newspaper(Cache):
     The class has several properties and methods that allow the creation of a
     newspaper object and the manipulation of its data.
 
-    :param root: An xml element that represents the root of the publication
-    :type root: xml.etree.ElementTree.Element
-    :param collection: A string that represents the collection of the
-        publication
-    :type collection: str
-    :param meta: A dotdict object that holds metadata about the publication
-    :type meta: dotdict
-    :param jisc_papers: A pandas DataFrame object that holds information about
-        the JISC papers
-    :type jisc_papers: Optional[pandas.DataFrame]
+    Arguments:
+        root (xml.etree.ElementTree.Element):
+            An xml element that represents the root of the publication.
+        collection (str):
+            A string that represents the collection of the publication.
+        meta (dotdict):
+            A dotdict object that holds metadata about the publication.
+        jisc_papers (pandas.DataFrame, optional):
+            A pandas DataFrame object that holds information about the JISC
+            papers.
     """
 
     kind = "newspaper"
@@ -145,8 +145,8 @@ class Newspaper(Cache):
         """
         A property that returns the title of the newspaper.
 
-        :return: The title of the newspaper
-        :rtype: str
+        Returns:
+            str: The title of the newspaper
         """
         if not self._title:
             try:
@@ -198,8 +198,8 @@ class Newspaper(Cache):
         A method that returns a dictionary representation of the newspaper
         object.
 
-        :return: Dictionary representation of the Newspaper object
-        :rtype: dict
+        Returns:
+            dict: Dictionary representation of the Newspaper object
         """
 
         if not self._newspaper:
@@ -220,8 +220,8 @@ class Newspaper(Cache):
         A method that returns the publication code from the input sub-path of
         the publication process.
 
-        :return: The code of the publication
-        :rtype: str
+        Returns:
+            str: The code of the publication
         """
 
         g = PUBLICATION_CODE.findall(self.input_sub_path)
@@ -234,8 +234,8 @@ class Newspaper(Cache):
         """
         A property that returns the code of the publication.
 
-        :return: The code of the publication
-        :rtype: str
+        Returns:
+            str: The code of the publication
         """
         if not self._publication_code:
             self._publication_code = self.publication.attrib.get("id")
@@ -325,8 +325,8 @@ class Newspaper(Cache):
         """
         Returns the nested directories in which we want to save the cache file.
 
-        :returns: List of the desired directories in descending order
-        :rtype: list
+        Returns:
+            list: List of the desired directories in descending order
         """
 
         number_paths = [x for x in self.publication_code.lstrip("0")[:2]]
@@ -340,8 +340,9 @@ class Newspaper(Cache):
         """
         Returns the path to the cache file for the newspaper object.
 
-        :returns: Path to the cache file for the newspaper object
-        :rtype: pathlib.Path
+        Returns: 
+            pathlib.Path
+                Path to the cache file for the newspaper object
         """
         json_file = f"/{self.publication_code}/{self.publication_code}.json"
 
@@ -358,21 +359,21 @@ class Item(Cache):
     item, i.e. an article. The class has several properties and methods that
     allow the creation of an article object and the manipulation of its data.
 
-    :param root: An xml element that represents the root of the publication
-    :type root: xml.etree.ElementTree.Element
-    :param issue_code: A string that represents the issue code
-    :type issue_code: str
-    :param digitisation: TODO
-    :type digitisation: dict
-    :param ingest: TODO
-    :type ingest: dict
-    :param collection: A string that represents the collection of the
-        publication
-    :type collection: str
-    :param newspaper: The parent newspaper
-    :type newspaper: Optional[router.Newspaper]
-    :param meta: TODO
-    :type meta: dotdict
+    Arguments:
+        root (xml.etree.ElementTree.Element):
+            An xml element that represents the root of the publication
+        issue_code (str):
+            A string that represents the issue code
+        digitisation (dict):
+            TODO
+        ingest (dict):
+            TODO
+        collection (str):
+            A string that represents the collection of the publication
+        newspaper (router.Newspaper, optional):
+            The parent newspaper
+        meta (dotdict):
+            TODO
     """
 
     kind = "item"
@@ -434,8 +435,8 @@ class Item(Cache):
         A method that returns a dictionary representation of the item object
         (i.e. article).
 
-        :return: Dictionary representation of the Item object
-        :rtype: dict
+        Returns:
+            dict: Dictionary representation of the Item object
         """
 
         if not self._item:
@@ -487,8 +488,8 @@ class Item(Cache):
         """
         Returns the path to the cache file for the item (article) object.
 
-        :returns: Path to the cache file for the article object
-        :rtype: pathlib.Path
+        Returns:
+            pathlib.Path: Path to the cache file for the article object
         """
         return Path(
             f"{CACHE_HOME}/{self.collection}/"
@@ -501,8 +502,8 @@ class Item(Cache):
         Special cache-write function that appends rather than writes at the
         end of the process.
 
-        :returns: None
-        :rtype: None
+        Returns:
+            None.
         """
         path = self.get_cache_path()
 
@@ -520,17 +521,17 @@ class Issue(Cache):
     The class has several properties and methods that allow the creation of an
     issue object and the manipulation of its data.
 
-    :param root: An xml element that represents the root of the publication
-    :type root: xml.etree.ElementTree.Element
-    :param newspaper: The parent newspaper
-    :type newspaper: Optional[router.Newspaper]
-    :param collection: A string that represents the collection of the
-        publication
-    :type collection: str
-    :param input_sub_path: TODO
-    :type collection: str
-    :param meta: TODO
-    :type meta: dotdict
+    Arguments:
+        root (xml.etree.ElementTree.Element):
+            An xml element that represents the root of the publication
+        newspaper (router.Newspaper, optional):
+            The parent newspaper
+        collection (str):
+            A string that represents the collection of the publication
+        input_sub_path (str):
+            TODO
+        meta (dotdict):
+            TODO
     """
 
     kind = "issue"
@@ -588,8 +589,8 @@ class Issue(Cache):
         A method that returns a dictionary representation of the issue
         object.
 
-        :return: Dictionary representation of the Issue object
-        :rtype: dict
+        Returns:
+            dict: Dictionary representation of the Issue object
         """
 
         if not self._issue:
@@ -606,8 +607,8 @@ class Issue(Cache):
         """
         Returns the path to the cache file for the issue object.
 
-        :returns: Path to the cache file for the issue object
-        :rtype: pathlib.Path
+        Returns:
+            pathlib.Path: Path to the cache file for the issue object
         """
 
         json_file = (
@@ -627,11 +628,11 @@ class Ingest(Cache):
     The class has several properties and methods that allow the creation of an
     ingest object and the manipulation of its data.
 
-    :param root: An xml element that represents the root of the publication
-    :type root: xml.etree.ElementTree.Element
-    :param collection: A string that represents the collection of the
-        publication
-    :type collection: str
+    Arguments:
+        root (xml.etree.ElementTree.Element):
+            An xml element that represents the root of the publication
+        collection (str):
+            A string that represents the collection of the publication
     """
 
     kind = "ingest"
@@ -653,8 +654,8 @@ class Ingest(Cache):
         A method that returns a dictionary representation of the ingest
         object.
 
-        :return: Dictionary representation of the Ingest object
-        :rtype: dict
+        Returns:
+            dict: Dictionary representation of the Ingest object
         """
         return {
             f"lwm_tool_{x.tag}": x.text or ""
@@ -673,11 +674,11 @@ class Digitisation(Cache):
     digitisation. The class has several properties and methods that allow
     creation of an digitisation object and the manipulation of its data.
 
-    :param root: An xml element that represents the root of the publication
-    :type root: xml.etree.ElementTree.Element
-    :param collection: A string that represents the collection of the
-        publication
-    :type collection: str
+    Arguments:
+        root (xml.etree.ElementTree.Element):
+            An xml element that represents the root of the publication
+        collection (str):
+            A string that represents the collection of the publication
     """
 
     kind = "digitisation"
@@ -700,8 +701,8 @@ class Digitisation(Cache):
         A method that returns a dictionary representation of the digitisation
         object.
 
-        :return: Dictionary representation of the Digitising object
-        :rtype: dict
+        Returns:
+            dict: Dictionary representation of the Digitising object
         """
         dic = {
             x.tag: x.text or ""
@@ -735,9 +736,9 @@ class DataProvider(Cache):
     data provider. The class has several properties and methods that allow
     creation of a data provider object and the manipulation of its data.
 
-    :param collection: A string that represents the collection of the
-        publication
-    :type collection: str
+    Arguments:
+        collection (str):
+            A string that represents the collection of the publication
     """
 
     kind = "data-provider"
@@ -775,18 +776,18 @@ class Document:
     a structured manner and provides properties that can be used to access
     different aspects of the document.
 
-    :param collection: A string that represents the collection of the
-        publication
-    :type collection: str
-    :param root: An xml element that represents the root of the publication
-    :type root: xml.etree.ElementTree.Element
-    :param zip_file: A path to a valid zip file
-    :type zip_file: str
-    :param jisc_papers: A pandas DataFrame object that holds information about
-        the JISC papers
-    :type jisc_papers: Optional[pandas.DataFrame]
-    :param meta: TODO
-    :type meta: dotdict
+    Arguments:
+        collection (str):
+            A string that represents the collection of the publication
+        root (xml.etree.ElementTree.Element):
+            An xml element that represents the root of the publication
+        zip_file (str):
+            A path to a valid zip file
+        jisc_papers (pandas.DataFrame, optional):
+            A pandas DataFrame object that holds information about the JISC
+            papers
+        meta (dotdict):
+            TODO
     """
 
     def __init__(self, *args, **kwargs):
@@ -918,17 +919,19 @@ class Archive:
         Getting the length of the Archive returns the number of files inside
         the zip archive.
 
-    :param path: The path to the zip archive.
-    :type path: str
-    :param collection: The collection of the XML files in the archive. Default
-        is "".
-    :type collection: str, optional
-    :param report_id: The report ID for the archive. If not provided, a random
-        UUID is generated.
-    :type report_id: str, optional
-    :param jisc_papers: A DataFrame of JISC papers.
-    :type jisc_papers: pandas.DataFrame, optional
-    :raises RuntimeError: If the ``path`` does not exist
+    Arguments:
+        path (str):
+            The path to the zip archive.
+        collection (str, optional):
+            The collection of the XML files in the archive. Default is "".
+        report_id (str, optional):
+            The report ID for the archive. If not provided, a random UUID is
+            generated.
+        jisc_papers (pandas.DataFrame): A DataFrame of JISC papers.
+
+    Raises:
+        RuntimeError:
+            If the ``path`` does not exist.
     """
 
     def __init__(
@@ -1087,10 +1090,11 @@ class Collection:
     of JISC papers. The `archives` property returns an iterable of the
     `Archive` objects within the collection.
 
-    :param name: Name of the collection (default "hmd")
-    :type name: str
-    :param jisc_papers: DataFrame of JISC papers, optional
-    :type jisc_papers: pandas.DataFrame
+    Arguments:
+        name (str):
+            Name of the collection (default "hmd")
+        jisc_papers (pandas.DataFrame, optional):
+            DataFrame of JISC papers, optional
     """
 
     def __init__(

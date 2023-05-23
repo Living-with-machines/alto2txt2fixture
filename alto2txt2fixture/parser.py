@@ -15,8 +15,89 @@ def fixtures(
     rename: dict = {},
     uniq_keys: dict = [],
 ) -> None:
-    def uniq(filelist, keys=[]):
-        def get_key_from(item, x):
+    """
+    Generates fixtures for a specified model using a list of files.
+
+    This function takes a list of files and generates fixtures for a specified
+    model.
+    
+    The fixtures can be used to populate a database or perform other
+    data-related operations.
+
+    Arguments:
+        filelist (list): A list of files to process and generate fixtures from.
+            model (str): The name of the model for which fixtures are
+            generated.
+        translate (dict): A nested dictionary representing the translation
+            mapping for fields. The structure of the translator follows the
+            format:
+
+            .. code-block: json
+                
+                {
+                    'part1': {
+                        'part2': {
+                            'translated_field': 'pk'
+                        }
+                    }
+                }
+
+            The translated fields will be used as keys, and their
+            corresponding primary keys (obtained from the provided files) will
+            be used as values in the generated fixtures.
+        rename (dict): A nested dictionary representing the field renaming
+            mapping. The structure of the dictionary follows the format:
+
+            .. code-block: json
+
+                {
+                    'part1': {
+                        'part2': 'new_field_name'
+                    }
+                }
+            
+            The fields specified in the dictionary will be renamed to the
+            provided new field names in the generated fixtures.
+        uniq_keys (dict): A list of fields that need to be considered for
+            uniqueness in the fixtures. If specified, the fixtures will yield
+            only unique items based on the combination of these fields.
+
+    Returns:
+        None: This function generates fixtures but does not return any value.
+    """
+    def uniq(filelist:list, keys:list=[]):
+        """
+        Generates unique items from a list of files based on specified keys.
+
+        This function takes a list of files and yields unique items based on a
+        combination of keys. The keys are extracted from each file using the
+        ``get_key_from`` function, and duplicate items are ignored.
+
+        Arguments:
+            filelist (list): A list of files from which unique items are
+                generated.
+            keys (list): A list of keys used for uniqueness. Each key specifies
+                a field to be used for uniqueness checking in the generated
+                items.
+
+        Yields:
+            item: A unique item from the filelist based on the specified keys.
+        """
+        def get_key_from(item: Path, x: str) -> str:
+            """
+            Retrieves a specific key from a file and returns its value.
+
+            This function reads a file and extracts the value of a specified
+            key. If the key is not found or an error occurs while processing
+            the file, a warning is printed, and an empty string is returned.
+
+            Arguments:
+                item: The file from which the key is extracted.
+                x: The key to be retrieved from the file.
+
+            Returns:
+                str: The value of the specified key from the file.
+            """
             result = json.loads(item.read_text()).get(x, None)
             if not result:
                 print(f"[WARN] Could not find key {x} in {item}")
@@ -76,7 +157,25 @@ def fixtures(
 
 
 def reset_fixture_dir(output: str) -> None:
-    """Resets the fixture directory (removes all JSON files inside of it, after making sure it exists)."""
+    """
+    Resets the fixture directory by removing all JSON files inside it.
+
+    This function takes a directory path (``output``) as input and removes all
+    JSON files within the directory.
+    
+    Prior to removal, it prompts the user for confirmation to proceed. If the
+    user confirms, the function clears the fixture directory by deleting the
+    JSON files.
+
+    Arguments:
+        output (str): The directory path of the fixture directory to be reset.
+
+    Raises:
+        RuntimeError: If the ``output`` directory is not specified as a string.
+    
+    Returns:
+        None.
+    """
 
     if not isinstance(output, str):
         raise RuntimeError("`output` directory needs to be specified as a string.")
@@ -103,6 +202,44 @@ def reset_fixture_dir(output: str) -> None:
 
 
 def get_translator(fields: list = [("", "", [])]) -> dict:
+    """
+    Converts a list of fields into a nested dictionary representing a
+    translator.
+
+    Arguments:
+        fields (list): A list of tuples representing fields to be translated.
+                       Each tuple should contain three elements:
+                           - start: A string representing the starting field
+                             name.
+                           - finish: A string or list specifying the field(s)
+                             to be translated. If it is a string, the
+                             translated field will be a direct mapping of the
+                             specified field in each item of the input list.
+                             If it is a list, the translated field will be a
+                             hyphen-separated concatenation of the specified
+                             fields in each item of the input list.
+                           - lst: A list of dictionaries representing the
+                             items to be translated. Each dictionary should
+                             contain the necessary fields for translation,
+                             with the field names specified in the 'start'
+                             parameter.
+
+    Returns:
+        dict: A nested dictionary representing the translator.
+              The structure of the dictionary follows the format:
+                  {
+                      'part1': {
+                          'part2': {
+                              'translated_field': 'pk'
+                          }
+                      }
+                  }
+
+    Example:
+        fields = [('start__field1', 'finish_field1', [{'fields': {'field1': 'translation1'}, 'pk': 1}])]
+        translator = get_translator(fields)
+        # Output: {'start': {'field1': {'translation1': 1}}}
+    """
     _ = dict()
     for field in fields:
         start, finish, lst = field
@@ -127,6 +264,57 @@ def get_fields(
     rename: dict = {},
     allow_null: bool = False,
 ) -> dict:
+    """
+    Retrieves fields from a file and performs modifications and checks.
+
+    This function takes a file (in various formats: `Path`, `str`, or `dict`)
+    and processes its fields. It retrieves the fields from the file and
+    performs modifications, translations, and checks on the fields.
+
+    Arguments:
+        file (Union[Path, str, dict]): The file from which the fields are
+            retrieved.
+        translate (dict): A nested dictionary representing the translation
+            mapping for fields. The structure of the translator follows the format:
+
+            .. code-block: json
+                
+                {
+                    'part1': {
+                        'part2': {
+                            'translated_field': 'pk'
+                        }
+                    }
+                }
+
+            The translated fields will be used to replace the original fields
+            in the retrieved fields.
+        rename (dict): A nested dictionary representing the field renaming
+            mapping. The structure of the dictionary follows the format:
+
+            .. code-block: json
+                
+                {
+                    'part1': {
+                        'part2': 'new_field_name'
+                    }
+                }
+            
+            The fields specified in the dictionary will be renamed to the
+            provided new field names in the retrieved fields.
+        allow_null (bool): Determines whether to allow ``None`` values for
+            relational fields. If set to ``True``, relational fields with
+            missing values will be assigned ``None``. If set to ``False``, an
+            error will be raised.
+
+    Returns:
+        dict: A dictionary representing the retrieved fields from the file,
+        with modifications and checks applied.
+
+    Raises:
+        RuntimeError: If the file type is unsupported or if an error occurs
+        during field retrieval or processing.
+    """
     if isinstance(file, Path):
         try:
             fields = json.loads(file.read_text())
@@ -200,6 +388,22 @@ def get_fields(
 
 
 def save_fixture(generator: list = [], prefix: str = "") -> None:
+    """
+    Saves fixtures generated by a generator to separate JSON files.
+
+    This function takes a generator and saves the generated fixtures to
+    separate JSON files. The fixtures are saved in batches, where each batch
+    is determined by the ``max_elements_per_file`` parameter.
+
+    Arguments:
+        generator (list): A generator that yields the fixtures to be saved.
+        prefix (str): A string prefix to be added to the file names of the
+            saved fixtures.
+
+    Returns:
+        None: This function saves the fixtures to files but does not return
+        any value.
+    """
     internal_counter = 1
     counter = 1
     lst = []
@@ -226,6 +430,27 @@ def save_fixture(generator: list = [], prefix: str = "") -> None:
 def parse(
     collections: list, cache_home: str, output: str, max_elements_per_file: int
 ) -> None:
+    """
+    Parses files from collections and generates fixtures for various models.
+
+    This function processes files from the specified collections and generates
+    fixtures for different models, such as ``newspapers.dataprovider``,
+    ``newspapers.ingest``, ``newspapers.digitisation``,
+    ``newspapers.newspaper``, ``newspapers.issue``, and ``newspapers.item``.
+    It performs various steps, such as file listing, fixture generation,
+    translation mapping, renaming fields, and saving fixtures to files.
+
+    Arguments:
+        collections (list): A list of collections from which files are
+            processed and fixtures are generated.
+        cache_home (str): The directory path where the collections are located.
+        output (str): The directory path where the fixtures will be saved.
+        max_elements_per_file (int): The maximum number of elements per file
+            when saving fixtures.
+
+    Returns:
+        None: This function generates fixtures but does not return any value.
+    """
     global CACHE_HOME
     global OUTPUT
     global MAX_ELEMENTS_PER_FILE
