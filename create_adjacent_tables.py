@@ -40,14 +40,22 @@ def test_paper(x, rev):
         return ""
 
 
-def correct_dict(o):
+def correct_dict(o: dict) -> list:
+    """Returns a list with corrected data from a provided dictionary."""
     return [(k, v[0], v[1]) for k, v in o.items() if not v[0].startswith("Q")] + [(k, v[1], v[0]) for k, v in o.items() if v[0].startswith("Q")]
 
 
 def get_list(x):
-    return x.split("<SEP>") if not isinstance(x, float) else []
+    """Get a list from a string, which contains <SEP> as separator. If no
+    string is encountered, the function returns an empty list."""
+    return x.split("<SEP>") if isinstance(x, str) else []
 
 
+# Set up files -- remote and local
+
+# Note: FILES["Newspaper-1"]["remote"] has a generated access token from the
+# Azure storage space. It will expire in December 2023 and will need to be
+# renewed/relinked before then.
 FILES = {
     "mitchells": {
         "remote": "https://bl.iro.bl.uk/downloads/da65047c-4d62-4ab7-946f-8e61e5f6f331?locale=en",
@@ -246,6 +254,11 @@ place_table["historic_county_id"] = place_table["historic_county_id"].replace(r'
 place_table["admin_county_id"] = place_table["admin_county_id"].replace(r'^\s*$', 0, regex=True).astype(int).replace(0, "")
 place_table["country_id"] = place_table["country_id"].replace(r'^\s*$', 0, regex=True).astype(int).replace(0, "")
 place_table.index.rename("pk", inplace=True)
+place_table.rename({
+    "historic_county_id": "historic_county",
+    "admin_county_id": "admin_county",
+    "country_id": "country"
+}, axis=1, inplace=True)
 
 historic_county_table.set_index("historic_county__pk", inplace=True)
 historic_county_table.rename({x: x.split("__")[1] for x in historic_county_table.columns}, axis=1, inplace=True)
@@ -378,21 +391,22 @@ entry_table = entry_table[["title", "political_leaning_raw", "price_raw", "year"
 
 # Fix refs to political_leanings_table
 rev = political_leanings_table.set_index("political_leaning__label")
-entry_table["political_leaning_ids"] = entry_table.political_leaning_raw.apply(lambda x: [rev.at[y, "political_leaning__pk"] for y in x])
+entry_table["political_leanings"] = entry_table.political_leaning_raw.apply(lambda x: [rev.at[y, "political_leaning__pk"] for y in x])
 
 # Fix refs to prices_table
 rev = prices_table.set_index("price__label")
-entry_table["price_ids"] = entry_table.price_raw.apply(lambda x: [rev.at[y.strip(), "price__pk"] for y in x])
+entry_table["prices"] = entry_table.price_raw.apply(lambda x: [rev.at[y.strip(), "price__pk"] for y in x])
 
 # Fix refs to issues_table
 rev = issues_table.set_index("issue__year")
-entry_table["issue_id"] = entry_table.year.apply(lambda x: rev.at[x, "issue__pk"])
+entry_table["issue"] = entry_table.year.apply(lambda x: rev.at[x, "issue__pk"])
 
 # Fix refs to place_table
 rev = place_table.copy()
 rev["place__pk"] = rev.index
 rev.set_index("wikidata_id", inplace=True)
-entry_table["place_of_publication_id"] = entry_table.place_of_publication_id.apply(test_place, rev=rev)
+entry_table["place_of_publication"] = entry_table.place_of_publication_id.apply(test_place, rev=rev)
+entry_table.drop(columns=["place_of_publication_id"], inplace=True)
 
 # Set up ref to newspapers
 rev = json.loads(FILES["Newspaper-1"]["local"].read_text())
@@ -400,8 +414,7 @@ rev = [dict(pk=v["pk"], **v["fields"]) for v in rev]
 rev = pd.DataFrame(rev)
 rev.set_index("publication_code", inplace=True)
 entry_table["newspaper"] = entry_table.newspaper.str.zfill(7)
-entry_table["newspaper_id"] = entry_table.newspaper.apply(test_paper, rev=rev)
-entry_table.drop(columns=["newspaper"], inplace=True)
+entry_table["newspaper"] = entry_table.newspaper.apply(test_paper, rev=rev)
 
 # Create PK for entries
 entry_table["pk"] = np.arange(1, len(entry_table) + 1)
@@ -414,9 +427,14 @@ entry_table.set_index("pk").to_csv(OUTPUT / "mitchells.Entry.csv")
 SAVED.append(OUTPUT / "mitchells.Entry.csv")
 
 # ###### NOW WE CAN EASILY CREATE JSON FILES
-for file in Path("tables").glob("*.csv"):
+for file in OUTPUT.glob("*.csv"):
     json_data = []
     df = pd.read_csv(file, index_col=0).fillna("")
+
+    if "political_leanings" in df.columns:
+        df["political_leanings"] = df["political_leanings"].apply(json.loads)
+    if "prices" in df.columns:
+        df["prices"] = df["prices"].apply(json.loads)
 
     model = file.stem.lower()
 
