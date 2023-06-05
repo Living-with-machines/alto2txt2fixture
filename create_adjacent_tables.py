@@ -272,6 +272,16 @@ country_table.set_index("country__pk", inplace=True)
 country_table.rename({x: x.split("__")[1] for x in country_table.columns}, axis=1, inplace=True)
 country_table.index.rename("pk", inplace=True)
 
+# Adding created_at, updated_at to all the gazetteer tables
+place_table["created_at"] = NOW
+place_table["updated_at"] = NOW
+admin_county_table["created_at"] = NOW
+admin_county_table["updated_at"] = NOW
+historic_county_table["created_at"] = NOW
+historic_county_table["updated_at"] = NOW
+country_table["created_at"] = NOW
+country_table["updated_at"] = NOW
+
 # Save CSV files for gazetteer tables
 place_table.to_csv(OUTPUT / "gazetteer.Place.csv")
 admin_county_table.to_csv(OUTPUT / "gazetteer.AdminCounty.csv")
