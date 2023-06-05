@@ -432,6 +432,10 @@ entry_table["pk"] = np.arange(1, len(entry_table) + 1)
 # Sort columns in entries file
 entry_table = entry_table[["pk"] + [col for col in entry_table.columns if not col=="pk"]]
 
+# Add created_at, modified_at to entry_table
+entry_table["created_at"] = NOW
+entry_table["updated_at"] = NOW
+
 # Export entry_table
 entry_table.set_index("pk").to_csv(OUTPUT / "mitchells.Entry.csv")
 SAVED.append(OUTPUT / "mitchells.Entry.csv")
