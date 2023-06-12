@@ -31,7 +31,7 @@ def test_paper(x, rev):
             if x not in MANY_PAPERS:
                 MANY_PAPERS.append(x)
                 print(f"Warning: {len(value)} newspapers found with NLP {x} -- keeping first")
-                value = value[value.index[0]]
+                value = value.to_list()[0]
         return value
     except KeyError:
         if x not in NOT_FOUND_PAPERS:
