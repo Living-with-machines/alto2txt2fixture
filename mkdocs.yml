@@ -7,7 +7,6 @@ site_author: Kalle Westerling
 
 theme:
   name: material
-  custom_dir: docs/overrides
   palette:
     primary: black
     accent: teal
