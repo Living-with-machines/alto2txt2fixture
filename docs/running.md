@@ -32,4 +32,4 @@ The program has a number of optional parameters that you can choose to include o
 
 ## Successfully running the program: An example
 
-![/docs/img/successfully-running.png](/img/successfully-running.png)
+![../img/successfully-running.png](../img/successfully-running.png)
