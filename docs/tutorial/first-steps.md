@@ -25,27 +25,27 @@ Once you have opened MASE, you will need to sign into the appropriate Azure acco
 
 On your left-hand side, you should see a menu where you can navigate to the correct “blob container”: `Living with Machines` > `Storage Accounts` > `alto2txt` > `Blob Containers`:
 
-![/img/azure-storage.png](/img/azure-storage.png)
+![/docs/img/azure-storage.png](/img/azure-storage.png)
 
 You will want to replicate _the same structure_ as the Blob Container itself in a folder on your hard drive:
 
-![/img/local-storage.png](/img/local-storage.png)
+![/docs/img/local-storage.png](/img/local-storage.png)
 
 Once you have the structure set up, you are ready to download all of the files needed. For each of the blob containers, make sure that you _download the `metadata` directory only_ onto your computer:
 
-![/img/metadata-fulltext.png](/img/metadata-fulltext.png)
+![/docs/img/metadata-fulltext.png](/img/metadata-fulltext.png)
 
 Select all of the files and press the download button:
 
-![/img/files-selected.png](/img/files-selected.png)
+![/docs/img/files-selected.png](/img/files-selected.png)
 
 Make sure you save all the zip files inside the correct local folder:
 
-![/img/ensure-correct-folder.png](/img/ensure-correct-folder.png)
+![/docs/img/ensure-correct-folder.png](/img/ensure-correct-folder.png)
 
 The “Activities” bar will now show you the progress and speed:
 
-![/img/activity-bar.png](/img/activity-bar.png)
+![/docs/img/activity-bar.png](/img/activity-bar.png)
 
 ### Mounting `alto2txt` on your computer
 
