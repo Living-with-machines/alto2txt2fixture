@@ -14,13 +14,24 @@ pytz = "^2022.7.1"
 rich = "^12.6.0"
 wget = "^3.2"
 
-[tool.poetry.dev-dependencies]
-mkdocs = "^1.4.3"
-mkdocs-material = "^8.5.11"
+[tool.poetry.group.dev.dependencies]
+pytest-sugar = "^0.9.7"
+ipython = "^8.14.0"
+pytest-cov = "^4.1.0"
+mkdocs-material = "^9.1.18"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-run = "run:run"
+run_news = "alto2txt2fixture.run:run"
+run_adjacent = "alto2txt2fixture.run:run"
+
+[tool.pytest.ini_options]
+addopts = """
+--cov=estios
+--cov-report=term:skip-covered
+--pdbcls=IPython.terminal.debugger:TerminalPdb
+--doctest-modules
+"""
