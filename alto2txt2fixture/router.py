@@ -340,7 +340,7 @@ class Newspaper(Cache):
         """
         Returns the path to the cache file for the newspaper object.
 
-        Returns: 
+        Returns:
             pathlib.Path
                 Path to the cache file for the newspaper object
         """
