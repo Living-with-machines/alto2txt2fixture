@@ -5,9 +5,9 @@ name: Python package
 
 on:
   push:
-    branches: [ main, projections, uk-model-refactor ]
+    branches: [ main, fix-for-lwmdb ]
   pull_request:
-    branches: [ main, projections, uk-model-refactor ]
+    branches: [ main, fix-for-lwmdb ]
 
 jobs:
   build:
