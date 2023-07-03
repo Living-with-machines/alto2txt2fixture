@@ -19,6 +19,17 @@ nav:
     - First Steps: tutorial/first-steps.md
   - Running the Program: running.md
   - Understanding the Results: understanding-results.md
+  - Code Reference: reference/
+
+plugins:
+  - search
+  - gen-files:
+      scripts:
+        - docs/gen_ref_pages.py
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - section-index
+  - mkdocstrings
 
 markdown_extensions:
   - admonition

@@ -54,7 +54,7 @@ class Cache:
             f"{CACHE_HOME}/{self.collection}/{self.kind}/{self.id}.json"
         )
 
-    def write_to_cache(self) -> bool | None:
+    def write_to_cache(self) -> Optional[bool]:
         """
         Writes the cache data to a file at the specified cache path. The cache
         data is first converted to a dictionary using the as_dict method. If
