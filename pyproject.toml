@@ -26,12 +26,12 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-run_news = "alto2txt2fixture.run:run"
-run_adjacent = "alto2txt2fixture.run:run"
+a2t2f-news = "alto2txt2fixture.run:run"
+a2tsf-adj = "alto2txt2fixture.run:run"
 
 [tool.pytest.ini_options]
 addopts = """
---cov=estios
+--cov=alto2txt2fixture
 --cov-report=term:skip-covered
 --pdbcls=IPython.terminal.debugger:TerminalPdb
 --doctest-modules

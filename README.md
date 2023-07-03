@@ -14,10 +14,10 @@ Install the dependencies:
 $ poetry install
 ```
 
-Run the tool:
+Run the tool for processing newspaper metadata:
 
 ```sh
-$ poetry run
+$ poetry run a2t2f-news
 ```
 
 In reality, you will need to mount the alto2txt files (or download them locally to your hard drive. The [documentation](docs) has details about how to do that.

@@ -6,14 +6,14 @@ The installation process should be fairly easy to take care of, using `poetry`:
 $ poetry install
 ```
 
-However, this is only the first step in the process. As the script works through the alto2txt collections, you will either need to choose the slower option — mounting them to your computer (using `blobfuse`) — or the faster option — downloading the required zip files from the Azure storage to your local hard drive. In the two following sections, both of those options are described.
+However, this is only the first step in the process. As the script works through the `alto2txt` collections, you will either need to choose the slower option — mounting them to your computer (using `blobfuse`) — or the faster option — downloading the required zip files from the Azure storage to your local hard drive. In the two following sections, both of those options are described.
 
 ## Connecting `alto2txt` to the program
 
 ### Downloading local copies of `alto2txt` on your computer
 
 !!! attention "This option will take up a lot of hard drive space"
-    As of the time of writing, downloading all of alto2txt’s metadata takes up about 185GB on your local drive. You do not have to download all of the collections or all of the zip files for each collection, as long as you are aware that the resulting fixtures will be limited in scope.
+    As of the time of writing, downloading all of `alto2txt`’s metadata takes up about 185GB on your local drive. You do not have to download all of the collections or all of the zip files for each collection, as long as you are aware that the resulting fixtures will be limited in scope.
 
 #### Step 1: Log in to Azure using Microsoft Azure Storage Explorer
 
