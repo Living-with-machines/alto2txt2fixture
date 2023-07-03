@@ -92,7 +92,16 @@ FILES = {
 }
 
 
-def run() -> None:
+def download_data(files_dict: dict[str, dict] = FILES, overwrite: bool = OVERWRITE) -> None:
+    files_to_download = [(v["remote"], v["local"], v["exists"]) for v in files_dict.values() if not v["exists"] or overwrite]
+    for url, out, exists in files_to_download:
+        Path(out).unlink() if exists else None
+        print(f"Downloading {out}")
+        wget.download(url=url, out=out)
+        print()
+
+
+def run(files_dict: dict = FILES, files_to_download_overwrite: bool = OVERWRITE) -> None:
     # Create parents for local files
     [FILES[k]["local"].parent.mkdir(parents=True, exist_ok=True) for k in FILES.keys()]
 
@@ -101,12 +110,13 @@ def run() -> None:
         FILES[k]["exists"] = FILES[k]["local"].exists()
 
     # Download non-existing files
-    files_to_download = [(v["remote"], v["local"], v["exists"]) for v in FILES.values() if not v["exists"] or OVERWRITE]
-    for url, out, exists in files_to_download:
-        Path(out).unlink() if exists else None
-        print(f"Downloading {out}")
-        wget.download(url=url, out=out)
-        print()
+    download_data(files_dict=files_dict, overwrite=files_to_download_overwrite)
+    # files_to_download = [(v["remote"], v["local"], v["exists"]) for v in FILES.values() if not v["exists"] or OVERWRITE]
+    # for url, out, exists in files_to_download:
+    #     Path(out).unlink() if exists else None
+    #     print(f"Downloading {out}")
+    #     wget.download(url=url, out=out)
+    #     print()
 
     # Create the output directory (defined in OUTPUT)
     OUTPUT = Path(OUTPUT)
