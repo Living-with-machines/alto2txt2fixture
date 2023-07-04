@@ -54,7 +54,7 @@ class Cache:
             f"{CACHE_HOME}/{self.collection}/{self.kind}/{self.id}.json"
         )
 
-    def write_to_cache(self) -> None:
+    def write_to_cache(self) -> Optional[bool]:
         """
         Writes the cache data to a file at the specified cache path. The cache
         data is first converted to a dictionary using the as_dict method. If
@@ -68,9 +68,9 @@ class Cache:
                 return True
         except AttributeError:
             error(
-                f"Error occurred when getting cache path for {self.kind}: \
-                {path}. It was not of expected type Path but \
-                of type {type(path)}:",
+                f"Error occurred when getting cache path for "
+                f"{self.kind}: {path}. It was not of expected "
+                f"type Path but of type {type(path)}:",
             )
 
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -340,7 +340,7 @@ class Newspaper(Cache):
         """
         Returns the path to the cache file for the newspaper object.
 
-        Returns: 
+        Returns:
             pathlib.Path
                 Path to the cache file for the newspaper object
         """
@@ -1159,8 +1159,9 @@ def route(
     MNT = Path(mountpoint) if isinstance(mountpoint, str) else mountpoint
     if not MNT.exists():
         error(
-            f"The mountpoint provided for alto2txt does not exist. Either \
-            create a local copy or blobfuse it to `{MNT.absolute()}`."
+            f"The mountpoint provided for alto2txt does not exist. "
+            f"Either create a local copy or blobfuse it to "
+            f"`{MNT.absolute()}`."
         )
 
     jisc_papers = setup_jisc_papers(path=jisc_papers_path)
@@ -1170,8 +1171,8 @@ def route(
 
         if collection.empty:
             error(
-                f"It looks like {collection_name} is empty in the alto2txt \
-                mountpoint: `{collection.dir.absolute()}`."
+                f"It looks like {collection_name} is empty in the "
+                f"alto2txt mountpoint: `{collection.dir.absolute()}`."
             )
 
         for archive in collection.archives:

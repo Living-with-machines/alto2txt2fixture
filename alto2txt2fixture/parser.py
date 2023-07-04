@@ -20,7 +20,7 @@ def fixtures(
 
     This function takes a list of files and generates fixtures for a specified
     model.
-    
+
     The fixtures can be used to populate a database or perform other
     data-related operations.
 
@@ -33,7 +33,7 @@ def fixtures(
             format:
 
             .. code-block: json
-                
+
                 {
                     'part1': {
                         'part2': {
@@ -55,7 +55,7 @@ def fixtures(
                         'part2': 'new_field_name'
                     }
                 }
-            
+
             The fields specified in the dictionary will be renamed to the
             provided new field names in the generated fixtures.
         uniq_keys (dict): A list of fields that need to be considered for
@@ -162,7 +162,7 @@ def reset_fixture_dir(output: str) -> None:
 
     This function takes a directory path (``output``) as input and removes all
     JSON files within the directory.
-    
+
     Prior to removal, it prompts the user for confirmation to proceed. If the
     user confirms, the function clears the fixture directory by deleting the
     JSON files.
@@ -172,7 +172,7 @@ def reset_fixture_dir(output: str) -> None:
 
     Raises:
         RuntimeError: If the ``output`` directory is not specified as a string.
-    
+
     Returns:
         None.
     """
@@ -278,7 +278,7 @@ def get_fields(
             mapping for fields. The structure of the translator follows the format:
 
             .. code-block: json
-                
+
                 {
                     'part1': {
                         'part2': {
@@ -293,13 +293,13 @@ def get_fields(
             mapping. The structure of the dictionary follows the format:
 
             .. code-block: json
-                
+
                 {
                     'part1': {
                         'part2': 'new_field_name'
                     }
                 }
-            
+
             The fields specified in the dictionary will be renamed to the
             provided new field names in the retrieved fields.
         allow_null (bool): Determines whether to allow ``None`` values for

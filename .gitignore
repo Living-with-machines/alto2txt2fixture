@@ -3,4 +3,4 @@ _build
 cache
 input
 output
-poetry.lock
+.coverage
