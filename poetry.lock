@@ -343,13 +343,13 @@ dev = ["flake8", "markdown", "twine", "wheel"]
 
 [[package]]
 name = "griffe"
-version = "0.30.1"
+version = "0.31.0"
 description = "Signatures for entire Python programs. Extract the structure, the frame, the skeleton of your project, to generate API documentation or find breaking changes in your API."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "griffe-0.30.1-py3-none-any.whl", hash = "sha256:b2f3df6952995a6bebe19f797189d67aba7c860755d3d21cc80f64d076d0154c"},
-    {file = "griffe-0.30.1.tar.gz", hash = "sha256:007cc11acd20becf1bb8f826419a52b9d403bbad9d8c8535699f5440ddc0a109"},
+    {file = "griffe-0.31.0-py3-none-any.whl", hash = "sha256:de6e659487497c0e73459d370f40bfda7d6f9f6cec43a687de8a110ec72a2c4f"},
+    {file = "griffe-0.31.0.tar.gz", hash = "sha256:b51f6e9541ce9cb9c08580917971cd4b76b6d88e2469822d612b614fb96be776"},
 ]
 
 [package.dependencies]
@@ -501,20 +501,6 @@ importlib-metadata = {version = ">=4.4", markers = "python_version < \"3.10\""}
 
 [package.extras]
 testing = ["coverage", "pyyaml"]
-
-[[package]]
-name = "markdown-callouts"
-version = "0.3.0"
-description = "Markdown extension: a classier syntax for admonitions"
-optional = false
-python-versions = ">=3.6,<4.0"
-files = [
-    {file = "markdown-callouts-0.3.0.tar.gz", hash = "sha256:21e99d72a879663343e232158413e12eeaa9fb78b90e669f41cdbf0962a364fb"},
-    {file = "markdown_callouts-0.3.0-py3-none-any.whl", hash = "sha256:6d58e8bd244366d2a5ca549b1971f4caac3036469c243856eb886364f71c013b"},
-]
-
-[package.dependencies]
-Markdown = ">=3.3.3,<4.0.0"
 
 [[package]]
 name = "markupsafe"
@@ -736,8 +722,6 @@ Markdown = ">=3.3"
 MarkupSafe = ">=1.1"
 mkdocs = ">=1.2"
 mkdocs-autorefs = ">=0.3.1"
-mkdocstrings-crystal = {version = ">=0.3.4", optional = true, markers = "extra == \"crystal\""}
-mkdocstrings-python = {version = ">=0.5.2", optional = true, markers = "extra == \"python\""}
 pymdown-extensions = ">=6.3"
 typing-extensions = {version = ">=4.1", markers = "python_version < \"3.10\""}
 
@@ -745,24 +729,6 @@ typing-extensions = {version = ">=4.1", markers = "python_version < \"3.10\""}
 crystal = ["mkdocstrings-crystal (>=0.3.4)"]
 python = ["mkdocstrings-python (>=0.5.2)"]
 python-legacy = ["mkdocstrings-python-legacy (>=0.2.1)"]
-
-[[package]]
-name = "mkdocstrings-crystal"
-version = "0.3.6"
-description = "Crystal language doc generator for mkdocstrings"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "mkdocstrings_crystal-0.3.6-py3-none-any.whl", hash = "sha256:824bb305fda7de4760101f078ee586b536a89294b2e9a07f453fee61d3e4a665"},
-    {file = "mkdocstrings_crystal-0.3.6.tar.gz", hash = "sha256:37d3f6194ad65d996756cd23e548ffdbef8e18f7515ed9a2502b16d695597f04"},
-]
-
-[package.dependencies]
-jinja2 = ">=2.11.2"
-markdown-callouts = ">=0.1.0"
-markupsafe = ">=1.1.1"
-mkdocs-autorefs = ">=0.3.1"
-mkdocstrings = ">=0.19.0"
 
 [[package]]
 name = "mkdocstrings-python"
@@ -1587,4 +1553,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "bc43c9ce8d43f053c8d20983d1135f12c9d96881ee4bfe76d8ea993a3430bf20"
+content-hash = "c886d83801731d27dc0a81723dc9971f89f265f75e97e8bc01e1227c1fca098a"

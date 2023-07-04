@@ -29,7 +29,12 @@ plugins:
   - literate-nav:
       nav_file: SUMMARY.md
   - section-index
-  - mkdocstrings
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            docstring_style: sphinx
 
 markdown_extensions:
   - admonition
