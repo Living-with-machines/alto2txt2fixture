@@ -65,7 +65,8 @@ def fixtures(
     Returns:
         None: This function generates fixtures but does not return any value.
     """
-    def uniq(filelist:list, keys:list=[]):
+
+    def uniq(filelist: list, keys: list = []):
         """
         Generates unique items from a list of files based on specified keys.
 
@@ -83,6 +84,7 @@ def fixtures(
         Yields:
             item: A unique item from the filelist based on the specified keys.
         """
+
         def get_key_from(item: Path, x: str) -> str:
             """
             Retrieves a specific key from a file and returns its value.
@@ -244,9 +246,9 @@ def get_translator(fields: list = [("", "", [])]) -> dict:
     for field in fields:
         start, finish, lst = field
         part1, part2 = start.split("__")
-        if not part1 in _:
+        if part1 not in _:
             _[part1] = {}
-        if not part2 in _[part1]:
+        if part2 not in _[part1]:
             _[part1][part2] = {}
         if isinstance(finish, str):
             _[part1][part2] = {o["fields"][finish]: o["pk"] for o in lst}
@@ -342,7 +344,7 @@ def get_fields(
                 before = before.replace("---", "/")
                 loc = translate.get(parts[0], {}).get(parts[1], {})
                 fields[key] = loc.get(before)
-                if fields[key] == None:
+                if fields[key] is None:
                     raise RuntimeError(
                         f"Cannot translate fields.{key} from {before}: {loc}"
                     )
@@ -464,19 +466,23 @@ def parse(
 
     # Get file lists
     print("\nGetting file lists...")
-    issues_in_x = lambda x: "issues" in str(x.parent).split("/")
-    newspapers_in_x = lambda x: not any(
-        [
-            condition
-            for y in str(x.parent).split("/")
-            for condition in [
-                "issues" in y,
-                "ingest" in y,
-                "digitisation" in y,
-                "data-provider" in y,
+
+    def issues_in_x(x):
+        return "issues" in str(x.parent).split("/")
+
+    def newspapers_in_x(x):
+        return not any(
+            [
+                condition
+                for y in str(x.parent).split("/")
+                for condition in [
+                    "issues" in y,
+                    "ingest" in y,
+                    "digitisation" in y,
+                    "data-provider" in y,
+                ]
             ]
-        ]
-    )
+        )
 
     all_json = [
         x for y in collections for x in (Path(CACHE_HOME) / y).glob("**/*.json")
@@ -490,7 +496,9 @@ def parse(
     print("\nSetting up fixtures...")
 
     # Process data providers
-    data_provider_in_x = lambda x: "data-provider" in str(x.parent).split("/")
+    def data_provider_in_x(x):
+        return "data-provider" in str(x.parent).split("/")
+
     data_provider_json = list(
         fixtures(
             model="newspapers.dataprovider",
@@ -501,7 +509,9 @@ def parse(
     print(f"--> {len(data_provider_json):,} DataProvider fixtures")
 
     # Process ingest
-    ingest_in_x = lambda x: "ingest" in str(x.parent).split("/")
+    def ingest_in_x(x):
+        return "ingest" in str(x.parent).split("/")
+
     ingest_json = list(
         fixtures(
             model="newspapers.ingest",
@@ -512,7 +522,9 @@ def parse(
     print(f"--> {len(ingest_json):,} Ingest fixtures")
 
     # Process digitisation
-    digitisation_in_x = lambda x: "digitisation" in str(x.parent).split("/")
+    def digitisation_in_x(x):
+        return "digitisation" in str(x.parent).split("/")
+
     digitisation_json = list(
         fixtures(
             model="newspapers.digitisation",

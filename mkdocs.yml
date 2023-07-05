@@ -16,7 +16,7 @@ theme:
 nav:
   - alto2txt2fixture: index.md
   - Tutorial - User Guide:
-    - First Steps: tutorial/first-steps.md
+      - First Steps: tutorial/first-steps.md
   - Running the Program: running.md
   - Understanding the Results: understanding-results.md
   - Code Reference: reference/
