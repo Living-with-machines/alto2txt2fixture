@@ -50,9 +50,7 @@ class Cache:
         properties (collection, kind, and id) but can be changed when
         inherited.
         """
-        return Path(
-            f"{CACHE_HOME}/{self.collection}/{self.kind}/{self.id}.json"
-        )
+        return Path(f"{CACHE_HOME}/{self.collection}/{self.kind}/{self.id}.json")
 
     def write_to_cache(self) -> Optional[bool]:
         """
@@ -112,9 +110,7 @@ class Newspaper(Cache):
         """Constructor method."""
 
         if not isinstance(root, ET.Element):
-            raise RuntimeError(
-                f"Expected root to be xml.etree.Element: {type(root)}"
-            )
+            raise RuntimeError(f"Expected root to be xml.etree.Element: {type(root)}")
 
         self.publication = root.find("./publication")
         self.input_sub_path = root.find("./process/input_sub_path").text
@@ -204,9 +200,7 @@ class Newspaper(Cache):
 
         if not self._newspaper:
             self._newspaper = dict(
-                **dict(
-                    publication_code=self.publication_code, title=self.title
-                ),
+                **dict(publication_code=self.publication_code, title=self.title),
                 **{
                     x.tag: x.text or ""
                     for x in self.publication.findall("*")
@@ -241,57 +235,42 @@ class Newspaper(Cache):
             self._publication_code = self.publication.attrib.get("id")
             if len(self._publication_code) != 7:
                 if self._publication_code == "NCBL1001":
-                    self._publication_code = (
-                        self.publication_code_from_input_sub_path()
-                    )
+                    self._publication_code = self.publication_code_from_input_sub_path()
                     if not self._publication_code:
                         # Fallback option
                         self._publication_code = "0000499"
                 elif self._publication_code == "NCBL1002":
-                    self._publication_code = (
-                        self.publication_code_from_input_sub_path()
-                    )
+                    self._publication_code = self.publication_code_from_input_sub_path()
                     if not self._publication_code:
                         # Fallback option
                         self._publication_code = "0000499"
                 elif self._publication_code == "NCBL1023":
-                    self._publication_code = (
-                        self.publication_code_from_input_sub_path()
-                    )
+                    self._publication_code = self.publication_code_from_input_sub_path()
                     if not self._publication_code:
                         # Fallback option
                         self._publication_code = "0000152"
                 elif self._publication_code == "NCBL1024":
-                    self._publication_code = (
-                        self.publication_code_from_input_sub_path()
-                    )
+                    self._publication_code = self.publication_code_from_input_sub_path()
                     if not self._publication_code:
                         # Fallback option
                         self._publication_code = "0000171"
                 elif self._publication_code == "NCBL1029":
-                    self._publication_code = (
-                        self.publication_code_from_input_sub_path()
-                    )
+                    self._publication_code = self.publication_code_from_input_sub_path()
                     if not self._publication_code:
                         # Fallback option
                         self._publication_code = "0000165"
                 elif self._publication_code == "NCBL1034":
-                    self._publication_code = (
-                        self.publication_code_from_input_sub_path()
-                    )
+                    self._publication_code = self.publication_code_from_input_sub_path()
                     if not self._publication_code:
                         # Fallback option
                         self._publication_code = "0000160"
                 elif self._publication_code == "NCBL1035":
-                    self._publication_code = (
-                        self.publication_code_from_input_sub_path()
-                    )
+                    self._publication_code = self.publication_code_from_input_sub_path()
                     if not self._publication_code:
                         # Fallback option
                         self._publication_code = "0000185"
                 elif (
-                    len(self._publication_code) == 4
-                    or "NCBL" in self._publication_code
+                    len(self._publication_code) == 4 or "NCBL" in self._publication_code
                 ):
                     g = PUBLICATION_CODE.findall(self.input_sub_path)
                     if len(g) == 1:
@@ -347,9 +326,7 @@ class Newspaper(Cache):
         json_file = f"/{self.publication_code}/{self.publication_code}.json"
 
         return Path(
-            f"{CACHE_HOME}/{self.collection}/"
-            + "/".join(self.number_paths)
-            + json_file
+            f"{CACHE_HOME}/{self.collection}/" + "/".join(self.number_paths) + json_file
         )
 
 
@@ -392,14 +369,10 @@ class Item(Cache):
         """Constructor method."""
 
         if not isinstance(root, ET.Element):
-            raise RuntimeError(
-                f"Expected root to be xml.etree.Element: {type(root)}"
-            )
+            raise RuntimeError(f"Expected root to be xml.etree.Element: {type(root)}")
 
         if not isinstance(newspaper, Newspaper):
-            raise RuntimeError(
-                "Expected newspaper to be of type router.Newspaper"
-            )
+            raise RuntimeError("Expected newspaper to be of type router.Newspaper")
 
         self.root = root
         self.issue_code = issue_code
@@ -478,9 +451,7 @@ class Item(Cache):
         Sets up and saves the item code for easy access as property.
         """
         if not self._item_code:
-            self._item_code = (
-                self.issue_code + "-" + self.item_elem.attrib.get("id")
-            )
+            self._item_code = self.issue_code + "-" + self.item_elem.attrib.get("id")
 
         return self._item_code
 
@@ -611,9 +582,7 @@ class Issue(Cache):
             pathlib.Path: Path to the cache file for the issue object
         """
 
-        json_file = (
-            f"/{self.newspaper.publication_code}/issues/{self.issue_code}.json"
-        )
+        json_file = f"/{self.newspaper.publication_code}/issues/{self.issue_code}.json"
 
         return Path(
             f"{CACHE_HOME}/{self.collection}/"
@@ -642,9 +611,7 @@ class Ingest(Cache):
         """Constructor method."""
 
         if not isinstance(root, ET.Element):
-            raise RuntimeError(
-                f"Expected root to be xml.etree.Element: {type(root)}"
-            )
+            raise RuntimeError(f"Expected root to be xml.etree.Element: {type(root)}")
 
         self.root = root
         self.collection = collection
@@ -689,9 +656,7 @@ class Digitisation(Cache):
         """Constructor method."""
 
         if not isinstance(root, ET.Element):
-            raise RuntimeError(
-                f"Expected root to be xml.etree.Element: {type(root)}"
-            )
+            raise RuntimeError(f"Expected root to be xml.etree.Element: {type(root)}")
 
         self.root = root
         self.collection = collection
@@ -723,11 +688,7 @@ class Digitisation(Cache):
     @property
     def id(self) -> str:
         dic = self.as_dict()
-        return (
-            dic.get("software").replace("/", "---")
-            if dic.get("software")
-            else None
-        )
+        return dic.get("software").replace("/", "---") if dic.get("software") else None
 
 
 class DataProvider(Cache):
@@ -847,9 +808,7 @@ class Document:
     @property
     def input_sub_path(self) -> str:
         if not self._input_sub_path:
-            self._input_sub_path = self.root.find(
-                "./process/input_sub_path"
-            ).text
+            self._input_sub_path = self.root.find("./process/input_sub_path").text
         return self._input_sub_path
 
     @property
@@ -979,8 +938,7 @@ class Archive:
         """The parent directory of the report file for the archive."""
 
         self.report = (
-            self.report_parent
-            / f"{self.path.stem.replace('_metadata', '')}.json"
+            self.report_parent / f"{self.path.stem.replace('_metadata', '')}.json"
         )
         """The file path of the report file for the archive."""
 
@@ -1018,9 +976,7 @@ class Archive:
                                 json.loads(x)
                                 for x in {
                                     line
-                                    for line in Path(item_doc)
-                                    .read_text()
-                                    .splitlines()
+                                    for line in Path(item_doc).read_text().splitlines()
                                 }
                                 if x
                             ]
@@ -1097,9 +1053,7 @@ class Collection:
             DataFrame of JISC papers, optional
     """
 
-    def __init__(
-        self, name: str = "hmd", jisc_papers: Optional[pd.DataFrame] = None
-    ):
+    def __init__(self, name: str = "hmd", jisc_papers: Optional[pd.DataFrame] = None):
         """Constructor method."""
 
         self.name = name
