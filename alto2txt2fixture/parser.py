@@ -1,11 +1,11 @@
-from typing import Union
-from .utils import NOW_str
-
-from pathlib import Path
-from tqdm import tqdm
-
 import gc
 import json
+from pathlib import Path
+from typing import Union
+
+from tqdm import tqdm
+
+from .utils import NOW_str
 
 
 def fixtures(

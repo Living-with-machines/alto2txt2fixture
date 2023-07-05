@@ -1,6 +1,6 @@
-from alto2txt2fixture import create_adjacent_tables
-
 import pytest
+
+from alto2txt2fixture import create_adjacent_tables
 
 
 def test_run() -> None:
