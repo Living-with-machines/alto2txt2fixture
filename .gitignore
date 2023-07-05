@@ -7,3 +7,4 @@ output
 docs/reference/*
 debugger.py
 .vscode
+.DS_Store
