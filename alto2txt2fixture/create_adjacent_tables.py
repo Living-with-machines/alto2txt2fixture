@@ -7,6 +7,7 @@ from urllib.request import urlopen
 
 import numpy as np
 import pandas as pd
+import wget
 
 OUTPUT: str = "./output/tables"
 NOW: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f+00:00")
@@ -110,7 +111,6 @@ def download_data(
         Path(out).unlink() if exists else None
         print(f"Downloading {out}")
         wget.download(url=url, out=str(out))
-        # wget.download(url=url, out=out)
         with urlopen(url) as response, open(out, "wb") as out_file:
             copyfileobj(response, out_file)
         print()
