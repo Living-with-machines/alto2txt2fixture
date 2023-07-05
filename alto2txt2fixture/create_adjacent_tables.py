@@ -1,16 +1,16 @@
-import datetime as dt
 import json
+from datetime import datetime
+from os import PathLike
 from pathlib import Path
-from urllib.request import urlopen
 from shutil import copyfileobj
+from urllib.request import urlopen
 
 import numpy as np
 import pandas as pd
-import wget
 
-OUTPUT = "./output/tables"
-NOW = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f+00:00")
-OVERWRITE = False
+OUTPUT: str = "./output/tables"
+NOW: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f+00:00")
+OVERWRITE: bool = False
 
 SAVED = []
 NOT_FOUND_PLACES, NOT_FOUND_PAPERS, MANY_PAPERS = [], [], []
@@ -110,12 +110,16 @@ def download_data(
     for url, out, exists in files_to_download:
         Path(out).unlink() if exists else None
         print(f"Downloading {out}")
-        wget.download(url=url, out=out)
+        # wget.download(url=url, out=out)
+        with urlopen(url) as response, open(out, "wb") as out_file:
+            copyfileobj(response, out_file)
         print()
 
 
 def run(
-    files_dict: dict = FILES, files_to_download_overwrite: bool = OVERWRITE
+    files_dict: dict = FILES,
+    files_to_download_overwrite: bool = OVERWRITE,
+    output_path: PathLike = OUTPUT,
 ) -> None:
     # Create parents for local files
     [FILES[k]["local"].parent.mkdir(parents=True, exist_ok=True) for k in FILES.keys()]
@@ -126,16 +130,10 @@ def run(
 
     # Download non-existing files
     download_data(files_dict=files_dict, overwrite=files_to_download_overwrite)
-    # files_to_download = [(v["remote"], v["local"], v["exists"]) for v in FILES.values() if not v["exists"] or OVERWRITE]
-    # for url, out, exists in files_to_download:
-    #     Path(out).unlink() if exists else None
-    #     print(f"Downloading {out}")
-    #     wget.download(url=url, out=out)
-    #     print()
 
-    # Create the output directory (defined in OUTPUT)
-    OUTPUT = Path(OUTPUT)
-    OUTPUT.mkdir(exist_ok=True, parents=True)
+    # Create the output directory (defined in output_path)
+    output_path = Path(output_path)
+    output_path.mkdir(exist_ok=True, parents=True)
 
     # Read all the Wikidata Q values from Mitchells
     mitchells_df = pd.read_csv(FILES["mitchells"]["local"], index_col=0)
@@ -352,16 +350,16 @@ def run(
     country_table["updated_at"] = NOW
 
     # Save CSV files for gazetteer tables
-    place_table.to_csv(OUTPUT / "gazetteer.Place.csv")
-    admin_county_table.to_csv(OUTPUT / "gazetteer.AdminCounty.csv")
-    historic_county_table.to_csv(OUTPUT / "gazetteer.HistoricCounty.csv")
-    country_table.to_csv(OUTPUT / "gazetteer.Country.csv")
+    place_table.to_csv(output_path / "gazetteer.Place.csv")
+    admin_county_table.to_csv(output_path / "gazetteer.AdminCounty.csv")
+    historic_county_table.to_csv(output_path / "gazetteer.HistoricCounty.csv")
+    country_table.to_csv(output_path / "gazetteer.Country.csv")
     SAVED.extend(
         [
-            OUTPUT / "gazetteer.Place.csv",
-            OUTPUT / "gazetteer.AdminCounty.csv",
-            OUTPUT / "gazetteer.HistoricCounty.csv",
-            OUTPUT / "gazetteer.Country.csv",
+            output_path / "gazetteer.Place.csv",
+            output_path / "gazetteer.AdminCounty.csv",
+            output_path / "gazetteer.HistoricCounty.csv",
+            output_path / "gazetteer.Country.csv",
         ]
     )
 
@@ -420,8 +418,8 @@ def run(
         axis=1,
         inplace=True,
     )
-    export.to_csv(OUTPUT / "mitchells.PoliticalLeaning.csv")
-    SAVED.append(OUTPUT / "mitchells.PoliticalLeaning.csv")
+    export.to_csv(output_path / "mitchells.PoliticalLeaning.csv")
+    SAVED.append(output_path / "mitchells.PoliticalLeaning.csv")
 
     prices = sorted(list(set([y.strip() for x in mitchells_df.price_raw for y in x])))
     prices_table = pd.DataFrame()
@@ -437,8 +435,8 @@ def run(
         axis=1,
         inplace=True,
     )
-    export.to_csv(OUTPUT / "mitchells.Price.csv")
-    SAVED.append(OUTPUT / "mitchells.Price.csv")
+    export.to_csv(output_path / "mitchells.Price.csv")
+    SAVED.append(output_path / "mitchells.Price.csv")
 
     issues = sorted(list(mitchells_df.year.unique()))
     issues_table = pd.DataFrame()
@@ -454,8 +452,8 @@ def run(
         axis=1,
         inplace=True,
     )
-    export.to_csv(OUTPUT / "mitchells.Issue.csv")
-    SAVED.append(OUTPUT / "mitchells.Issue.csv")
+    export.to_csv(output_path / "mitchells.Issue.csv")
+    SAVED.append(output_path / "mitchells.Issue.csv")
 
     # Set up linking on Mitchells dataframe
     linking_df = pd.read_csv(
@@ -563,11 +561,11 @@ def run(
     entry_table["updated_at"] = NOW
 
     # Export entry_table
-    entry_table.set_index("pk").to_csv(OUTPUT / "mitchells.Entry.csv")
-    SAVED.append(OUTPUT / "mitchells.Entry.csv")
+    entry_table.set_index("pk").to_csv(output_path / "mitchells.Entry.csv")
+    SAVED.append(output_path / "mitchells.Entry.csv")
 
     # ###### NOW WE CAN EASILY CREATE JSON FILES
-    for file in OUTPUT.glob("*.csv"):
+    for file in output_path.glob("*.csv"):
         json_data = []
         df = pd.read_csv(file, index_col=0).fillna("")
 
@@ -582,8 +580,8 @@ def run(
             fields = row.to_dict()
             json_data.append({"pk": pk, "model": model, "fields": fields})
 
-        Path(OUTPUT / f"{file.stem}.json").write_text(json.dumps(json_data))
-        SAVED.append(OUTPUT / f"{file.stem}.json")
+        Path(output_path / f"{file.stem}.json").write_text(json.dumps(json_data))
+        SAVED.append(output_path / f"{file.stem}.json")
 
     print("Finished - saved files:")
     print("- " + "\n- ".join([str(x) for x in SAVED]))
