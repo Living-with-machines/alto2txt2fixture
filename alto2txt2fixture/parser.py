@@ -65,7 +65,8 @@ def fixtures(
     Returns:
         None: This function generates fixtures but does not return any value.
     """
-    def uniq(filelist:list, keys:list=[]):
+
+    def uniq(filelist: list, keys: list = []):
         """
         Generates unique items from a list of files based on specified keys.
 
@@ -83,6 +84,7 @@ def fixtures(
         Yields:
             item: A unique item from the filelist based on the specified keys.
         """
+
         def get_key_from(item: Path, x: str) -> str:
             """
             Retrieves a specific key from a file and returns its value.

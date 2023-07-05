@@ -63,9 +63,7 @@ def glob_filter(p: str) -> list:
     :return: List of files contained in the provided path without the ones
         whose names start with a "."
     """
-    return [
-        x for x in get_path_from(p).glob("*") if not x.name.startswith(".")
-    ]
+    return [x for x in get_path_from(p).glob("*") if not x.name.startswith(".")]
 
 
 def lock(lockfile: Path) -> None:
@@ -97,27 +95,19 @@ def get_lockfile(collection: str, kind: str, dic: dict) -> Path:
     if kind == "newspaper":
         p = base / f"newspapers/{dic['publication_code']}"
     elif kind == "issue":
-        p = (
-            base
-            / f"issues/{dic['publication__publication_code']}/{dic['issue_code']}"
-        )
+        p = base / f"issues/{dic['publication__publication_code']}/{dic['issue_code']}"
     elif kind == "item":
         try:
             if dic.get("issue_code"):
                 p = base / f"items/{dic['issue_code']}/{dic['item_code']}"
             elif dic.get("issue__issue_identifier"):
-                p = (
-                    base
-                    / f"items/{dic['issue__issue_identifier']}/{dic['item_code']}"
-                )
+                p = base / f"items/{dic['issue__issue_identifier']}/{dic['item_code']}"
         except KeyError:
             error("An unknown error occurred (in get_lockfile)")
     else:
         p = base / "lockfile"
 
-    p.parent.mkdir(
-        parents=True, exist_ok=True
-    ) if settings.WRITE_LOCKFILES else None
+    p.parent.mkdir(parents=True, exist_ok=True) if settings.WRITE_LOCKFILES else None
 
     return p
 
@@ -143,14 +133,10 @@ def get_chunked_zipfiles(path: Path) -> list:
         reverse=settings.START_WITH_LARGEST,
     )
 
-    zipfiles = [
-        x for x in zipfiles if x.stat().st_size <= settings.SKIP_FILE_SIZE
-    ]
+    zipfiles = [x for x in zipfiles if x.stat().st_size <= settings.SKIP_FILE_SIZE]
 
     if len(zipfiles) > settings.CHUNK_THRESHOLD:
-        chunks = array_split(
-            zipfiles, len(zipfiles) / settings.CHUNK_THRESHOLD
-        )
+        chunks = array_split(zipfiles, len(zipfiles) / settings.CHUNK_THRESHOLD)
     else:
         chunks = [zipfiles]
 
@@ -195,9 +181,7 @@ def get_path_from(p: Union[str, Path]) -> Path:
     return p
 
 
-def get_size_from_path(
-    p: Union[str, Path], raw: bool = False
-) -> Union[str, int]:
+def get_size_from_path(p: Union[str, Path], raw: bool = False) -> Union[str, int]:
     """
     Returns a nice string for any given file size.
 
