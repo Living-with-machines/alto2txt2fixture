@@ -34,6 +34,7 @@ a2t2f-news = "alto2txt2fixture.run:run"
 a2t2f-adj = "alto2txt2fixture.create_adjacent_tables:run"
 
 [tool.pytest.ini_options]
+xfail_strict = true
 addopts = """
 --cov=alto2txt2fixture
 --cov-report=term:skip-covered
