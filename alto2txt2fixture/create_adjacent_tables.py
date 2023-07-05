@@ -7,6 +7,7 @@ from urllib.request import urlopen
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 OUTPUT: str = "./output/tables"
 NOW: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f+00:00")
@@ -113,7 +114,16 @@ def download_data(
         # wget.download(url=url, out=out)
         Path(out).parent.mkdir(parents=True, exist_ok=True)
         with urlopen(url) as response, open(out, "wb") as out_file:
-            copyfileobj(response, out_file)
+            with tqdm.wrapattr(
+                out_file,
+                "write",
+                miniters=1,
+                desc=url,
+                total=getattr(response, "length", None),
+            ) as fout:
+                for chunk in response:
+                    fout.write(chunk)
+            # copyfileobj(response, out_file)
         print()
 
 
@@ -586,3 +596,7 @@ def run(
 
     print("Finished - saved files:")
     print("- " + "\n- ".join([str(x) for x in SAVED]))
+
+
+if __name__ == "__main__":
+    run()
