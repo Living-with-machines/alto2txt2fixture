@@ -3,7 +3,6 @@ from alto2txt2fixture import create_adjacent_tables
 import pytest
 
 
-@pytest.mark.xfail(reason="str/Path error in download_data call")
 def test_run() -> None:
     create_adjacent_tables.run()
 

@@ -107,7 +107,7 @@ def download_data(
     for url, out, exists in files_to_download:
         Path(out).unlink() if exists else None
         print(f"Downloading {out}")
-        wget.download(url=url, out=out)
+        wget.download(url=url, out=str(out))
         print()
 
 

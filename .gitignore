@@ -5,3 +5,5 @@ input
 output
 .coverage
 docs/reference/*
+debugger.py
+.vscode
