@@ -1,6 +1,6 @@
-from alto2txt2fixture import create_adjacent_tables
-
 import pytest
+
+from alto2txt2fixture import create_adjacent_tables
 
 
 @pytest.mark.xfail(reason="str/Path error in download_data call")

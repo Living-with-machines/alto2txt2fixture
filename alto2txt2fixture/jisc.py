@@ -1,10 +1,10 @@
-from .settings import settings
-from .patterns import PUBLICATION_CODE
-
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
+
+from .patterns import PUBLICATION_CODE
+from .settings import settings
 
 
 def setup_jisc_papers(path: str = settings.JISC_PAPERS_CSV) -> pd.DataFrame:

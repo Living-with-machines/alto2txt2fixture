@@ -1,13 +1,13 @@
-from .settings import settings
-from .log import error, info
-
-from pathlib import Path
-from numpy import array_split
-from typing import Union
-
 import datetime
 import json
+from pathlib import Path
+from typing import Union
+
 import pytz
+from numpy import array_split
+
+from .log import error, info
+from .settings import settings
 
 
 def get_now(as_str: bool = False) -> Union[datetime.datetime, str]:

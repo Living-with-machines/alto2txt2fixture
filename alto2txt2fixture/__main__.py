@@ -25,11 +25,10 @@ __main__), the ``run`` function is executed.
 
 from argparse import ArgumentParser
 
-
-from alto2txt2fixture.router import route
 from alto2txt2fixture.parser import parse
-from alto2txt2fixture.utils import clear_cache
+from alto2txt2fixture.router import route
 from alto2txt2fixture.settings import settings, show_setup
+from alto2txt2fixture.utils import clear_cache
 
 
 def parse_args(argv=None):
