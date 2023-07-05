@@ -1,6 +1,6 @@
-from alto2txt2fixture.__main__ import run
-
 import pytest
+
+from alto2txt2fixture.__main__ import run
 
 
 def test_run_without_local_or_blobfuse(capsys) -> None:

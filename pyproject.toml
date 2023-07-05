@@ -12,7 +12,6 @@ colorama = "^0.4.6"
 numpy = "^1.24.3"
 pytz = "^2022.7.1"
 rich = "^12.6.0"
-wget = "^3.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest-sugar = "^0.9.7"
@@ -25,6 +24,9 @@ mkdocs-section-index = "^0.3.5"
 mkdocs-literate-nav = "^0.6.0"
 mkdocstrings-python = "^1.1.2"
 
+[tool.isort]
+profile = "black"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
@@ -34,6 +36,7 @@ a2t2f-news = "alto2txt2fixture.__main__:main"
 a2tsf-adj = "alto2txt2fixture.__main__:main"
 
 [tool.pytest.ini_options]
+xfail_strict = true
 addopts = """
 --cov=alto2txt2fixture
 --cov-report=term:skip-covered
