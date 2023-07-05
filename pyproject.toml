@@ -30,8 +30,8 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-a2t2f-news = "alto2txt2fixture.run:run"
-a2tsf-adj = "alto2txt2fixture.run:run"
+a2t2f-news = "alto2txt2fixture.__main__:main"
+a2tsf-adj = "alto2txt2fixture.__main__:main"
 
 [tool.pytest.ini_options]
 addopts = """
