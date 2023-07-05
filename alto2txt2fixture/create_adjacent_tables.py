@@ -112,7 +112,9 @@ def download_data(
 
 
 def run(
-    files_dict: dict = FILES, files_to_download_overwrite: bool = OVERWRITE
+    files_dict: dict = FILES,
+    files_to_download_overwrite: bool = OVERWRITE,
+    OUTPUT: str = OUTPUT,
 ) -> None:
     # Create parents for local files
     [FILES[k]["local"].parent.mkdir(parents=True, exist_ok=True) for k in FILES.keys()]
@@ -123,12 +125,6 @@ def run(
 
     # Download non-existing files
     download_data(files_dict=files_dict, overwrite=files_to_download_overwrite)
-    # files_to_download = [(v["remote"], v["local"], v["exists"]) for v in FILES.values() if not v["exists"] or OVERWRITE]
-    # for url, out, exists in files_to_download:
-    #     Path(out).unlink() if exists else None
-    #     print(f"Downloading {out}")
-    #     wget.download(url=url, out=out)
-    #     print()
 
     # Create the output directory (defined in OUTPUT)
     OUTPUT = Path(OUTPUT)
