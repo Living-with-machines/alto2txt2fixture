@@ -1,6 +1,6 @@
-from alto2txt2fixture.run import run
-
 import pytest
+
+from alto2txt2fixture.__main__ import run
 
 
 def test_run_without_local_or_blobfuse(capsys) -> None:
@@ -17,5 +17,5 @@ def test_run_without_local_or_blobfuse(capsys) -> None:
     with pytest.raises(SystemExit) as e_info:
         run()
     # Check the error is raised where expected
-    assert e_info.traceback[1].path.name == "run.py"
+    assert e_info.traceback[1].path.name == "__main__.py"
     assert error_message in capsys.readouterr().out

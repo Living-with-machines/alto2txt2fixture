@@ -23,14 +23,39 @@ If the script is run as a main program (i.e., if the name of the script is
 __main__), the ``run`` function is executed.
 """
 
-from alto2txt2fixture import (
-    route,
-    parse,
-    clear_cache,
-    parse_args,
-    settings,
-    show_setup,
-)
+from argparse import ArgumentParser
+
+
+from alto2txt2fixture.router import route
+from alto2txt2fixture.parser import parse
+from alto2txt2fixture.utils import clear_cache
+from alto2txt2fixture.settings import settings, show_setup
+
+
+def parse_args(argv=None):
+    parser = ArgumentParser()
+    parser.add_argument(
+        "-c",
+        "--collections",
+        nargs="+",
+        help="<Optional> Set collections",
+        required=False,
+    )
+    parser.add_argument(
+        "-m",
+        "--mountpoint",
+        type=str,
+        help="<Optional> Mountpoint",
+        required=False,
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        help="<Optional> Set an output directory",
+        required=False,
+    )
+    return parser.parse_args(argv)
 
 
 def run():
