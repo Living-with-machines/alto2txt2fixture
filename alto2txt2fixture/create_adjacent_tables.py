@@ -1,6 +1,5 @@
 import json
 from datetime import datetime
-from os import PathLike
 from pathlib import Path
 from urllib.request import urlopen
 
