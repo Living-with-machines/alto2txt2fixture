@@ -110,6 +110,8 @@ def download_data(
     for url, out, exists in files_to_download:
         Path(out).unlink() if exists else None
         print(f"Downloading {out}")
+        if Path(out).parents:
+            Path(out).parent.mkdir(exist_ok=True)
         wget.download(url=url, out=str(out))
         with urlopen(url) as response, open(out, "wb") as out_file:
             copyfileobj(response, out_file)
