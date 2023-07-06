@@ -1,5 +1,3 @@
-import pytest
-
 from alto2txt2fixture import create_adjacent_tables
 
 
