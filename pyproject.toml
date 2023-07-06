@@ -12,6 +12,7 @@ colorama = "^0.4.6"
 numpy = "^1.24.3"
 pytz = "^2022.7.1"
 rich = "^12.6.0"
+wget ="^3.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest-sugar = "^0.9.7"
@@ -27,13 +28,16 @@ mkdocstrings-python = "^1.1.2"
 [tool.isort]
 profile = "black"
 
+[tool.pycln]
+all = true
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 a2t2f-news = "alto2txt2fixture.__main__:main"
-a2tsf-adj = "alto2txt2fixture.__main__:main"
+a2tsf-adj = "alto2txt2fixture.create_adjacent_tables:run"
 
 [tool.pytest.ini_options]
 xfail_strict = true

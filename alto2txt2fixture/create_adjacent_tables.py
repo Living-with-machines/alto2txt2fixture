@@ -1,12 +1,11 @@
 import json
 from datetime import datetime
-from os import PathLike
 from pathlib import Path
-from shutil import copyfileobj
 from urllib.request import urlopen
 
 import numpy as np
 import pandas as pd
+from rich.progress import BarColumn, DownloadColumn, Progress
 
 OUTPUT: str = "./output/tables"
 NOW: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f+00:00")
@@ -29,14 +28,13 @@ def test_place(x, rev):
 def test_paper(x, rev):
     try:
         value = rev.at[x, "pk"]
-        if not isinstance(value, np.int64) and len(value) > 1:
-            if x not in MANY_PAPERS:
-                MANY_PAPERS.append(x)
-                print(
-                    f"Warning: {len(value)} newspapers found with NLP {x} -- keeping first"
-                )
-                value = value.to_list()[0]
-        return value
+        if type(value) == np.int64:
+            return value
+        else:
+            print(
+                f"Warning: {len(value)} newspapers found with NLP {x} -- keeping first"
+            )
+            return value[0]
     except KeyError:
         if x not in NOT_FOUND_PAPERS:
             NOT_FOUND_PAPERS.append(x)
@@ -110,16 +108,24 @@ def download_data(
     for url, out, exists in files_to_download:
         Path(out).unlink() if exists else None
         print(f"Downloading {out}")
-        Path(out).mkdir(parents=True, exist_ok=True)
+        Path(out).parent.mkdir(parents=True, exist_ok=True)
         with urlopen(url) as response, open(out, "wb") as out_file:
-            copyfileobj(response, out_file)
-        print()
+            total: int = int(response.info()["Content-length"])
+            with Progress(
+                "[progress.percentage]{task.percentage:>3.0f}%",
+                BarColumn(bar_width=None),
+                DownloadColumn(),
+            ) as progress:
+                download_task = progress.add_task("Download", total=total)
+                for chunk in response:
+                    out_file.write(chunk)
+                    progress.update(download_task, advance=len(chunk))
 
 
 def run(
     files_dict: dict = FILES,
     files_to_download_overwrite: bool = OVERWRITE,
-    output_path: PathLike = OUTPUT,
+    output_path: str = OUTPUT,
 ) -> None:
     # Create parents for local files
     [FILES[k]["local"].parent.mkdir(parents=True, exist_ok=True) for k in FILES.keys()]
@@ -585,3 +591,7 @@ def run(
 
     print("Finished - saved files:")
     print("- " + "\n- ".join([str(x) for x in SAVED]))
+
+
+if __name__ == "__main__":
+    run()
