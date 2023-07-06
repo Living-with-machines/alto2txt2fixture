@@ -2,12 +2,11 @@ import json
 from datetime import datetime
 from os import PathLike
 from pathlib import Path
-from shutil import copyfileobj
 from urllib.request import urlopen
 
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+from rich.progress import BarColumn, DownloadColumn, Progress
 
 OUTPUT: str = "./output/tables"
 NOW: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f+00:00")
@@ -111,20 +110,18 @@ def download_data(
     for url, out, exists in files_to_download:
         Path(out).unlink() if exists else None
         print(f"Downloading {out}")
-        # wget.download(url=url, out=out)
         Path(out).parent.mkdir(parents=True, exist_ok=True)
         with urlopen(url) as response, open(out, "wb") as out_file:
-            with tqdm.wrapattr(
-                out_file,
-                "write",
-                miniters=1,
-                desc=url,
-                total=getattr(response, "length", None),
-            ) as fout:
+            total: int = int(response.info()["Content-length"])
+            with Progress(
+                "[progress.percentage]{task.percentage:>3.0f}%",
+                BarColumn(bar_width=None),
+                DownloadColumn(),
+            ) as progress:
+                download_task = progress.add_task("Download", total=total)
                 for chunk in response:
-                    fout.write(chunk)
-            # copyfileobj(response, out_file)
-        print()
+                    out_file.write(chunk)
+                    progress.update(download_task, advance=len(chunk))
 
 
 def run(
