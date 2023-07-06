@@ -4,4 +4,8 @@ cache
 input
 output
 .coverage
-docs/reference
+docs/reference/*
+debugger.py
+.vscode
+.DS_Store
+tmp*
