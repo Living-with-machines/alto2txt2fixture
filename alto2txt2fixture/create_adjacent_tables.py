@@ -7,6 +7,7 @@ from urllib.request import urlopen
 
 import numpy as np
 import pandas as pd
+import wget
 
 OUTPUT: str = "./output/tables"
 NOW: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f+00:00")
@@ -29,14 +30,13 @@ def test_place(x, rev):
 def test_paper(x, rev):
     try:
         value = rev.at[x, "pk"]
-        if not isinstance(value, np.int64) and len(value) > 1:
-            if x not in MANY_PAPERS:
-                MANY_PAPERS.append(x)
-                print(
-                    f"Warning: {len(value)} newspapers found with NLP {x} -- keeping first"
-                )
-                value = value.to_list()[0]
-        return value
+        if type(value) == np.int64:
+            return value
+        else:
+            print(
+                f"Warning: {len(value)} newspapers found with NLP {x} -- keeping first"
+            )
+            return value[0]
     except KeyError:
         if x not in NOT_FOUND_PAPERS:
             NOT_FOUND_PAPERS.append(x)
@@ -110,9 +110,9 @@ def download_data(
     for url, out, exists in files_to_download:
         Path(out).unlink() if exists else None
         print(f"Downloading {out}")
-        # wget.download(url=url, out=out)
         if Path(out).parents:
             Path(out).parent.mkdir(exist_ok=True)
+        wget.download(url=url, out=str(out))
         with urlopen(url) as response, open(out, "wb") as out_file:
             copyfileobj(response, out_file)
         print()
@@ -121,7 +121,7 @@ def download_data(
 def run(
     files_dict: dict = FILES,
     files_to_download_overwrite: bool = OVERWRITE,
-    output_path: PathLike = OUTPUT,
+    output_path: str = OUTPUT,
 ) -> None:
     # Create parents for local files
     [FILES[k]["local"].parent.mkdir(parents=True, exist_ok=True) for k in FILES.keys()]
