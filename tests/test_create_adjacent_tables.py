@@ -1,8 +1,10 @@
+import pytest
 from _pytest.capture import CaptureResult
 
 from alto2txt2fixture import create_adjacent_tables
 
 
+@pytest.mark.slow
 def test_run() -> None:
     create_adjacent_tables.run()
 
