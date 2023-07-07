@@ -16,11 +16,13 @@ drive. In the two following sections, both of those options are described.
 
 ### Downloading local copies of `alto2txt` on your computer
 
-!!! attention "This option will take up a lot of hard drive space" As of the
-time of writing, downloading all of `alto2txt`’s metadata takes up about 185GB
-on your local drive. You do not have to download all of the collections or all
-of the zip files for each collection, as long as you are aware that the
-resulting fixtures will be limited in scope.
+!!! warning "This option will take up a lot of hard drive space"
+
+    As of the time of writing, downloading all of `alto2txt`’s metadata takes up about 185GB on your local drive.
+
+You do not have to download all of the collections or all of the zip files for
+each collection, as long as you are aware that the resulting fixtures will be
+limited in scope.
 
 #### Step 1: Log in to Azure using Microsoft Azure Storage Explorer
 
@@ -64,8 +66,9 @@ The “Activities” bar will now show you the progress and speed:
 
 ### Mounting `alto2txt` on your computer
 
-!!! attention "This option will only work on a Linux or UNIX computer" If you
-have a mac, your only option is the one below.
+!!! warning "This option will only work on a Linux or UNIX computer"
+
+    If you have a mac, your only option is the one below.
 
 #### Step 1: Install BlobFuse
 

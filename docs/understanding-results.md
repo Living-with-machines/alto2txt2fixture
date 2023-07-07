@@ -1,8 +1,8 @@
 ## The resulting file structure
 
-!!! attention "The examples below follow standard settings" If you choose other
-settings for when you run the program, your output directory may look different
-from the information on this page.
+!!! info "The examples below follow standard settings"
+
+    If you choose other settings for when you run the program, your output directory may look different from the information on this page.
 
 ### Reports
 
