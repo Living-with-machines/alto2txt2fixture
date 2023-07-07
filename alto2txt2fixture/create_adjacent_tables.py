@@ -1,6 +1,9 @@
 import json
 from datetime import datetime
+from os import PathLike
 from pathlib import Path
+from shutil import rmtree
+from typing import NotRequired, TypedDict
 from urllib.request import urlopen
 
 import numpy as np
@@ -8,10 +11,10 @@ import pandas as pd
 from rich.progress import BarColumn, DownloadColumn, Progress
 
 OUTPUT: str = "./output/tables"
-NOW: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f+00:00")
+TIME_FORMAT: str = "%Y-%m-%d %H:%M:%S.%f+00:00"
 OVERWRITE: bool = False
 
-SAVED = []
+SAVED: list[PathLike] = []
 NOT_FOUND_PLACES, NOT_FOUND_PAPERS, MANY_PAPERS = [], [], []
 
 
@@ -60,7 +63,17 @@ def get_list(x):
 # Note: FILES["Newspaper-1"]["remote"] has a generated access token from the
 # Azure storage space. It will expire in December 2023 and will need to be
 # renewed/relinked before then.
-FILES = {
+
+
+class RemoteDataSourceType(TypedDict):
+    remote: str
+    local: Path
+    exists: NotRequired[bool]
+
+
+RemoteDataFilesType = dict[str, RemoteDataSourceType]
+
+FILES: RemoteDataFilesType = {
     "mitchells": {
         "remote": "https://bl.iro.bl.uk/downloads/da65047c-4d62-4ab7-946f-8e61e5f6f331?locale=en",
         "local": Path("cache/Mitchell_1846_1920.csv"),
@@ -97,23 +110,31 @@ FILES = {
 
 
 def download_data(
-    files_dict: dict[str, dict] = FILES, overwrite: bool = OVERWRITE
+    files_dict: RemoteDataFilesType = FILES, overwrite: bool = OVERWRITE
 ) -> None:
     """Download files in `files_dict`, overwrite if specified."""
+    # Create parents for local files
+    # [files_dict[k]["local"].parent.mkdir(parents=True, exist_ok=True) for k in files_dict.keys()]
+
+    # Describe whether local file exists
+    for k in files_dict.keys():
+        files_dict[k]["exists"] = files_dict[k]["local"].exists()
+
     files_to_download = [
         (v["remote"], v["local"], v["exists"])
         for v in files_dict.values()
-        if not v["exists"] or overwrite
+        if "exists" in v and not v["exists"] or overwrite
     ]
     for url, out, exists in files_to_download:
-        Path(out).unlink() if exists else None
+        rmtree(Path(out), ignore_errors=True) if exists else None
         print(f"Downloading {out}")
         Path(out).parent.mkdir(parents=True, exist_ok=True)
+        assert isinstance(url, str)
         with urlopen(url) as response, open(out, "wb") as out_file:
             total: int = int(response.info()["Content-length"])
             with Progress(
                 "[progress.percentage]{task.percentage:>3.0f}%",
-                BarColumn(bar_width=None),
+                BarColumn(),  # removed bar_width=None to avoid too long when resized
                 DownloadColumn(),
             ) as progress:
                 download_task = progress.add_task("Download", total=total)
@@ -125,15 +146,10 @@ def download_data(
 def run(
     files_dict: dict = FILES,
     files_to_download_overwrite: bool = OVERWRITE,
-    output_path: str = OUTPUT,
+    output_path: str | Path = OUTPUT,
+    saved: list[PathLike] = SAVED,
+    time_stamp: str = datetime.now().strftime(TIME_FORMAT),
 ) -> None:
-    # Create parents for local files
-    [FILES[k]["local"].parent.mkdir(parents=True, exist_ok=True) for k in FILES.keys()]
-
-    # Describe whether local file exists
-    for k in FILES.keys():
-        FILES[k]["exists"] = FILES[k]["local"].exists()
-
     # Download non-existing files
     download_data(files_dict=files_dict, overwrite=files_to_download_overwrite)
 
@@ -142,7 +158,7 @@ def run(
     output_path.mkdir(exist_ok=True, parents=True)
 
     # Read all the Wikidata Q values from Mitchells
-    mitchells_df = pd.read_csv(FILES["mitchells"]["local"], index_col=0)
+    mitchells_df = pd.read_csv(files_dict["mitchells"]["local"], index_col=0)
     mitchell_wikidata_mentions = sorted(
         list(mitchells_df.PLACE_PUB_WIKI.unique()),
         key=lambda x: int(x.replace("Q", "")),
@@ -151,7 +167,7 @@ def run(
     # Set up wikidata_gazetteer
     gaz_cols = ["wikidata_id", "english_label", "latitude", "longitude", "geonamesIDs"]
     wikidata_gazetteer = pd.read_csv(
-        FILES["wikidata_gazetteer_selected_columns"]["local"], usecols=gaz_cols
+        files_dict["wikidata_gazetteer_selected_columns"]["local"], usecols=gaz_cols
     )
     wikidata_gazetteer.rename(
         {
@@ -165,12 +181,12 @@ def run(
 
     # Read in + fix all dictionaries
     dict_historic_counties = json.loads(
-        Path(FILES["dict_historic_counties"]["local"]).read_text()
+        Path(files_dict["dict_historic_counties"]["local"]).read_text()
     )
     dict_admin_counties = json.loads(
-        Path(FILES["dict_admin_counties"]["local"]).read_text()
+        Path(files_dict["dict_admin_counties"]["local"]).read_text()
     )
-    dict_countries = json.loads(Path(FILES["dict_countries"]["local"]).read_text())
+    dict_countries = json.loads(Path(files_dict["dict_countries"]["local"]).read_text())
     dict_historic_counties = correct_dict(dict_historic_counties)
     dict_admin_counties = correct_dict(dict_admin_counties)
     dict_countries = correct_dict(dict_countries)
@@ -346,21 +362,21 @@ def run(
     country_table.index.rename("pk", inplace=True)
 
     # Adding created_at, updated_at to all the gazetteer tables
-    place_table["created_at"] = NOW
-    place_table["updated_at"] = NOW
-    admin_county_table["created_at"] = NOW
-    admin_county_table["updated_at"] = NOW
-    historic_county_table["created_at"] = NOW
-    historic_county_table["updated_at"] = NOW
-    country_table["created_at"] = NOW
-    country_table["updated_at"] = NOW
+    place_table["created_at"] = time_stamp
+    place_table["updated_at"] = time_stamp
+    admin_county_table["created_at"] = time_stamp
+    admin_county_table["updated_at"] = time_stamp
+    historic_county_table["created_at"] = time_stamp
+    historic_county_table["updated_at"] = time_stamp
+    country_table["created_at"] = time_stamp
+    country_table["updated_at"] = time_stamp
 
     # Save CSV files for gazetteer tables
     place_table.to_csv(output_path / "gazetteer.Place.csv")
     admin_county_table.to_csv(output_path / "gazetteer.AdminCounty.csv")
     historic_county_table.to_csv(output_path / "gazetteer.HistoricCounty.csv")
     country_table.to_csv(output_path / "gazetteer.Country.csv")
-    SAVED.extend(
+    saved.extend(
         [
             output_path / "gazetteer.Place.csv",
             output_path / "gazetteer.AdminCounty.csv",
@@ -415,8 +431,8 @@ def run(
     )
     political_leanings_table["political_leaning__label"] = political_leanings
     export = political_leanings_table.copy()
-    export["created_at"] = NOW
-    export["updated_at"] = NOW
+    export["created_at"] = time_stamp
+    export["updated_at"] = time_stamp
     export.set_index("political_leaning__pk", inplace=True)
     export.index.rename("pk", inplace=True)
     export.rename(
@@ -425,15 +441,15 @@ def run(
         inplace=True,
     )
     export.to_csv(output_path / "mitchells.PoliticalLeaning.csv")
-    SAVED.append(output_path / "mitchells.PoliticalLeaning.csv")
+    saved.append(output_path / "mitchells.PoliticalLeaning.csv")
 
     prices = sorted(list(set([y.strip() for x in mitchells_df.price_raw for y in x])))
     prices_table = pd.DataFrame()
     prices_table["price__pk"] = np.arange(1, len(prices) + 1)
     prices_table["price__label"] = prices
     export = prices_table.copy()
-    export["created_at"] = NOW
-    export["updated_at"] = NOW
+    export["created_at"] = time_stamp
+    export["updated_at"] = time_stamp
     export.set_index("price__pk", inplace=True)
     export.index.rename("pk", inplace=True)
     export.rename(
@@ -442,15 +458,15 @@ def run(
         inplace=True,
     )
     export.to_csv(output_path / "mitchells.Price.csv")
-    SAVED.append(output_path / "mitchells.Price.csv")
+    saved.append(output_path / "mitchells.Price.csv")
 
     issues = sorted(list(mitchells_df.year.unique()))
     issues_table = pd.DataFrame()
     issues_table["issue__pk"] = np.arange(1, len(issues) + 1)
     issues_table["issue__year"] = issues
     export = issues_table.copy()
-    export["created_at"] = NOW
-    export["updated_at"] = NOW
+    export["created_at"] = time_stamp
+    export["updated_at"] = time_stamp
     export.set_index("issue__pk", inplace=True)
     export.index.rename("pk", inplace=True)
     export.rename(
@@ -459,11 +475,11 @@ def run(
         inplace=True,
     )
     export.to_csv(output_path / "mitchells.Issue.csv")
-    SAVED.append(output_path / "mitchells.Issue.csv")
+    saved.append(output_path / "mitchells.Issue.csv")
 
     # Set up linking on Mitchells dataframe
     linking_df = pd.read_csv(
-        FILES["linking"]["local"],
+        files_dict["linking"]["local"],
         index_col=0,
         dtype={"NLP": str},
         usecols=[
@@ -547,7 +563,7 @@ def run(
     entry_table.drop(columns=["place_of_publication_id"], inplace=True)
 
     # Set up ref to newspapers
-    rev = json.loads(FILES["Newspaper-1"]["local"].read_text())
+    rev = json.loads(files_dict["Newspaper-1"]["local"].read_text())
     rev = [dict(pk=v["pk"], **v["fields"]) for v in rev]
     rev = pd.DataFrame(rev)
     rev.set_index("publication_code", inplace=True)
@@ -563,14 +579,14 @@ def run(
     ]
 
     # Add created_at, modified_at to entry_table
-    entry_table["created_at"] = NOW
-    entry_table["updated_at"] = NOW
+    entry_table["created_at"] = time_stamp
+    entry_table["updated_at"] = time_stamp
 
     # Export entry_table
     entry_table.set_index("pk").to_csv(output_path / "mitchells.Entry.csv")
-    SAVED.append(output_path / "mitchells.Entry.csv")
+    saved.append(output_path / "mitchells.Entry.csv")
 
-    # ###### NOW WE CAN EASILY CREATE JSON FILES
+    # ###### NOW WE CAN EASILY CREATE JSON files_dict
     for file in output_path.glob("*.csv"):
         json_data = []
         df = pd.read_csv(file, index_col=0).fillna("")
@@ -587,10 +603,10 @@ def run(
             json_data.append({"pk": pk, "model": model, "fields": fields})
 
         Path(output_path / f"{file.stem}.json").write_text(json.dumps(json_data))
-        SAVED.append(output_path / f"{file.stem}.json")
+        saved.append(output_path / f"{file.stem}.json")
 
     print("Finished - saved files:")
-    print("- " + "\n- ".join([str(x) for x in SAVED]))
+    print("- " + "\n- ".join([str(x) for x in saved]))
 
 
 if __name__ == "__main__":
