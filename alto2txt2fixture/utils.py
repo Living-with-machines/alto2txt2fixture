@@ -1,13 +1,23 @@
 import datetime
 import json
+import logging
 from pathlib import Path
 from typing import Union
 
 import pytz
 from numpy import array_split
+from rich.logging import RichHandler
 
 from .log import error, info
 from .settings import settings
+
+FORMAT: str = "%(message)s"
+
+logging.basicConfig(
+    level="NOTSET", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+)
+
+logger = logging.getLogger("rich")
 
 
 def get_now(as_str: bool = False) -> Union[datetime.datetime, str]:

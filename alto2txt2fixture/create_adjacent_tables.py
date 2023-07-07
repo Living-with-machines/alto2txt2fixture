@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from copy import deepcopy
 from os import PathLike
 from pathlib import Path
 from shutil import rmtree
@@ -8,7 +8,10 @@ from urllib.request import urlopen
 
 import numpy as np
 import pandas as pd
+from rich import print
 from rich.progress import BarColumn, DownloadColumn, Progress
+
+from .utils import get_now, logger
 
 OUTPUT: str = "./output/tables"
 TIME_FORMAT: str = "%Y-%m-%d %H:%M:%S.%f+00:00"
@@ -16,6 +19,15 @@ OVERWRITE: bool = False
 
 SAVED: list[PathLike] = []
 NOT_FOUND_PLACES, NOT_FOUND_PAPERS, MANY_PAPERS = [], [], []
+
+
+class RemoteDataSourceType(TypedDict):
+    remote: str
+    local: Path
+    exists: NotRequired[bool]
+
+
+RemoteDataFilesType = dict[str, RemoteDataSourceType]
 
 
 def test_place(x, rev):
@@ -64,15 +76,6 @@ def get_list(x):
 # Azure storage space. It will expire in December 2023 and will need to be
 # renewed/relinked before then.
 
-
-class RemoteDataSourceType(TypedDict):
-    remote: str
-    local: Path
-    exists: NotRequired[bool]
-
-
-RemoteDataFilesType = dict[str, RemoteDataSourceType]
-
 FILES: RemoteDataFilesType = {
     "mitchells": {
         "remote": "https://bl.iro.bl.uk/downloads/da65047c-4d62-4ab7-946f-8e61e5f6f331?locale=en",
@@ -110,11 +113,40 @@ FILES: RemoteDataFilesType = {
 
 
 def download_data(
-    files_dict: RemoteDataFilesType = FILES, overwrite: bool = OVERWRITE
+    files_dict: RemoteDataFilesType = {},
+    overwrite: bool = OVERWRITE,
+    exclude: list[str] = [],
 ) -> None:
-    """Download files in `files_dict`, overwrite if specified."""
-    # Create parents for local files
-    # [files_dict[k]["local"].parent.mkdir(parents=True, exist_ok=True) for k in files_dict.keys()]
+    """Download files in `files_dict`, overwrite if specified.
+
+    >>> from pathlib import Path
+    >>> tmp: Path = getfixture('tmpdir')
+    >>> set_path: Path = tmp.chdir()
+    >>> download_data(exclude=["mitchells", "Newspaper-1", "linking"])
+    Excluding mitchells...
+    Excluding Newspaper-1...
+    Excluding linking...
+    Downloading cache/dict_admin_counties.json
+    100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 37/37 bytes
+    Downloading cache/dict_countries.json
+    100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 33.2/33.2 kB
+    Downloading cache/dict_historic_counties.json
+    100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 41.4/41.4 kB
+    Downloading cache/nlp_loc_wikidata_concat.csv
+    100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 59.8/59.8 kB
+    Downloading cache/wikidata_gazetteer_selected_columns.csv
+    100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 47.8/47.8 MB
+    """
+    if not files_dict:
+        files_dict = deepcopy(FILES)
+    for data_source in exclude:
+        if data_source in files_dict:
+            print(f"Excluding {data_source}...")
+            files_dict.pop(data_source, 0)
+        else:
+            logger.warning(
+                f'"{data_source}" not an option to exclude from {files_dict}'
+            )
 
     # Describe whether local file exists
     for k in files_dict.keys():
@@ -144,12 +176,22 @@ def download_data(
 
 
 def run(
-    files_dict: dict = FILES,
+    files_dict: dict = {},
     files_to_download_overwrite: bool = OVERWRITE,
     output_path: str | Path = OUTPUT,
     saved: list[PathLike] = SAVED,
-    time_stamp: str = datetime.now().strftime(TIME_FORMAT),
+    time_stamp: str = "",
 ) -> None:
+    """Download, process and link `files_dict` to `json` and `csv`."""
+
+    # Ensure time_stamp from the point of calling `run`
+    if not time_stamp:
+        time_stamp = get_now(as_str=False).strftime(TIME_FORMAT)
+
+    # Ensure an independent deepcopy of FILES to avoid modifying subsequent runs
+    if not files_dict:
+        files_dict = deepcopy(FILES)
+
     # Download non-existing files
     download_data(files_dict=files_dict, overwrite=files_to_download_overwrite)
 
