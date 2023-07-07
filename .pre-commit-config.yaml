@@ -5,6 +5,7 @@ repos:
     rev: "23.3.0"
     hooks:
       - id: black-jupyter
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
     hooks:
@@ -18,6 +19,7 @@ repos:
       - id: mixed-line-ending
       - id: requirements-txt-fixer
       - id: trailing-whitespace
+
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: "v1.10.0"
     hooks:
@@ -37,17 +39,20 @@ repos:
     hooks:
       - id: poetry-check
       - id: poetry-lock
+
   - repo: https://github.com/hadialqattan/pycln
     rev: v2.1.5
     hooks:
       - id: pycln
         args: [--config=pyproject.toml]
-  - repo: https://github.com/psf/black
-    rev: 23.3.0
-    hooks:
-      - id: black
+
   - repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
       - id: isort
         name: isort (python)
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: "v1.4.1"
+    hooks:
+      - id: mypy
