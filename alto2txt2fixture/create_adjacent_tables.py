@@ -21,7 +21,7 @@ SAVED: list[PathLike] = []
 NOT_FOUND_PLACES, NOT_FOUND_PAPERS, MANY_PAPERS = [], [], []
 
 
-class RemoteDataSourceType(TypedDict):
+class RemoteDataSourceType(TypedDict, total=False):
     remote: str
     local: Path
     exists: NotRequired[bool]
