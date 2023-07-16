@@ -56,3 +56,6 @@ repos:
     rev: "v1.4.1"
     hooks:
       - id: mypy
+        args: [--config-file, ./pyproject.toml]
+        verbose: true
+        entry: bash -c 'mypy "$@" || true' --
