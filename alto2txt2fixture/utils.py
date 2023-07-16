@@ -268,7 +268,7 @@ def load_json(p: Union[str, Path], crash: bool = False) -> dict:
     """
     Easier access to reading JSON files.
 
-    :param p: Path to lead JSON from
+    :param p: Path to read JSON from
     :param crash: Whether the program should crash if there is a JSON decode
         error, default: ``False``
     :return: The decoded JSON contents from the path, but an empty dictionary
