@@ -3,7 +3,7 @@ import json
 import logging
 from os import PathLike
 from pathlib import Path
-from typing import Hashable, Sequence, Union
+from typing import Generator, Hashable, Sequence, Union
 
 import pytz
 from numpy import array_split
@@ -292,7 +292,7 @@ def list_json_files(
     drill: bool = False,
     exclude_names: list = [],
     include_names: list = [],
-) -> list:
+) -> Generator[Path, None, None]:
     """
     List JSON files under the path specified in ``p``.
 
