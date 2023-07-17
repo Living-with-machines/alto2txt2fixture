@@ -34,8 +34,9 @@ def get_now(as_str: bool = False) -> Union[datetime.datetime, str]:
 
     if as_str:
         return str(now)
-
-    return now
+    else:
+        assert isinstance(now, datetime.datetime)
+        return now
 
 
 NOW_str = get_now(as_str=True)
