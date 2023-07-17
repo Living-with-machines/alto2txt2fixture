@@ -180,18 +180,17 @@ def clear_cache(dir: Union[str, Path]) -> None:
     dir = get_path_from(dir)
 
     y = input(
-        f"Do you want to erase the cache path now that the files have been \
-        generated ({dir.absolute()})? [y/N]"
+        f"Do you want to erase the cache path now that the "
+        f"files have been generated ({dir.absolute()})? [y/N]"
     )
 
     if y.lower() == "y":
         info("Clearing up the cache directory")
-        [x.unlink() for x in dir.glob("*.json")]
+        for x in dir.glob("*.json"):
+            x.unlink()
 
-    return
 
-
-def get_size_from_path(p: Union[str, Path], raw: bool = False) -> Union[str, int]:
+def get_size_from_path(p: str | Path, raw: bool = False) -> str | int | float:
     """
     Returns a nice string for any given file size.
 
@@ -207,7 +206,9 @@ def get_size_from_path(p: Union[str, Path], raw: bool = False) -> Union[str, int
     if raw:
         return bytes
 
-    rel_size = round(bytes / 1000 / 1000 / 1000, 1)
+    rel_size: float | int | str = round(bytes / 1000 / 1000 / 1000, 1)
+
+    assert not isinstance(rel_size, str)
 
     if rel_size < 0.5:
         rel_size = round(bytes / 1000 / 1000, 1)
