@@ -17,7 +17,7 @@ from alto2txt2fixture.create_adjacent_tables import (
     download_data,
     run,
 )
-from alto2txt2fixture.utils import load_json, load_multiple_json
+from alto2txt2fixture.utils import filter_json_fields, load_json, load_multiple_json
 
 
 @pytest.fixture()
@@ -107,9 +107,19 @@ def test_mitchells_entry_15_newspaper_field(all_json_results: list) -> None:
     be consistent.
 
     Note:
-        This is to verify results to close issue #11
+        This is to verify correct results necessary to close issue #11
     """
     mitchells_entry_15: dict = all_json_results[7][14]
     assert mitchells_entry_15["model"] == "mitchells.entry"
     assert mitchells_entry_15["fields"]["title"].startswith("LLOYD'S WEEKLY")
     assert mitchells_entry_15["fields"]["newspaper"] == 1187
+
+
+@pytest.mark.xfail
+def test_mitchells_empty_newspaper_field(all_json_results: list) -> None:
+    """Test if any `Mitchells` `Entry` has an empty `Newspaper` field."""
+    empty_newspaper_records: list | dict = filter_json_fields(
+        all_json_results[7], fields=("newspaper",), value=""
+    )
+    # This currently fails in 878 cases
+    assert len(empty_newspaper_records) == 0

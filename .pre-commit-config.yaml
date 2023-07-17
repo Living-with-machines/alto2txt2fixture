@@ -59,3 +59,5 @@ repos:
         args: [--config-file, ./pyproject.toml]
         verbose: true
         entry: bash -c 'mypy "$@" || true' --
+        additional_dependencies:
+          - types-pytz

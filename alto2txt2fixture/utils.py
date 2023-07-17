@@ -1,8 +1,9 @@
 import datetime
 import json
 import logging
+from os import PathLike
 from pathlib import Path
-from typing import Union
+from typing import Hashable, Sequence, Union
 
 import pytz
 from numpy import array_split
@@ -100,6 +101,7 @@ def get_lockfile(collection: str, kind: str, dic: dict) -> Path:
     :return: Path to the resulting lockfile
     """
 
+    p: Path
     base = Path(f"cache-lockfiles/{collection}")
 
     if kind == "newspaper":
@@ -123,14 +125,12 @@ def get_lockfile(collection: str, kind: str, dic: dict) -> Path:
 
 
 def get_chunked_zipfiles(path: Path) -> list:
-    """
-    This function takes in a `Path` object `path` and returns a list of lists
+    """This function takes in a `Path` object `path` and returns a list of lists
     of `zipfiles` sorted and chunked according to certain conditions defined
     in the ``settings`` object (see ``settings.CHUNK_THRESHOLD``).
 
     Note: the function will also skip zip files of a certain file size, which
-    can be specified in the ``settings`` object (see
-    ``settings.SKIP_FILE_SIZE``).
+    can be specified in the ``settings`` object (see ``settings.SKIP_FILE_SIZE``).
 
     :param path: The input path where the zipfiles are located
     :return: A list of lists of ``zipfiles``, each inner list represents a
@@ -153,6 +153,22 @@ def get_chunked_zipfiles(path: Path) -> list:
     return chunks
 
 
+def get_path_from(p: Union[str, Path]) -> Path:
+    """
+    Converts an input value into a Path object if it's not already one.
+
+    :param p: The input value, which can be a string or a Path object.
+    :return: The input value as a Path object.
+    """
+    if isinstance(p, str):
+        p = Path(p)
+
+    if not isinstance(p, Path):
+        raise RuntimeError(f"Unable to handle type: {type(p)}")
+
+    return p
+
+
 def clear_cache(dir: Union[str, Path]) -> None:
     """
     Clears the cache directory by removing all `.json` files in it.
@@ -173,22 +189,6 @@ def clear_cache(dir: Union[str, Path]) -> None:
         [x.unlink() for x in dir.glob("*.json")]
 
     return
-
-
-def get_path_from(p: Union[str, Path]) -> Path:
-    """
-    Converts an input value into a Path object if it's not already one.
-
-    :param p: The input value, which can be a string or a Path object.
-    :return: The input value as a Path object.
-    """
-    if isinstance(p, str):
-        p = Path(p)
-
-    if not isinstance(p, Path):
-        raise RuntimeError(f"Unable to handle type: {type(p)}")
-
-    return p
 
 
 def get_size_from_path(p: Union[str, Path], raw: bool = False) -> Union[str, int]:
@@ -264,7 +264,7 @@ def write_json(p: Union[str, Path], o: dict, add_created: bool = True) -> None:
     return
 
 
-def load_json(p: Union[str, Path], crash: bool = False) -> dict:
+def load_json(p: Union[str, Path], crash: bool = False) -> dict | list:
     """
     Easier access to reading JSON files.
 
@@ -341,3 +341,77 @@ def load_multiple_json(
     content = [load_json(x, crash=crash) for x in files]
 
     return [x for x in content if x] if filter_na else content
+
+
+def filter_json_fields(
+    json_results: list | dict | None = None,
+    file_path: PathLike | None = None,
+    fields: Sequence[str] = [],
+    value: Hashable = "",
+    **kwargs,
+) -> dict | list:
+    """Return `keys` and `values` from `json_dict` where any `fields` equal `value`.
+
+    :param file_path: The file `path` to load based on extension and filter
+    :param fields: Which fields to check equal `value`
+    :param value: Value to filter by
+    :return: A `dict` of records indexed by `pk` which fit filter criteria
+
+    >>> from pprint import pprint
+    >>> entry_fixture: dict = [
+    ...     {"pk": 4889, "model": "mitchells.entry",
+    ...      "fields": {"title": "BIRMINGHAM POST .",
+    ...                 "price_raw": ['2d'],
+    ...                 "year": 1920,
+    ...                 "date_established_raw": "1857",
+    ...                 "persons": [], "newspaper": ""}},
+    ...      {"pk": 9207, "model": "mitchells.entry",
+    ...       "fields": {"title": "ULVERSTONE ADVERTISER .",
+    ...                  "price_raw": ['2 \u00bd d', '3 \u00bd d'],
+    ...                  "year": 1856,
+    ...                  "date_established_raw": "1848",
+    ...                  "persons": ['Stephen Soulby'],
+    ...                  "newspaper": "",}},
+    ...     {"pk": 15, "model": "mitchells.entry",
+    ...      "fields": {"title": "LLOYD'S WEEKLY LONDON NEWSPAPER .",
+    ...                 "price_raw": ['2d', '3d'],
+    ...                 "year": 1857,
+    ...                 "date_established_raw": "November , 1842",
+    ...                 "persons": ['Mr. Douglas Jerrold', 'Edward Lloyd'],
+    ...                 "newspaper": 1187}}
+    ...     ]
+    >>> pprint(filter_json_fields(entry_fixture, fields=("newspaper", "persons"), value=""))
+    [{'fields': {'date_established_raw': '1857',
+                 'newspaper': '',
+                 'persons': [],
+                 'price_raw': ['2d'],
+                 'title': 'BIRMINGHAM POST .',
+                 'year': 1920},
+      'model': 'mitchells.entry',
+      'pk': 4889},
+     {'fields': {'date_established_raw': '1848',
+                 'newspaper': '',
+                 'persons': ['Stephen Soulby'],
+                 'price_raw': ['2 \u00bd d', '3 \u00bd d'],
+                 'title': 'ULVERSTONE ADVERTISER .',
+                 'year': 1856},
+      'model': 'mitchells.entry',
+      'pk': 9207}]
+    """
+    if not json_results:
+        assert file_path
+        # if file_path.suffix == ".json":
+        json_results = load_json(Path(file_path), **kwargs)
+    assert json_results
+    if isinstance(json_results, dict):
+        return {
+            k: v
+            for k, v in json_results.items()
+            if any(v["fields"][field] == value for field in fields)
+        }
+    else:
+        return [
+            v
+            for v in json_results
+            if any(v["fields"][field] == value for field in fields)
+        ]
