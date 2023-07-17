@@ -54,11 +54,13 @@ def all_json_results(test_run) -> Generator[list, None, None]:
 
 
 @pytest.mark.slow
+@pytest.mark.downloads
 def test_download(uncached_folder) -> None:
     """Assuming intenet connectivity, test downloading needed files."""
     download_data()
 
 
+@pytest.mark.downloads
 def test_download_custom_folder(
     uncached_folder, test_admin_counties_config, capsys
 ) -> None:
@@ -115,7 +117,6 @@ def test_mitchells_entry_15_newspaper_field(all_json_results: list) -> None:
     assert mitchells_entry_15["fields"]["newspaper"] == 1187
 
 
-@pytest.mark.xfail
 def test_mitchells_empty_newspaper_field(all_json_results: list) -> None:
     """Test if any `Mitchells` `Entry` has an empty `Newspaper` field."""
     empty_newspaper_records: list | dict = filter_json_fields(
@@ -123,3 +124,12 @@ def test_mitchells_empty_newspaper_field(all_json_results: list) -> None:
     )
     # This currently fails in 878 cases
     assert len(empty_newspaper_records) == 0
+
+
+def test_correct_gazetteer_null(all_json_results: list) -> None:
+    """Test fixinging `Gazetteer` `AdminCounty` references."""
+    empty_gazetteer_place_records: list | dict = filter_json_fields(
+        all_json_results[6], fields=("admin_county",), value=""
+    )
+    # This currently fails in 1075 (all but 1) case(s)
+    assert len(empty_gazetteer_place_records) == 0

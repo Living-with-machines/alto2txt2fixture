@@ -134,11 +134,17 @@ def get_list(x):
 
 
 def csv2json_list(
-    csv_path: PathLike, output_path: Path = OUTPUT, saved: list[Path] | None = None
+    csv_path: PathLike,
+    output_path: Path = OUTPUT,
+    saved: list[Path] | None = None,
+    indent: int = 2,
 ) -> list:
     """Save `csv_path` as a `json` file and return as a `dict`."""
     json_data = []
-    df = pd.read_csv(csv_path, index_col=0).fillna("")
+    # See this suggestion for `nan` values: https://stackoverflow.com/a/62691803/678486
+    df = (
+        pd.read_csv(csv_path, index_col=0).fillna(np.nan).replace([np.nan], [None])
+    )  # fillna(None)
 
     if "political_leanings" in df.columns:
         df["political_leanings"] = df["political_leanings"].apply(json.loads)
@@ -152,7 +158,9 @@ def csv2json_list(
         json_data.append({"pk": pk, "model": model, "fields": fields})
 
     (Path(output_path) / csv_path).parent.mkdir(parents=True, exist_ok=True)
-    Path(output_path / f"{Path(csv_path).stem}.json").write_text(json.dumps(json_data))
+    Path(output_path / f"{Path(csv_path).stem}.json").write_text(
+        json.dumps(json_data, indent=indent)
+    )
     if not saved is None:
         saved.append(output_path / f"{Path(csv_path).stem}.json")
     return json_data

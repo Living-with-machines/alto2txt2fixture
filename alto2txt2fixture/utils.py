@@ -292,7 +292,7 @@ def list_json_files(
     drill: bool = False,
     exclude_names: list = [],
     include_names: list = [],
-) -> Generator[Path, None, None]:
+) -> Generator[Path, None, None] | list[Path]:
     """
     List JSON files under the path specified in ``p``.
 

@@ -50,7 +50,8 @@ addopts = """
 --durations=3
 """
 markers = [
-  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "slow: mark test as slow (deselect with '-m \"not slow\"')",
+  "downloads: mark test that downloads (deselect with '-m \"not downloads\"')",
 ]
 
 [tool.mypy]
