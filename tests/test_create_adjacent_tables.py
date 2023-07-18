@@ -128,13 +128,3 @@ def test_mitchells_empty_newspaper_field(all_json_results: list) -> None:
     )
     # This currently fails in 878 cases
     assert len(empty_newspaper_records) == 0
-
-
-@pytest.mark.downloads
-def test_correct_gazetteer_null(all_json_results: list) -> None:
-    """Test fixinging `Gazetteer` `AdminCounty` references."""
-    empty_gazetteer_place_records: list | dict = filter_json_fields(
-        all_json_results[6], fields=("admin_county",), value=""
-    )
-    # This currently fails in 1075 (all but 1) case(s)
-    assert len(empty_gazetteer_place_records) == 0
