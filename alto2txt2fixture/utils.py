@@ -69,13 +69,13 @@ def create_lookup(lst: list = [], on: list = []) -> dict:
 
 def glob_filter(p: str) -> list:
     """
-    Assists Python with filtering out any pesky, unwanted .DS_Store from macOS.
+    Return ordered glob, filtered out any pesky, unwanted .DS_Store from macOS.
 
     :param p: Path to a directory to filter
-    :return: List of files contained in the provided path without the ones
+    :return: Sorted list of files contained in the provided path without the ones
         whose names start with a "."
     """
-    return [x for x in get_path_from(p).glob("*") if not x.name.startswith(".")]
+    return sorted([x for x in get_path_from(p).glob("*") if not x.name.startswith(".")])
 
 
 def lock(lockfile: Path) -> None:
@@ -308,15 +308,15 @@ def list_json_files(
     :return: A list of `Path` objects pointing to the found JSON files
     """
 
-    q = "**/*.json" if drill else "*.json"
+    q: str = "**/*.json" if drill else "*.json"
     files = get_path_from(p).glob(q)
 
     if exclude_names:
-        return list({x for x in files if x.name not in exclude_names})
+        files = list({x for x in files if x.name not in exclude_names})
     elif include_names:
-        return list({x for x in files if x.name in include_names})
+        files = list({x for x in files if x.name in include_names})
 
-    return files
+    return sorted(files)
 
 
 def load_multiple_json(

@@ -5,7 +5,7 @@ description = ""
 authors = ["Kalle Westerling <kalle.westerling@bl.uk>"]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 tqdm = "^4.65.0"
 pandas = "^2.0.3"
 colorama = "^0.4.6"

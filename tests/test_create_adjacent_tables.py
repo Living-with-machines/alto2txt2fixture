@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Generator
 
 import pytest
 from _pytest.capture import CaptureResult
@@ -15,9 +14,8 @@ from alto2txt2fixture.create_adjacent_tables import (
     TableOutputConfigType,
     csv2json_list,
     download_data,
-    run,
 )
-from alto2txt2fixture.utils import filter_json_fields, load_json, load_multiple_json
+from alto2txt2fixture.utils import filter_json_fields, load_json
 
 
 @pytest.fixture()
@@ -35,31 +33,6 @@ def test_admin_counties_config() -> RemoteDataFilesType:
     }
 
 
-@pytest.fixture(scope="module")
-def test_run() -> None:
-    """Test run, using `cached` data if available.
-
-    Note:
-        This fixture is designed to ensure tests of `run` results, and
-        should be included as a parameter to ensure `run()` has concluded
-        prior to testing local results.
-    """
-    run()
-
-
-@pytest.fixture(scope="module")
-def all_json_results(test_run) -> Generator[list, None, None]:
-    """Return read exported `Mitchells` dataset."""
-    yield load_multiple_json(Path(OUTPUT))
-
-
-@pytest.mark.slow
-@pytest.mark.downloads
-def test_download(uncached_folder) -> None:
-    """Assuming intenet connectivity, test downloading needed files."""
-    download_data()
-
-
 @pytest.mark.downloads
 def test_download_custom_folder(
     uncached_folder, test_admin_counties_config, capsys
@@ -72,8 +45,8 @@ def test_download_custom_folder(
 
 
 @pytest.mark.downloads
-def test_local_result_paths(test_run) -> None:
-    """Test `Mitchells` `Entry` `json` and `csv` results."""
+def test_local_result_paths(adjacent_data_run_results) -> None:
+    """Test `Mitchells` and `Gazetteer` `json` and `csv` results."""
     for data_paths in FILES.values():
         assert data_paths["local"].is_file()
     all_outfiles: TableOutputConfigType = (
@@ -85,7 +58,7 @@ def test_local_result_paths(test_run) -> None:
 
 
 @pytest.mark.downloads
-def test_csv2json_list(test_run) -> None:
+def test_csv2json_list(adjacent_data_run_results) -> None:
     """Test converting a `csv` file to `json` `Django` `fixture`."""
     test_mitchells_write_folder: Path = Path("test_mitchells")
     mitchells_issue_csv_path: Path = (
@@ -103,10 +76,12 @@ def test_csv2json_list(test_run) -> None:
 
 
 @pytest.mark.downloads
-def test_mitchells_entry_15_newspaper_field(all_json_results: list) -> None:
+def test_mitchells_entry_15_newspaper_field(
+    all_create_adjacent_tables_json_results: list,
+) -> None:
     """Test `Mitchells` `Entry` 15 `json` and `csv` results.
 
-    The `all_json_results` fixture should provide a `list` of results in a
+    The `all_create_adjacent_tables_json_results` fixture should provide a `list` of results in a
     consistent order using `load_multiple_json`. Ideally this is as a `dict`
     rather than a list for indexing but for now assuming the list order will
     be consistent.
@@ -114,17 +89,29 @@ def test_mitchells_entry_15_newspaper_field(all_json_results: list) -> None:
     Note:
         This is to verify correct results necessary to close issue #11
     """
-    mitchells_entry_15: dict = all_json_results[7][14]
+    mitchells_entry_15: dict = all_create_adjacent_tables_json_results[4][15]
     assert mitchells_entry_15["model"] == "mitchells.entry"
     assert mitchells_entry_15["fields"]["title"].startswith("LLOYD'S WEEKLY")
     assert mitchells_entry_15["fields"]["newspaper"] == 1187
 
 
 @pytest.mark.downloads
-def test_mitchells_empty_newspaper_field(all_json_results: list) -> None:
+def test_mitchells_empty_newspaper_field(
+    all_create_adjacent_tables_json_results: list,
+) -> None:
     """Test if any `Mitchells` `Entry` has an empty `Newspaper` field."""
     empty_newspaper_records: list | dict = filter_json_fields(
-        all_json_results[7], fields=("newspaper",), value=""
+        all_create_adjacent_tables_json_results[4], fields=("newspaper",), value=""
     )
-    # This currently fails in 878 cases
+    # This originally failed in 878 cases
     assert len(empty_newspaper_records) == 0
+
+
+@pytest.mark.downloads
+def test_correct_gazetteer_null(all_create_adjacent_tables_json_results: list) -> None:
+    """Test fixinging `Gazetteer` `AdminCounty` references."""
+    empty_gazetteer_place_records: list | dict = filter_json_fields(
+        all_create_adjacent_tables_json_results[3], fields=("admin_county",), value=""
+    )
+    # This originally failed in 1075 (all but 1) case(s)
+    assert len(empty_gazetteer_place_records) == 0
