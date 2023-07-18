@@ -71,6 +71,7 @@ def test_download_custom_folder(
     )
 
 
+@pytest.mark.downloads
 def test_local_result_paths(test_run) -> None:
     """Test `Mitchells` `Entry` `json` and `csv` results."""
     for data_paths in FILES.values():
@@ -83,6 +84,7 @@ def test_local_result_paths(test_run) -> None:
         assert Path(OUTPUT / paths_dict["json"]).is_file()
 
 
+@pytest.mark.downloads
 def test_csv2json_list(test_run) -> None:
     """Test converting a `csv` file to `json` `Django` `fixture`."""
     test_mitchells_write_folder: Path = Path("test_mitchells")
@@ -100,6 +102,7 @@ def test_csv2json_list(test_run) -> None:
     assert mitchells_json == mitchells_out
 
 
+@pytest.mark.downloads
 def test_mitchells_entry_15_newspaper_field(all_json_results: list) -> None:
     """Test `Mitchells` `Entry` 15 `json` and `csv` results.
 
@@ -117,6 +120,7 @@ def test_mitchells_entry_15_newspaper_field(all_json_results: list) -> None:
     assert mitchells_entry_15["fields"]["newspaper"] == 1187
 
 
+@pytest.mark.downloads
 def test_mitchells_empty_newspaper_field(all_json_results: list) -> None:
     """Test if any `Mitchells` `Entry` has an empty `Newspaper` field."""
     empty_newspaper_records: list | dict = filter_json_fields(
@@ -126,6 +130,7 @@ def test_mitchells_empty_newspaper_field(all_json_results: list) -> None:
     assert len(empty_newspaper_records) == 0
 
 
+@pytest.mark.downloads
 def test_correct_gazetteer_null(all_json_results: list) -> None:
     """Test fixinging `Gazetteer` `AdminCounty` references."""
     empty_gazetteer_place_records: list | dict = filter_json_fields(
