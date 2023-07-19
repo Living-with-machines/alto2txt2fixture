@@ -1,13 +1,24 @@
 import datetime
 import json
+import logging
+from os import PathLike
 from pathlib import Path
-from typing import Union
+from typing import Generator, Hashable, Sequence, Union
 
 import pytz
 from numpy import array_split
+from rich.logging import RichHandler
 
 from .log import error, info
 from .settings import settings
+
+FORMAT: str = "%(message)s"
+
+logging.basicConfig(
+    level="NOTSET", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+)
+
+logger = logging.getLogger("rich")
 
 
 def get_now(as_str: bool = False) -> Union[datetime.datetime, str]:
@@ -23,8 +34,9 @@ def get_now(as_str: bool = False) -> Union[datetime.datetime, str]:
 
     if as_str:
         return str(now)
-
-    return now
+    else:
+        assert isinstance(now, datetime.datetime)
+        return now
 
 
 NOW_str = get_now(as_str=True)
@@ -57,13 +69,13 @@ def create_lookup(lst: list = [], on: list = []) -> dict:
 
 def glob_filter(p: str) -> list:
     """
-    Assists Python with filtering out any pesky, unwanted .DS_Store from macOS.
+    Return ordered glob, filtered out any pesky, unwanted .DS_Store from macOS.
 
     :param p: Path to a directory to filter
-    :return: List of files contained in the provided path without the ones
+    :return: Sorted list of files contained in the provided path without the ones
         whose names start with a "."
     """
-    return [x for x in get_path_from(p).glob("*") if not x.name.startswith(".")]
+    return sorted([x for x in get_path_from(p).glob("*") if not x.name.startswith(".")])
 
 
 def lock(lockfile: Path) -> None:
@@ -90,6 +102,7 @@ def get_lockfile(collection: str, kind: str, dic: dict) -> Path:
     :return: Path to the resulting lockfile
     """
 
+    p: Path
     base = Path(f"cache-lockfiles/{collection}")
 
     if kind == "newspaper":
@@ -113,14 +126,12 @@ def get_lockfile(collection: str, kind: str, dic: dict) -> Path:
 
 
 def get_chunked_zipfiles(path: Path) -> list:
-    """
-    This function takes in a `Path` object `path` and returns a list of lists
+    """This function takes in a `Path` object `path` and returns a list of lists
     of `zipfiles` sorted and chunked according to certain conditions defined
     in the ``settings`` object (see ``settings.CHUNK_THRESHOLD``).
 
     Note: the function will also skip zip files of a certain file size, which
-    can be specified in the ``settings`` object (see
-    ``settings.SKIP_FILE_SIZE``).
+    can be specified in the ``settings`` object (see ``settings.SKIP_FILE_SIZE``).
 
     :param path: The input path where the zipfiles are located
     :return: A list of lists of ``zipfiles``, each inner list represents a
@@ -143,28 +154,6 @@ def get_chunked_zipfiles(path: Path) -> list:
     return chunks
 
 
-def clear_cache(dir: Union[str, Path]) -> None:
-    """
-    Clears the cache directory by removing all `.json` files in it.
-
-    :param dir: The path of the directory to be cleared.
-    :return: None
-    """
-
-    dir = get_path_from(dir)
-
-    y = input(
-        f"Do you want to erase the cache path now that the files have been \
-        generated ({dir.absolute()})? [y/N]"
-    )
-
-    if y.lower() == "y":
-        info("Clearing up the cache directory")
-        [x.unlink() for x in dir.glob("*.json")]
-
-    return
-
-
 def get_path_from(p: Union[str, Path]) -> Path:
     """
     Converts an input value into a Path object if it's not already one.
@@ -181,7 +170,28 @@ def get_path_from(p: Union[str, Path]) -> Path:
     return p
 
 
-def get_size_from_path(p: Union[str, Path], raw: bool = False) -> Union[str, int]:
+def clear_cache(dir: Union[str, Path]) -> None:
+    """
+    Clears the cache directory by removing all `.json` files in it.
+
+    :param dir: The path of the directory to be cleared.
+    :return: None
+    """
+
+    dir = get_path_from(dir)
+
+    y = input(
+        f"Do you want to erase the cache path now that the "
+        f"files have been generated ({dir.absolute()})? [y/N]"
+    )
+
+    if y.lower() == "y":
+        info("Clearing up the cache directory")
+        for x in dir.glob("*.json"):
+            x.unlink()
+
+
+def get_size_from_path(p: str | Path, raw: bool = False) -> str | int | float:
     """
     Returns a nice string for any given file size.
 
@@ -197,7 +207,9 @@ def get_size_from_path(p: Union[str, Path], raw: bool = False) -> Union[str, int
     if raw:
         return bytes
 
-    rel_size = round(bytes / 1000 / 1000 / 1000, 1)
+    rel_size: float | int | str = round(bytes / 1000 / 1000 / 1000, 1)
+
+    assert not isinstance(rel_size, str)
 
     if rel_size < 0.5:
         rel_size = round(bytes / 1000 / 1000, 1)
@@ -254,11 +266,11 @@ def write_json(p: Union[str, Path], o: dict, add_created: bool = True) -> None:
     return
 
 
-def load_json(p: Union[str, Path], crash: bool = False) -> dict:
+def load_json(p: Union[str, Path], crash: bool = False) -> dict | list:
     """
     Easier access to reading JSON files.
 
-    :param p: Path to lead JSON from
+    :param p: Path to read JSON from
     :param crash: Whether the program should crash if there is a JSON decode
         error, default: ``False``
     :return: The decoded JSON contents from the path, but an empty dictionary
@@ -281,7 +293,7 @@ def list_json_files(
     drill: bool = False,
     exclude_names: list = [],
     include_names: list = [],
-) -> list:
+) -> Generator[Path, None, None] | list[Path]:
     """
     List JSON files under the path specified in ``p``.
 
@@ -296,15 +308,15 @@ def list_json_files(
     :return: A list of `Path` objects pointing to the found JSON files
     """
 
-    q = "**/*.json" if drill else "*.json"
+    q: str = "**/*.json" if drill else "*.json"
     files = get_path_from(p).glob(q)
 
     if exclude_names:
-        return list({x for x in files if x.name not in exclude_names})
+        files = list({x for x in files if x.name not in exclude_names})
     elif include_names:
-        return list({x for x in files if x.name in include_names})
+        files = list({x for x in files if x.name in include_names})
 
-    return files
+    return sorted(files)
 
 
 def load_multiple_json(
@@ -331,3 +343,77 @@ def load_multiple_json(
     content = [load_json(x, crash=crash) for x in files]
 
     return [x for x in content if x] if filter_na else content
+
+
+def filter_json_fields(
+    json_results: list | dict | None = None,
+    file_path: PathLike | None = None,
+    fields: Sequence[str] = [],
+    value: Hashable = "",
+    **kwargs,
+) -> dict | list:
+    """Return `keys` and `values` from `json_dict` where any `fields` equal `value`.
+
+    :param file_path: The file `path` to load based on extension and filter
+    :param fields: Which fields to check equal `value`
+    :param value: Value to filter by
+    :return: A `dict` of records indexed by `pk` which fit filter criteria
+
+    >>> from pprint import pprint
+    >>> entry_fixture: dict = [
+    ...     {"pk": 4889, "model": "mitchells.entry",
+    ...      "fields": {"title": "BIRMINGHAM POST .",
+    ...                 "price_raw": ['2d'],
+    ...                 "year": 1920,
+    ...                 "date_established_raw": "1857",
+    ...                 "persons": [], "newspaper": ""}},
+    ...      {"pk": 9207, "model": "mitchells.entry",
+    ...       "fields": {"title": "ULVERSTONE ADVERTISER .",
+    ...                  "price_raw": ['2 \u00bd d', '3 \u00bd d'],
+    ...                  "year": 1856,
+    ...                  "date_established_raw": "1848",
+    ...                  "persons": ['Stephen Soulby'],
+    ...                  "newspaper": "",}},
+    ...     {"pk": 15, "model": "mitchells.entry",
+    ...      "fields": {"title": "LLOYD'S WEEKLY LONDON NEWSPAPER .",
+    ...                 "price_raw": ['2d', '3d'],
+    ...                 "year": 1857,
+    ...                 "date_established_raw": "November , 1842",
+    ...                 "persons": ['Mr. Douglas Jerrold', 'Edward Lloyd'],
+    ...                 "newspaper": 1187}}
+    ...     ]
+    >>> pprint(filter_json_fields(entry_fixture, fields=("newspaper", "persons"), value=""))
+    [{'fields': {'date_established_raw': '1857',
+                 'newspaper': '',
+                 'persons': [],
+                 'price_raw': ['2d'],
+                 'title': 'BIRMINGHAM POST .',
+                 'year': 1920},
+      'model': 'mitchells.entry',
+      'pk': 4889},
+     {'fields': {'date_established_raw': '1848',
+                 'newspaper': '',
+                 'persons': ['Stephen Soulby'],
+                 'price_raw': ['2 \u00bd d', '3 \u00bd d'],
+                 'title': 'ULVERSTONE ADVERTISER .',
+                 'year': 1856},
+      'model': 'mitchells.entry',
+      'pk': 9207}]
+    """
+    if not json_results:
+        assert file_path
+        # if file_path.suffix == ".json":
+        json_results = load_json(Path(file_path), **kwargs)
+    assert json_results
+    if isinstance(json_results, dict):
+        return {
+            k: v
+            for k, v in json_results.items()
+            if any(v["fields"][field] == value for field in fields)
+        }
+    else:
+        return [
+            v
+            for v in json_results
+            if any(v["fields"][field] == value for field in fields)
+        ]
