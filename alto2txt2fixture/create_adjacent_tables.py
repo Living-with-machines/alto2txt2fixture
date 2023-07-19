@@ -223,15 +223,15 @@ def download_data(
     Excluding Newspaper-1...
     Excluding linking...
     Downloading cache/dict_admin_counties.json
-    100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 37/37 bytes
+    100% ... 37/37 bytes
     Downloading cache/dict_countries.json
-    100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 33.2/33.2 kB
+    100% ... 33.2/33.2 kB
     Downloading cache/dict_historic_counties.json
-    100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 41.4/41.4 kB
+    100% ... 41.4/41.4 kB
     Downloading cache/nlp_loc_wikidata_concat.csv
-    100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 59.8/59.8 kB
+    100% ... 59.8/59.8 kB
     Downloading cache/wikidata_gazetteer_selected_columns.csv
-    100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 47.8/47.8 MB
+    100% ... 47.8/47.8 MB
     """
     if not files_dict:
         files_dict = deepcopy(FILES)
