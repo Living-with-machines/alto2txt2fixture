@@ -39,6 +39,7 @@ plugins:
             separate_signature: true
             show_signature_annotations: true
             line_length: 80
+            annotations_path: brief
 
 markdown_extensions:
   - admonition
