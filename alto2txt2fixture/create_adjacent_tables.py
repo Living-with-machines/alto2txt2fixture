@@ -59,13 +59,20 @@ TableOutputConfigType = dict[str, OutputPathDict]
 def get_outpaths_dict(names: Sequence[str], module_name: str) -> TableOutputConfigType:
     """Return a `dict` of `csv` and `json` paths for each `module_name` table.
 
-    >>> from pprint import pprint
-    >>> pprint(get_outpaths_dict(MITCHELLS_TABELS, "mitchells"))
-    {'Entry': {'csv': 'mitchells.Entry.csv', 'json': 'mitchells.Entry.json'},
-     'Issue': {'csv': 'mitchells.Issue.csv', 'json': 'mitchells.Issue.json'},
-     'PoliticalLeaning': {'csv': 'mitchells.PoliticalLeaning.csv',
-                          'json': 'mitchells.PoliticalLeaning.json'},
-     'Price': {'csv': 'mitchells.Price.csv', 'json': 'mitchells.Price.json'}}
+    The `csv` and `json` paths
+
+    :param names: iterable of names of each `module_name`'s component. Main target is `csv` and `json` table names
+    :param module_name: name of module each name is part of, that is added as a prefix
+
+    :Examples:
+
+        >>> from pprint import pprint
+        >>> pprint(get_outpaths_dict(MITCHELLS_TABELS, "mitchells"))
+        {'Entry': {'csv': 'mitchells.Entry.csv', 'json': 'mitchells.Entry.json'},
+         'Issue': {'csv': 'mitchells.Issue.csv', 'json': 'mitchells.Issue.json'},
+         'PoliticalLeaning': {'csv': 'mitchells.PoliticalLeaning.csv',
+                              'json': 'mitchells.PoliticalLeaning.json'},
+         'Price': {'csv': 'mitchells.Price.csv', 'json': 'mitchells.Price.json'}}
     """
     return {
         name: OutputPathDict(
@@ -215,23 +222,31 @@ def download_data(
 ) -> None:
     """Download files in `files_dict`, overwrite if specified.
 
-    >>> from pathlib import Path
-    >>> tmp: Path = getfixture('tmpdir')
-    >>> set_path: Path = tmp.chdir()
-    >>> download_data(exclude=["mitchells", "Newspaper-1", "linking"]) # doctest: +ELLIPSIS
-    Excluding mitchells...
-    Excluding Newspaper-1...
-    Excluding linking...
-    Downloading cache...dict_admin_counties.json
-    100% ... 37/37 bytes
-    Downloading cache...dict_countries.json
-    100% ... 33.2/33.2 kB
-    Downloading cache...dict_historic_counties.json
-    100% ... 41.4/41.4 kB
-    Downloading cache...nlp_loc_wikidata_concat.csv
-    100% ... 59.8/59.8 kB
-    Downloading cache...wikidata_gazetteer_selected_columns.csv
-    100% ... 47.8/47.8 MB
+    :param files_dict: dict of related files to download
+    :param overwrite: bool on whether to overwrite `LOCAL_CACHE` files
+    :param exclude: list[str] of files to exclude from `files_dict`
+
+    :Examples:
+
+        >>> from pathlib import Path
+        >>> tmp: Path = getfixture('tmpdir')
+        >>> set_path: Path = tmp.chdir()
+        >>> download_data(exclude=[
+        ...     "mitchells", "Newspaper-1", "linking"
+        ... ])  # doctest: +ELLIPSIS
+        Excluding mitchells...
+        Excluding Newspaper-1...
+        Excluding linking...
+        Downloading cache...dict_admin_counties.json
+        100% ... 37/37 bytes
+        Downloading cache...dict_countries.json
+        100% ... 33.2/33.2 kB
+        Downloading cache...dict_historic_counties.json
+        100% ... 41.4/41.4 kB
+        Downloading cache...nlp_loc_wikidata_concat.csv
+        100% ... 59.8/59.8 kB
+        Downloading cache...wikidata_gazetteer_selected_columns.csv
+        100% ... 47.8/47.8 MB
     """
     if not files_dict:
         files_dict = deepcopy(FILES)

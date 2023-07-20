@@ -25,6 +25,7 @@ mkdocs-section-index = "^0.3.5"
 mkdocs-literate-nav = "^0.6.0"
 mkdocstrings-python = "^1.1.2"
 mypy = "^1.4.1"
+black = "^23.7.0"
 
 [tool.isort]
 profile = "black"

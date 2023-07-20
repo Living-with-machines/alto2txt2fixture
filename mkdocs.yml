@@ -22,7 +22,8 @@ nav:
   - Code Reference: reference/
 
 plugins:
-  - search
+  - search:
+      lang: en
   - gen-files:
       scripts:
         - docs/gen_ref_pages.py
@@ -30,11 +31,14 @@ plugins:
       nav_file: SUMMARY.md
   - section-index
   - mkdocstrings:
-      default_handler: python
       handlers:
         python:
+          paths: [alto2txt2fixture]
           options:
             docstring_style: sphinx
+            separate_signature: true
+            show_signature_annotations: true
+            line_length: 80
 
 markdown_extensions:
   - admonition
