@@ -4,7 +4,7 @@
 
 `alto2txt2fixture` is a standalone tool to convert [`alto2txt`](https://github.org/living-with-machines/alto2txt) `XML` output and other related datasets into `JSON` (and where feasible `CSV`) data with corresponding relational IDs to ease general use and ingestion into a relational database.
 
-We target the the `JSON` produced for importing into [`lwmdb`](https://github.org/living-with-machines/lwmdb): a database built using the [`Django`](https://www.djangoproject.com/) `python` webframework database [`fixutre`](https://docs.djangoproject.com/en/4.2/topics/db/fixtures) structure.
+We target the the `JSON` produced for importing into [`lwmdb`](https://github.org/living-with-machines/lwmdb): a database built using the [`Django`](https://www.djangoproject.com/) `python` webframework database [`fixture`](https://docs.djangoproject.com/en/4.2/topics/db/fixtures) structure.
 
 ## Installation and simple use
 
