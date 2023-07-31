@@ -23,7 +23,7 @@ If the script is run as a main program (i.e., if the name of the script is
 __main__), the ``run`` function is executed.
 """
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, BooleanOptionalAction
 
 from alto2txt2fixture.parser import parse
 from alto2txt2fixture.router import route
@@ -54,10 +54,17 @@ def parse_args(argv=None):
         help="<Optional> Set an output directory",
         required=False,
     )
+    parser.add_argument(
+        "-t",
+        "--test-config",
+        default=False,
+        help="Only print the configuration",
+        action=BooleanOptionalAction,
+    )
     return parser.parse_args(argv)
 
 
-def run():
+def run(test_config: bool = False) -> None:
     """
     The run function is the main function that starts the alto2txt2fixture
     process.
@@ -77,8 +84,6 @@ def run():
 
     Finally, the ``clear_cache`` function is called to clear the cache
     (pending the user's confirmation).
-
-    :return: None
     """
 
     args = parse_args()
@@ -107,25 +112,25 @@ def run():
         REPORT_DIR=settings.REPORT_DIR,
         MAX_ELEMENTS_PER_FILE=settings.MAX_ELEMENTS_PER_FILE,
     )
+    if not args.test_config and not test_config:
+        # Routing alto2txt into subdirectories with structured files
+        route(
+            COLLECTIONS,
+            settings.CACHE_HOME,
+            MOUNTPOINT,
+            settings.JISC_PAPERS_CSV,
+            settings.REPORT_DIR,
+        )
 
-    # Routing alto2txt into subdirectories with structured files
-    route(
-        COLLECTIONS,
-        settings.CACHE_HOME,
-        MOUNTPOINT,
-        settings.JISC_PAPERS_CSV,
-        settings.REPORT_DIR,
-    )
+        # Parsing the resulting JSON files
+        parse(
+            COLLECTIONS,
+            settings.CACHE_HOME,
+            OUTPUT,
+            settings.MAX_ELEMENTS_PER_FILE,
+        )
 
-    # Parsing the resulting JSON files
-    parse(
-        COLLECTIONS,
-        settings.CACHE_HOME,
-        OUTPUT,
-        settings.MAX_ELEMENTS_PER_FILE,
-    )
-
-    clear_cache(settings.CACHE_HOME)
+        clear_cache(settings.CACHE_HOME)
 
 
 if __name__ == "__main__":

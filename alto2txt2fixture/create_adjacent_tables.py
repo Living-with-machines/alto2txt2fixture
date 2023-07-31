@@ -61,11 +61,15 @@ def get_outpaths_dict(names: Sequence[str], module_name: str) -> TableOutputConf
 
     The `csv` and `json` paths
 
-    :param names: iterable of names of each `module_name`'s component. Main target is `csv` and `json` table names
-    :param module_name: name of module each name is part of, that is added as a prefix
+    Args:
+        names: iterable of names of each `module_name`'s component. Main target is `csv` and `json` table names
+        module_name: name of module each name is part of, that is added as a prefix
 
-    :Examples:
+    Returns:
+        A ``TableOutputConfigType``: a `dict` of table ``names`` and output
+            `csv` and `json` filenames.
 
+    Examples:
         >>> from pprint import pprint
         >>> pprint(get_outpaths_dict(MITCHELLS_TABELS, "mitchells"))
         {'Entry': {'csv': 'mitchells.Entry.csv', 'json': 'mitchells.Entry.json'},
@@ -146,7 +150,7 @@ def csv2json_list(
     saved: list[Path] | None = None,
     indent: int = 2,
 ) -> list:
-    """Save `csv_path` as a `json` file and return as a `dict`."""
+    """Save `csv_path` as a `json` file and return as a `list`."""
     json_data = []
     # See this suggestion for `nan` values: https://stackoverflow.com/a/62691803/678486
     df = (
@@ -220,15 +224,14 @@ def download_data(
     overwrite: bool = OVERWRITE,
     exclude: list[str] = [],
 ) -> None:
-    """Download files in `files_dict`, overwrite if specified.
+    """Download files in ``files_dict``, overwrite if specified.
 
-    :param files_dict: dict of related files to download
-    :param overwrite: bool on whether to overwrite `LOCAL_CACHE` files
-    :param exclude: list[str] of files to exclude from `files_dict`
+    Args:
+        files_dict: `dict` of related files to download
+        overwrite: `bool` to overwrite ``LOCAL_CACHE`` files or not
+        exclude: `list` of files to exclude from ``files_dict``
 
-    :Examples:
-
-        >>> from pathlib import Path
+    Examples:
         >>> tmp: Path = getfixture('tmpdir')
         >>> set_path: Path = tmp.chdir()
         >>> download_data(exclude=[
@@ -293,7 +296,7 @@ def run(
     time_stamp: str = "",
     output_path: Path = OUTPUT,
 ) -> None:
-    """Download, process and link `files_dict` to `json` and `csv`."""
+    """Download, process and link ``files_dict`` to `json` and `csv`."""
 
     # Ensure time_stamp from the point of calling `run`
     if not time_stamp:

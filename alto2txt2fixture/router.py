@@ -1,8 +1,7 @@
-import json
 import uuid
 import zipfile
 from pathlib import Path
-from typing import Optional
+from typing import Generator, Optional
 from xml.etree import ElementTree as ET
 
 import pandas as pd
@@ -11,7 +10,8 @@ from tqdm import tqdm
 from .jisc import get_jisc_title, setup_jisc_papers
 from .log import error, warning
 from .patterns import PUBLICATION_CODE
-from .types import dotdict
+from .settings import NEWSPAPER_COLLECTION_METADATA
+from .types import FixtureDict, dotdict
 from .utils import get_now, get_size_from_path, write_json
 
 
@@ -79,21 +79,16 @@ class Cache:
 
 
 class Newspaper(Cache):
-    """
-    The Newspaper class extends the Cache class and represents a newspaper.
+    """The Newspaper class extends the Cache class and represents a newspaper.
+
     The class has several properties and methods that allow the creation of a
     newspaper object and the manipulation of its data.
 
-    Arguments:
-        root (xml.etree.ElementTree.Element):
-            An xml element that represents the root of the publication.
-        collection (str):
-            A string that represents the collection of the publication.
-        meta (dotdict):
-            A dotdict object that holds metadata about the publication.
-        jisc_papers (pandas.DataFrame, optional):
-            A pandas DataFrame object that holds information about the JISC
-            papers.
+    Attributes:
+        root: An xml element that represents the root of the publication.
+        collection: A string that represents the collection of the publication.
+        meta: A dotdict object that holds metadata about the publication.
+        jisc_papers: A pandas DataFrame object for JISC paper information.
     """
 
     kind = "newspaper"
@@ -141,7 +136,7 @@ class Newspaper(Cache):
         A property that returns the title of the newspaper.
 
         Returns:
-            str: The title of the newspaper
+            The title of the newspaper
         """
         if not self._title:
             try:
@@ -194,7 +189,7 @@ class Newspaper(Cache):
         object.
 
         Returns:
-            dict: Dictionary representation of the Newspaper object
+            Dictionary representation of the Newspaper object
         """
 
         if not self._newspaper:
@@ -214,7 +209,7 @@ class Newspaper(Cache):
         the publication process.
 
         Returns:
-            str: The code of the publication
+            The code of the publication
         """
 
         g = PUBLICATION_CODE.findall(self.input_sub_path)
@@ -228,7 +223,7 @@ class Newspaper(Cache):
         A property that returns the code of the publication.
 
         Returns:
-            str: The code of the publication
+            The code of the publication
         """
         if not self._publication_code:
             self._publication_code = self.publication.attrib.get("id")
@@ -304,7 +299,7 @@ class Newspaper(Cache):
         Returns the nested directories in which we want to save the cache file.
 
         Returns:
-            list: List of the desired directories in descending order
+            List of the desired directories in descending order
         """
 
         number_paths = [x for x in self.publication_code.lstrip("0")[:2]]
@@ -319,8 +314,7 @@ class Newspaper(Cache):
         Returns the path to the cache file for the newspaper object.
 
         Returns:
-            pathlib.Path
-                Path to the cache file for the newspaper object
+            Path to the cache file for the newspaper object
         """
         json_file = f"/{self.publication_code}/{self.publication_code}.json"
 
@@ -335,20 +329,20 @@ class Item(Cache):
     item, i.e. an article. The class has several properties and methods that
     allow the creation of an article object and the manipulation of its data.
 
-    Arguments:
-        root (xml.etree.ElementTree.Element):
+    Attributes:
+        root:
             An xml element that represents the root of the publication
-        issue_code (str):
+        issue_code:
             A string that represents the issue code
-        digitisation (dict):
+        digitisation:
             TODO
-        ingest (dict):
+        ingest:
             TODO
-        collection (str):
+        collection:
             A string that represents the collection of the publication
-        newspaper (router.Newspaper, optional):
+        newspaper:
             The parent newspaper
-        meta (dotdict):
+        meta:
             TODO
     """
 
@@ -408,7 +402,7 @@ class Item(Cache):
         (i.e. article).
 
         Returns:
-            dict: Dictionary representation of the Item object
+            Dictionary representation of the Item object
         """
 
         if not self._item:
@@ -459,7 +453,7 @@ class Item(Cache):
         Returns the path to the cache file for the item (article) object.
 
         Returns:
-            pathlib.Path: Path to the cache file for the article object
+            Path to the cache file for the article object
         """
         return Path(
             f"{CACHE_HOME}/{self.collection}/"
@@ -491,7 +485,7 @@ class Issue(Cache):
     The class has several properties and methods that allow the creation of an
     issue object and the manipulation of its data.
 
-    Arguments:
+    Attributes:
         root (xml.etree.ElementTree.Element):
             An xml element that represents the root of the publication
         newspaper (router.Newspaper, optional):
@@ -560,7 +554,7 @@ class Issue(Cache):
         object.
 
         Returns:
-            dict: Dictionary representation of the Issue object
+            Dictionary representation of the Issue object
         """
 
         if not self._issue:
@@ -578,7 +572,7 @@ class Issue(Cache):
         Returns the path to the cache file for the issue object.
 
         Returns:
-            pathlib.Path: Path to the cache file for the issue object
+            Path to the cache file for the issue object
         """
 
         json_file = f"/{self.newspaper.publication_code}/issues/{self.issue_code}.json"
@@ -596,11 +590,9 @@ class Ingest(Cache):
     The class has several properties and methods that allow the creation of an
     ingest object and the manipulation of its data.
 
-    Arguments:
-        root (xml.etree.ElementTree.Element):
-            An xml element that represents the root of the publication
-        collection (str):
-            A string that represents the collection of the publication
+    Attributes:
+        root: An xml element that represents the root of the publication
+        collection: A string that represents the collection of the publication
     """
 
     kind = "ingest"
@@ -621,7 +613,7 @@ class Ingest(Cache):
         object.
 
         Returns:
-            dict: Dictionary representation of the Ingest object
+            Dictionary representation of the Ingest object
         """
         return {
             f"lwm_tool_{x.tag}": x.text or ""
@@ -640,11 +632,9 @@ class Digitisation(Cache):
     digitisation. The class has several properties and methods that allow
     creation of an digitisation object and the manipulation of its data.
 
-    Arguments:
-        root (xml.etree.ElementTree.Element):
-            An xml element that represents the root of the publication
-        collection (str):
-            A string that represents the collection of the publication
+    Attributes:
+        root: An xml element that represents the root of the publication
+        collection: A string that represents the collection of the publication
     """
 
     kind = "digitisation"
@@ -657,8 +647,8 @@ class Digitisation(Cache):
         if not isinstance(root, ET.Element):
             raise RuntimeError(f"Expected root to be xml.etree.Element: {type(root)}")
 
-        self.root = root
-        self.collection = collection
+        self.root: ET.Element = root
+        self.collection: str = collection
 
     def as_dict(self) -> dict:
         """
@@ -666,7 +656,7 @@ class Digitisation(Cache):
         object.
 
         Returns:
-            dict: Dictionary representation of the Digitising object
+            Dictionary representation of the Digitising object
         """
         dic = {
             x.tag: x.text or ""
@@ -696,32 +686,92 @@ class DataProvider(Cache):
     data provider. The class has several properties and methods that allow
     creation of a data provider object and the manipulation of its data.
 
-    Arguments:
-        collection (str):
-            A string that represents the collection of the publication
+    Attributes:
+        collection: A string representing publication collection
+        kind: Indication of object type, defaults to `data-provider`
+        providers_meta_data: structured dict of metadata for known collection sources
+        collection_type: related data sources and potential linkage source
+
+    Examples:
+
+        ```pycon
+        >>> from pprint import pprint
+        >>> hmd = DataProvider("hmd")
+        >>> hmd.pk
+        2
+        >>> pprint(hmd.as_dict())
+        {'code': 'bl-hmd',
+         'collection': 'newspapers',
+         'legacy_code': 'hmd',
+         'name': 'Heritage Made Digital',
+         'source_note': 'British Library-funded digitised newspapers provided by the '
+                        'British Newspaper Archive'}
+
+        ```
+
     """
 
-    kind = "data-provider"
-    """A string that represents the type of the object, set to
-    "data-provider"."""
+    kind: str = "data-provider"
+    providers_meta_data: list[FixtureDict] = NEWSPAPER_COLLECTION_METADATA
+    collection_type: str = "newspapers"
 
-    def __init__(self, collection: str = None):
+    def __init__(self, collection: str):
         """Constructor method."""
-        self.collection = collection
+        self.collection: str = collection
+
+    @property
+    def providers_legacy_code_id_dict(self) -> dict[str, FixtureDict]:
+        """Return all `legacy_code` values from `providers_meta_data`."""
+        return {
+            provider["fields"]["legacy_code"]: provider
+            for provider in self.providers_meta_data
+        }
+
+    @property
+    def meta_data(self) -> FixtureDict | dict:
+        """Return ``self.providers_meta_data[self.collection]`` or `{}`."""
+        if self.collection in self.providers_legacy_code_id_dict:
+            return self.providers_legacy_code_id_dict[self.collection]
+        else:
+            return {}
+
+    @property
+    def meta_data_fields(self) -> FixtureDict | dict:
+        """Return ``self.providers_meta_data[self.collection]`` or `{}`."""
+        if self.meta_data:
+            return self.meta_data["fields"]
+        else:
+            return {}
+
+    @property
+    def pk(self) -> int | None:
+        """Return ``pk`` if provided via ``providers_meta_data``, else `None`."""
+        if self.meta_data:
+            return self.meta_data["pk"]
+        else:
+            return None
 
     def as_dict(self) -> dict:
         """
-        A method that returns a dictionary representation of the data provider
-        object.
+        Return a `dict` of the data provider object.
 
-        :return: Dictionary representation of the DataProvider object
-        :rtype: dict
+        Returns:
+            Dictionary representation of the DataProvider object
         """
-        return {
-            "name": self.collection,
-            "collection": "newspapers",
-            "source_note": "",
-        }
+        if self.meta_data:
+            return {
+                "name": self.meta_data_fields["name"],
+                "code": self.meta_data_fields["code"],
+                "legacy_code": self.collection,
+                "source_note": self.meta_data_fields["source_note"],
+                "collection": self.collection_type,
+            }
+        else:
+            return {
+                "name": self.collection,
+                "collection": self.collection_type,
+                "source_note": "",
+            }
 
     @property
     def id(self) -> str:
@@ -736,7 +786,7 @@ class Document:
     a structured manner and provides properties that can be used to access
     different aspects of the document.
 
-    Arguments:
+    Attributes:
         collection (str):
             A string that represents the collection of the publication
         root (xml.etree.ElementTree.Element):
@@ -861,43 +911,35 @@ class Document:
 
 
 class Archive:
-    """
-    The Archive class represents a zip archive of XML files. The class is used
+    """Manage extracting information from a ZIP archive.
+
+    The ``Archive`` class represents a zip archive of XML files. The class is used
     to extract information from a ZIP archive, and it contains several methods
     to process the data contained in the archive.
 
-    .. describe:: open(Archive) context manager
+    !!! info "`open(Archive)` context manager"
 
         Archive can be opened with a context manager, which creates a meta
         object, with timings for the object. When closed, it will save the
         meta JSON to the correct paths.
 
-    .. describe:: len(Archive)
-
-        Getting the length of the Archive returns the number of files inside
-        the zip archive.
-
-    Arguments:
-        path (str):
-            The path to the zip archive.
-        collection (str, optional):
-            The collection of the XML files in the archive. Default is "".
-        report_id (str, optional):
-            The report ID for the archive. If not provided, a random UUID is
+    Attributes:
+        path: The path to the zip archive.
+        collection: The collection of the XML files in the archive. Default is "".
+        report_id: The report ID for the archive. If not provided, a random UUID is
             generated.
-        jisc_papers (pandas.DataFrame): A DataFrame of JISC papers.
+        jisc_papers: A DataFrame of JISC papers.
 
     Raises:
-        RuntimeError:
-            If the ``path`` does not exist.
+        RuntimeError: If the ``path`` does not exist.
     """
 
     def __init__(
         self,
-        path: str,
-        collection: str = "",
-        report_id: Optional[str] = None,
-        jisc_papers: Optional[pd.DataFrame] = None,
+        path: str | Path,
+        collection: str | None = "",
+        report_id: str | None = None,
+        jisc_papers: pd.DataFrame | None = None,
     ):
         """Constructor method."""
 
@@ -942,6 +984,7 @@ class Archive:
         """The file path of the report file for the archive."""
 
     def __len__(self):
+        """The number of files inside the zip archive."""
         return len(self.filelist)
 
     def __str__(self):
@@ -994,7 +1037,7 @@ class Archive:
         """Property that calls the ``get_documents`` method"""
         return self.get_documents()
 
-    def get_roots(self):
+    def get_roots(self) -> Generator[ET.Element, None, None]:
         """
         Yields the root elements of the XML documents contained in the archive.
         """
@@ -1004,20 +1047,23 @@ class Archive:
                 if xml:
                     yield ET.fromstring(xml)
 
-    def get_documents(self):
+    def get_documents(self) -> Generator[Document, None, None]:
         """
         A generator that yields instances of the Document class for each XML
         file in the ZIP archive.
 
-        It uses the tqdm library to display a progress bar in the terminal
+        It uses the `tqdm` library to display a progress bar in the terminal
         while it is running.
 
         If the contents of the ZIP file are not empty, the method creates an
-        instance of the Document class by passing the root element of the XML
+        instance of the ``Document`` class by passing the root element of the XML
         file, the collection name, meta information about the archive, and the
         JISC papers data frame (if provided) to the constructor of the
         ``Document`` class. The instance of the ``Document`` class is then
         returned by the generator.
+
+        Yields:
+            ``Document`` class instance for each unzipped `XML` file.
         """
         for xml_file in tqdm(
             self.filelist,
@@ -1045,7 +1091,7 @@ class Collection:
     of JISC papers. The `archives` property returns an iterable of the
     `Archive` objects within the collection.
 
-    Arguments:
+    Attributes:
         name (str):
             Name of the collection (default "hmd")
         jisc_papers (pandas.DataFrame, optional):
@@ -1094,12 +1140,15 @@ def route(
     mountpoint, setting up the JISC papers and routing the collections for
     processing.
 
-    :param collections: List of collection names
-    :param cache_home: Directory path for the cache
-    :param mountpoint: Directory path for the alto2txt mountpoint
-    :param jisc_papers_path: Path to the JISC papers
-    :param report_dir: Path to the report directory
-    :return: None
+    Args:
+        collections: List of collection names
+        cache_home: Directory path for the cache
+        mountpoint: Directory path for the alto2txt mountpoint
+        jisc_papers_path: Path to the JISC papers
+        report_dir: Path to the report directory
+
+    Returns:
+        None
     """
 
     global CACHE_HOME
