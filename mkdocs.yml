@@ -43,6 +43,7 @@ plugins:
             line_length: 80
             annotations_path: brief
             signature_crossrefs: true
+            merge_init_into_class: true
 
 markdown_extensions:
   - admonition

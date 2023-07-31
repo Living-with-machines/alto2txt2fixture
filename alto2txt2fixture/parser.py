@@ -1,25 +1,12 @@
 import gc
 import json
 from pathlib import Path
-from typing import Any, Generator, NamedTuple, TypedDict, Union
+from typing import Any, Generator, Union
 
 from tqdm import tqdm
 
+from .types import FixtureDict, TranslatorTuple
 from .utils import NOW_str
-
-
-class FixtureDict(TypedDict):
-    """A `dict` structure to ease use as a `json` database fixture.
-
-    Attributes:
-        pk: an id to uniquely define and query each entry
-        model: what model a given record is for
-        fields: a `dict` of record information conforming to ``model`` table
-    """
-
-    pk: int
-    model: str
-    fields: dict[str, Any]
 
 
 def get_key_from(item: Path, x: str) -> str:
@@ -60,7 +47,7 @@ def uniq(filelist: list, keys: list = []) -> Generator[Any, None, None]:
             items.
 
     Yields:
-        A unique item from the filelist as a FixtureDict`` based on the specified keys.
+        A unique item from `filelist`.
     """
 
     seen = set()
@@ -210,29 +197,6 @@ def reset_fixture_dir(output: str | Path) -> None:
     [x.unlink() for x in Path(output).glob("*.json")]
 
     return
-
-
-class TranslatorTuple(NamedTuple):
-    """A named tuple of fields for translation.
-
-    Attributes:
-        start: A string representing the starting field name.
-        finish: A string or list specifying the field(s) to be translated.
-            If it is a string, the translated field
-            will be a direct mapping of the specified field in
-            each item of the input list.
-            If it is a list, the translated field will be a
-            hyphen-separated concatenation of the specified fields
-            in each item of the input list.
-        lst: A list of dictionaries representing the items to be
-            translated. Each dictionary should contain the necessary
-            fields for translation, with the field names specified in
-            the `start` parameter.
-    """
-
-    start: str
-    finish: str | list
-    lst: list[dict]
 
 
 def get_translator(
@@ -569,7 +533,11 @@ def parse(
 
     # Process issue
     translate = get_translator(
-        [("publication__publication_code", "publication_code", newspaper_json)]
+        [
+            TranslatorTuple(
+                "publication__publication_code", "publication_code", newspaper_json
+            )
+        ]
     )
     rename = {"publication": {"publication_code": "newspaper_id"}}
 
@@ -586,10 +554,10 @@ def parse(
     # Create translator/clear up memory before processing items
     translate = get_translator(
         [
-            TranslatorTuple("issue__issue_identifier", "issue_code", issue_json),
-            TranslatorTuple("digitisation__software", "software", digitisation_json),
-            TranslatorTuple("data_provider__name", "name", data_provider_json),
-            TranslatorTuple(
+            ("issue__issue_identifier", "issue_code", issue_json),
+            ("digitisation__software", "software", digitisation_json),
+            ("data_provider__name", "name", data_provider_json),
+            (
                 "ingest__lwm_tool_identifier",
                 ["lwm_tool_name", "lwm_tool_version"],
                 ingest_json,

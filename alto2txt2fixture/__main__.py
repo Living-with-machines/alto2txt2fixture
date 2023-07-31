@@ -57,7 +57,7 @@ def parse_args(argv=None):
     return parser.parse_args(argv)
 
 
-def run():
+def run() -> None:
     """
     The run function is the main function that starts the alto2txt2fixture
     process.
@@ -77,8 +77,6 @@ def run():
 
     Finally, the ``clear_cache`` function is called to clear the cache
     (pending the user's confirmation).
-
-    :return: None
     """
 
     args = parse_args()
