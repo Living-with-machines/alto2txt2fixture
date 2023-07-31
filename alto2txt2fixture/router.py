@@ -1,4 +1,3 @@
-import json
 import uuid
 import zipfile
 from pathlib import Path
@@ -690,14 +689,66 @@ class DataProvider(Cache):
     Attributes:
         collection: A string representing publication collection
         kind: Indication of object type, defaults to `data-provider`
+        providers_meta_data: structured dict of metadata for known collection sources
+        collection_type: related data sources and potential linkage source
+
+    Examples:
+
+        ```pycon
+        >>> hmd = DataProvider("hmd")
+        >>> hmd.pk
+        2
+        >>> pprint(hmd.as_dict())
+        {'code': 'bl-hmd',
+         'collection': 'newspapers',
+         'legacy_code': 'hmd',
+         'name': 'Heritage Made Digital',
+         'source_note': 'British Library-funded digitised newspapers provided by the '
+                        'British Newspaper Archive'}
+
+        ```
+
     """
 
     kind: str = "data-provider"
-    meta_data: list[FixtureDict] = NEWSPAPER_COLLECTION_METADATA
+    providers_meta_data: list[FixtureDict] = NEWSPAPER_COLLECTION_METADATA
+    collection_type: str = "newspapers"
 
     def __init__(self, collection: str):
         """Constructor method."""
         self.collection: str = collection
+
+    @property
+    def providers_legacy_code_id_dict(self) -> dict[str, FixtureDict]:
+        """Return all `legacy_code` values from `providers_meta_data`."""
+        return {
+            provider["fields"]["legacy_code"]: provider
+            for provider in self.providers_meta_data
+        }
+
+    @property
+    def meta_data(self) -> FixtureDict | dict:
+        """Return ``self.providers_meta_data[self.collection]`` or `{}`."""
+        if self.collection in self.providers_legacy_code_id_dict:
+            return self.providers_legacy_code_id_dict[self.collection]
+        else:
+            return {}
+
+    @property
+    def meta_data_fields(self) -> FixtureDict | dict:
+        """Return ``self.providers_meta_data[self.collection]`` or `{}`."""
+        if self.meta_data:
+            return self.meta_data["fields"]
+        else:
+            return {}
+
+    @property
+    def pk(self) -> int | None:
+        """Return ``pk`` if provided via ``providers_meta_data``, else `None`."""
+        if self.meta_data:
+            return self.meta_data["pk"]
+        else:
+            return None
 
     def as_dict(self) -> dict:
         """
@@ -706,11 +757,20 @@ class DataProvider(Cache):
         Returns:
             Dictionary representation of the DataProvider object
         """
-        return {
-            "name": self.collection,
-            "collection": "newspapers",
-            "source_note": "",
-        }
+        if self.meta_data:
+            return {
+                "name": self.meta_data_fields["name"],
+                "code": self.meta_data_fields["code"],
+                "legacy_code": self.collection,
+                "source_note": self.meta_data_fields["source_note"],
+                "collection": self.collection_type,
+            }
+        else:
+            return {
+                "name": self.collection,
+                "collection": self.collection_type,
+                "source_note": "",
+            }
 
     @property
     def id(self) -> str:
