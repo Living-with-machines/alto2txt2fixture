@@ -695,6 +695,7 @@ class DataProvider(Cache):
     Examples:
 
         ```pycon
+        >>> from pprint import pprint
         >>> hmd = DataProvider("hmd")
         >>> hmd.pk
         2
