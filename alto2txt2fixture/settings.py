@@ -28,6 +28,7 @@ settings.SKIP_FILE_SIZE *= 1e9
 
 
 def show_setup(clear: bool = True, **kwargs) -> None:
+    """Generate a `rich.table.Table` for printing configuration to console."""
     if clear and os.name == "posix":
         os.system("clear")
     elif clear:

@@ -1,11 +1,78 @@
 import gc
 import json
 from pathlib import Path
-from typing import Union
+from typing import Any, Generator, NamedTuple, TypedDict, Union
 
 from tqdm import tqdm
 
 from .utils import NOW_str
+
+
+class FixtureDict(TypedDict):
+    """A `dict` structure to ease use as a `json` database fixture.
+
+    Attributes:
+        pk: an id to uniquely define and query each entry
+        model: what model a given record is for
+        fields: a `dict` of record information conforming to ``model`` table
+    """
+
+    pk: int
+    model: str
+    fields: dict[str, Any]
+
+
+def get_key_from(item: Path, x: str) -> str:
+    """
+    Retrieves a specific key from a file and returns its value.
+
+    This function reads a file and extracts the value of a specified
+    key. If the key is not found or an error occurs while processing
+    the file, a warning is printed, and an empty string is returned.
+
+    Args:
+        item: The file from which the key is extracted.
+        x: The key to be retrieved from the file.
+
+    Returns:
+        The value of the specified key from the file.
+    """
+    result = json.loads(item.read_text()).get(x, None)
+    if not result:
+        print(f"[WARN] Could not find key {x} in {item}")
+        result = ""
+    return result
+
+
+def uniq(filelist: list, keys: list = []) -> Generator[Any, None, None]:
+    """
+    Generates unique items from a list of files based on specified keys.
+
+    This function takes a list of files and yields unique items based on a
+    combination of keys. The keys are extracted from each file using the
+    ``get_key_from`` function, and duplicate items are ignored.
+
+    Args:
+        filelist: A list of files from which unique items are
+            generated.
+        keys: A list of keys used for uniqueness. Each key specifies
+            a field to be used for uniqueness checking in the generated
+            items.
+
+    Yields:
+        A unique item from the filelist as a FixtureDict`` based on the specified keys.
+    """
+
+    seen = set()
+    for item in filelist:
+        key = "-".join([get_key_from(item, x) for x in keys])
+
+        if key not in seen:
+            seen.add(key)
+            yield item
+        else:
+            # Drop it if duplicate
+            pass
 
 
 def fixtures(
@@ -13,109 +80,53 @@ def fixtures(
     model: str = "",
     translate: dict = {},
     rename: dict = {},
-    uniq_keys: dict = [],
-) -> None:
+    uniq_keys: list = [],
+) -> Generator[FixtureDict, None, None]:
     """
     Generates fixtures for a specified model using a list of files.
 
     This function takes a list of files and generates fixtures for a specified
-    model.
-
-    The fixtures can be used to populate a database or perform other
+    model. The fixtures can be used to populate a database or perform other
     data-related operations.
 
-    Arguments:
-        filelist (list): A list of files to process and generate fixtures from.
-            model (str): The name of the model for which fixtures are
-            generated.
-        translate (dict): A nested dictionary representing the translation
-            mapping for fields. The structure of the translator follows the
-            format:
-
-            .. code-block: json
-
-                {
-                    'part1': {
-                        'part2': {
-                            'translated_field': 'pk'
-                        }
+    Args:
+        filelist: A list of files to process and generate fixtures from.
+        model: The name of the model for which fixtures are generated.
+            translate: A nested dictionary representing the translation mapping
+            for fields. The structure of the translator follows the format:
+            ```python
+            {
+                'part1': {
+                    'part2': {
+                        'translated_field': 'pk'
                     }
                 }
-
+            }
+            ```
             The translated fields will be used as keys, and their
             corresponding primary keys (obtained from the provided files) will
             be used as values in the generated fixtures.
-        rename (dict): A nested dictionary representing the field renaming
+        rename: A nested dictionary representing the field renaming
             mapping. The structure of the dictionary follows the format:
-
-            .. code-block: json
-
-                {
-                    'part1': {
-                        'part2': 'new_field_name'
-                    }
+            ```python
+            {
+                'part1': {
+                    'part2': 'new_field_name'
                 }
-
+            }
+            ```
             The fields specified in the dictionary will be renamed to the
             provided new field names in the generated fixtures.
-        uniq_keys (dict): A list of fields that need to be considered for
+        uniq_keys: A list of fields that need to be considered for
             uniqueness in the fixtures. If specified, the fixtures will yield
             only unique items based on the combination of these fields.
 
+    Yields:
+        FixtureDict from ``model``, ``pk`` and `dict` of ``fields``.
+
     Returns:
-        None: This function generates fixtures but does not return any value.
+        This function generates fixtures but does not return any value.
     """
-
-    def uniq(filelist: list, keys: list = []):
-        """
-        Generates unique items from a list of files based on specified keys.
-
-        This function takes a list of files and yields unique items based on a
-        combination of keys. The keys are extracted from each file using the
-        ``get_key_from`` function, and duplicate items are ignored.
-
-        Arguments:
-            filelist (list): A list of files from which unique items are
-                generated.
-            keys (list): A list of keys used for uniqueness. Each key specifies
-                a field to be used for uniqueness checking in the generated
-                items.
-
-        Yields:
-            item: A unique item from the filelist based on the specified keys.
-        """
-
-        def get_key_from(item: Path, x: str) -> str:
-            """
-            Retrieves a specific key from a file and returns its value.
-
-            This function reads a file and extracts the value of a specified
-            key. If the key is not found or an error occurs while processing
-            the file, a warning is printed, and an empty string is returned.
-
-            Arguments:
-                item: The file from which the key is extracted.
-                x: The key to be retrieved from the file.
-
-            Returns:
-                str: The value of the specified key from the file.
-            """
-            result = json.loads(item.read_text()).get(x, None)
-            if not result:
-                print(f"[WARN] Could not find key {x} in {item}")
-                result = ""
-            return result
-
-        seen = set()
-        for item in filelist:
-            key = "-".join([get_key_from(item, x) for x in keys])
-
-            if key not in seen:
-                seen.add(key)
-                yield item
-            else:
-                # Drop it if duplicate
-                pass
 
     filelist = sorted(filelist, key=lambda x: str(x).split("/")[:-1])
     count = len(filelist)
@@ -128,7 +139,7 @@ def fixtures(
             for line in file.read_text().splitlines():
                 pk += 1
                 line = json.loads(line)
-                yield dict(
+                yield FixtureDict(
                     pk=pk,
                     model=model,
                     fields=dict(**get_fields(line, translate=translate, rename=rename)),
@@ -149,7 +160,7 @@ def fixtures(
         for x in tqdm(
             zipped, total=count, desc=f"{model} ({count:,} objs)", leave=False
         ):
-            yield dict(
+            yield FixtureDict(
                 pk=x[1],
                 model=model,
                 fields=dict(**get_fields(x[0], translate=translate, rename=rename)),
@@ -158,7 +169,7 @@ def fixtures(
         return
 
 
-def reset_fixture_dir(output: str) -> None:
+def reset_fixture_dir(output: str | Path) -> None:
     """
     Resets the fixture directory by removing all JSON files inside it.
 
@@ -169,14 +180,11 @@ def reset_fixture_dir(output: str) -> None:
     user confirms, the function clears the fixture directory by deleting the
     JSON files.
 
-    Arguments:
-        output (str): The directory path of the fixture directory to be reset.
+    Args:
+        output: The directory path of the fixture directory to be reset.
 
     Raises:
         RuntimeError: If the ``output`` directory is not specified as a string.
-
-    Returns:
-        None.
     """
 
     if not isinstance(output, str):
@@ -185,7 +193,8 @@ def reset_fixture_dir(output: str) -> None:
     output = Path(output)
 
     y = input(
-        f"This command will automatically empty the fixture directory ({output.absolute()}). Do you want to proceed? [y/N]"
+        f"This command will automatically empty the fixture directory ({output.absolute()}). "
+        "Do you want to proceed? [y/N]"
     )
 
     if not y.lower() == "y":
@@ -203,44 +212,63 @@ def reset_fixture_dir(output: str) -> None:
     return
 
 
-def get_translator(fields: list = [("", "", [])]) -> dict:
+class TranslatorTuple(NamedTuple):
+    """A named tuple of fields for translation.
+
+    Attributes:
+        start: A string representing the starting field name.
+        finish: A string or list specifying the field(s) to be translated.
+            If it is a string, the translated field
+            will be a direct mapping of the specified field in
+            each item of the input list.
+            If it is a list, the translated field will be a
+            hyphen-separated concatenation of the specified fields
+            in each item of the input list.
+        lst: A list of dictionaries representing the items to be
+            translated. Each dictionary should contain the necessary
+            fields for translation, with the field names specified in
+            the `start` parameter.
+    """
+
+    start: str
+    finish: str | list
+    lst: list[dict]
+
+
+def get_translator(
+    fields: list[TranslatorTuple] = [TranslatorTuple("", "", [])]
+) -> dict:
     """
     Converts a list of fields into a nested dictionary representing a
     translator.
 
-    Arguments:
-        fields (list): A list of tuples representing fields to be translated.
-                       Each tuple should contain three elements:
-                           - start: A string representing the starting field
-                             name.
-                           - finish: A string or list specifying the field(s)
-                             to be translated. If it is a string, the
-                             translated field will be a direct mapping of the
-                             specified field in each item of the input list.
-                             If it is a list, the translated field will be a
-                             hyphen-separated concatenation of the specified
-                             fields in each item of the input list.
-                           - lst: A list of dictionaries representing the
-                             items to be translated. Each dictionary should
-                             contain the necessary fields for translation,
-                             with the field names specified in the 'start'
-                             parameter.
+    Args:
+        fields: A list of tuples representing fields to be translated.
 
     Returns:
-        dict: A nested dictionary representing the translator.
-              The structure of the dictionary follows the format:
-                  {
-                      'part1': {
-                          'part2': {
-                              'translated_field': 'pk'
-                          }
+        A nested dictionary representing the translator. The structure of
+            the dictionary follows the format:
+            ```python
+            {
+                'part1': {
+                      'part2': {
+                          'translated_field': 'pk'
                       }
-                  }
+                }
+            }
+            ```
 
-    Example:
-        fields = [('start__field1', 'finish_field1', [{'fields': {'field1': 'translation1'}, 'pk': 1}])]
-        translator = get_translator(fields)
-        # Output: {'start': {'field1': {'translation1': 1}}}
+    Examples:
+        >>> fields = [
+        ...     TranslatorTuple(
+        ...         start='start__field1',
+        ...         finish='field1',
+        ...         lst=[{
+        ...             'fields': {'field1': 'translation1'},
+        ...             'pk': 1}],
+        ...      )]
+        >>> get_translator(fields)
+        {'start': {'field1': {'translation1': 1}}}
     """
     _ = dict()
     for field in fields:
@@ -273,49 +301,44 @@ def get_fields(
     and processes its fields. It retrieves the fields from the file and
     performs modifications, translations, and checks on the fields.
 
-    Arguments:
-        file (Union[Path, str, dict]): The file from which the fields are
-            retrieved.
-        translate (dict): A nested dictionary representing the translation
-            mapping for fields. The structure of the translator follows the format:
-
-            .. code-block: json
-
-                {
-                    'part1': {
-                        'part2': {
-                            'translated_field': 'pk'
-                        }
+    Args:
+        file: The file from which the fields are retrieved.
+        translate: A nested dictionary representing the translation mapping
+            for fields. The structure of the translator follows the format:
+            ```python
+            {
+                'part1': {
+                    'part2': {
+                        'translated_field': 'pk'
                     }
                 }
-
+            }
+            ```
             The translated fields will be used to replace the original fields
             in the retrieved fields.
-        rename (dict): A nested dictionary representing the field renaming
+        rename: A nested dictionary representing the field renaming
             mapping. The structure of the dictionary follows the format:
-
-            .. code-block: json
-
-                {
-                    'part1': {
-                        'part2': 'new_field_name'
-                    }
+            ```python
+            {
+                'part1': {
+                    'part2': 'new_field_name'
                 }
-
+            }
+            ```
             The fields specified in the dictionary will be renamed to the
             provided new field names in the retrieved fields.
-        allow_null (bool): Determines whether to allow ``None`` values for
+        allow_null: Determines whether to allow ``None`` values for
             relational fields. If set to ``True``, relational fields with
             missing values will be assigned ``None``. If set to ``False``, an
             error will be raised.
 
     Returns:
-        dict: A dictionary representing the retrieved fields from the file,
-        with modifications and checks applied.
+        A dictionary representing the retrieved fields from the file,
+            with modifications and checks applied.
 
     Raises:
         RuntimeError: If the file type is unsupported or if an error occurs
-        during field retrieval or processing.
+            during field retrieval or processing.
     """
     if isinstance(file, Path):
         try:
@@ -397,14 +420,14 @@ def save_fixture(generator: list = [], prefix: str = "") -> None:
     separate JSON files. The fixtures are saved in batches, where each batch
     is determined by the ``max_elements_per_file`` parameter.
 
-    Arguments:
-        generator (list): A generator that yields the fixtures to be saved.
-        prefix (str): A string prefix to be added to the file names of the
+    Args:
+        generator: A generator that yields the fixtures to be saved.
+        prefix: A string prefix to be added to the file names of the
             saved fixtures.
 
     Returns:
-        None: This function saves the fixtures to files but does not return
-        any value.
+        This function saves the fixtures to files but does not return
+            any value.
     """
     internal_counter = 1
     counter = 1
@@ -436,22 +459,23 @@ def parse(
     Parses files from collections and generates fixtures for various models.
 
     This function processes files from the specified collections and generates
-    fixtures for different models, such as ``newspapers.dataprovider``,
-    ``newspapers.ingest``, ``newspapers.digitisation``,
-    ``newspapers.newspaper``, ``newspapers.issue``, and ``newspapers.item``.
+    fixtures for different models, such as `newspapers.dataprovider`,
+    `newspapers.ingest`, `newspapers.digitisation`, `newspapers.newspaper`,
+    `newspapers.issue`, and `newspapers.item`.
+
     It performs various steps, such as file listing, fixture generation,
     translation mapping, renaming fields, and saving fixtures to files.
 
-    Arguments:
-        collections (list): A list of collections from which files are
+    Args:
+        collections: A list of collections from which files are
             processed and fixtures are generated.
-        cache_home (str): The directory path where the collections are located.
-        output (str): The directory path where the fixtures will be saved.
-        max_elements_per_file (int): The maximum number of elements per file
+        cache_home: The directory path where the collections are located.
+        output: The directory path where the fixtures will be saved.
+        max_elements_per_file: The maximum number of elements per file
             when saving fixtures.
 
     Returns:
-        None: This function generates fixtures but does not return any value.
+        This function generates fixtures but does not return any value.
     """
     global CACHE_HOME
     global OUTPUT
@@ -562,10 +586,10 @@ def parse(
     # Create translator/clear up memory before processing items
     translate = get_translator(
         [
-            ("issue__issue_identifier", "issue_code", issue_json),
-            ("digitisation__software", "software", digitisation_json),
-            ("data_provider__name", "name", data_provider_json),
-            (
+            TranslatorTuple("issue__issue_identifier", "issue_code", issue_json),
+            TranslatorTuple("digitisation__software", "software", digitisation_json),
+            TranslatorTuple("data_provider__name", "name", data_provider_json),
+            TranslatorTuple(
                 "ingest__lwm_tool_identifier",
                 ["lwm_tool_name", "lwm_tool_version"],
                 ingest_json,

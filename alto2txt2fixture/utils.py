@@ -3,7 +3,7 @@ import json
 import logging
 from os import PathLike
 from pathlib import Path
-from typing import Generator, Hashable, Sequence, Union
+from typing import Final, Generator, Hashable, Literal, Sequence, TypeAlias, Union
 
 import pytz
 from numpy import array_split
@@ -13,6 +13,7 @@ from .log import error, info
 from .settings import settings
 
 FORMAT: str = "%(message)s"
+NewspaperElements: Final[TypeAlias] = Literal["newspaper", "issue", "item"]
 
 logging.basicConfig(
     level="NOTSET", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
@@ -23,12 +24,14 @@ logger = logging.getLogger("rich")
 
 def get_now(as_str: bool = False) -> Union[datetime.datetime, str]:
     """
-    Get the "now" from the datetime library, either as a string or object.
+    Return `datetime.now()` as either a string or `datetime` object.
 
-    :param as_str: Whether to return the now as a string or not, default:
-        ``False``
-    :return: Now, as string if ``as_str`` was passed as ``True``, otherwise as
-        datetime.datetime object.
+    Args:
+        as_str: Whether to return `now` `time` as a `str` or not, default: `False`
+
+    Returns:
+        `datetime.now()` in `pytz.UTC` time zone as a string if `as_str`, else
+            as a `datetime.datetime` object.
     """
     now = datetime.datetime.now(tz=pytz.UTC)
 
@@ -46,11 +49,13 @@ def get_key(x: dict = dict(), on: list = []) -> str:
     """
     Get a string key from a dictionary using values from specified keys.
 
-    :param x: A dictionary from which the key is generated.
-    :param on: A list of keys from the dictionary that should be used to
-        generate the key.
-    :return: The generated string key.
-    :rtype: str
+    Args:
+        x: A dictionary from which the key is generated.
+        on: A list of keys from the dictionary that should be used to
+            generate the key.
+
+    Returns:
+        The generated string key.
     """
 
     return f"{'-'.join([str(x['fields'][y]) for y in on])}"
@@ -60,9 +65,12 @@ def create_lookup(lst: list = [], on: list = []) -> dict:
     """
     Create a lookup dictionary from a list of dictionaries.
 
-    :param lst: A list of dictionaries that should be used to generate the lookup.
-    :param on: A list of keys from the dictionaries in the list that should be used as the keys in the lookup.
-    :return: The generated lookup dictionary.
+    Args:
+        lst: A list of dictionaries that should be used to generate the lookup.
+        on: A list of keys from the dictionaries in the list that should be used as the keys in the lookup.
+
+    Returns:
+        The generated lookup dictionary.
     """
     return {get_key(x, on): x["pk"] for x in lst}
 
@@ -71,9 +79,12 @@ def glob_filter(p: str) -> list:
     """
     Return ordered glob, filtered out any pesky, unwanted .DS_Store from macOS.
 
-    :param p: Path to a directory to filter
-    :return: Sorted list of files contained in the provided path without the ones
-        whose names start with a "."
+    Args:
+        p: Path to a directory to filter
+
+    Returns:
+        Sorted list of files contained in the provided path without the ones
+        whose names start with a `.`
     """
     return sorted([x for x in get_path_from(p).glob("*") if not x.name.startswith(".")])
 
@@ -82,8 +93,11 @@ def lock(lockfile: Path) -> None:
     """
     Writes a '.' to a lockfile, after making sure the parent directory exists.
 
-    :param lockfile: The path to the lock file to be created
-    :return: None
+    Args:
+        lockfile: The path to the lock file to be created
+
+    Returns:
+        None
     """
     lockfile.parent.mkdir(parents=True, exist_ok=True)
 
@@ -92,14 +106,18 @@ def lock(lockfile: Path) -> None:
     return
 
 
-def get_lockfile(collection: str, kind: str, dic: dict) -> Path:
+def get_lockfile(collection: str, kind: NewspaperElements, dic: dict) -> Path:
     """
     Provides the path to any given lockfile, which controls whether any
     existing files should be overwritten or not.
 
-    :param kind: Either "newspaper" or "issue" or "item"
-    :param dic: A dictionary with required information for either `kind` passed
-    :return: Path to the resulting lockfile
+    Args:
+        collection: Collection folder name
+        kind: Either `newspaper` or `issue` or `item`
+        dic: A dictionary with required information for either `kind` passed
+
+    Returns:
+        Path to the resulting lockfile
     """
 
     p: Path
@@ -128,14 +146,17 @@ def get_lockfile(collection: str, kind: str, dic: dict) -> Path:
 def get_chunked_zipfiles(path: Path) -> list:
     """This function takes in a `Path` object `path` and returns a list of lists
     of `zipfiles` sorted and chunked according to certain conditions defined
-    in the ``settings`` object (see ``settings.CHUNK_THRESHOLD``).
+    in the `settings` object (see `settings.CHUNK_THRESHOLD`).
 
     Note: the function will also skip zip files of a certain file size, which
-    can be specified in the ``settings`` object (see ``settings.SKIP_FILE_SIZE``).
+    can be specified in the `settings` object (see `settings.SKIP_FILE_SIZE`).
 
-    :param path: The input path where the zipfiles are located
-    :return: A list of lists of ``zipfiles``, each inner list represents a
-        chunk of zipfiles.
+    Args:
+        path: The input path where the zipfiles are located
+
+    Returns:
+        A list of lists of `zipfiles`, each inner list represents a chunk of
+            zipfiles.
     """
 
     zipfiles = sorted(
@@ -158,8 +179,11 @@ def get_path_from(p: Union[str, Path]) -> Path:
     """
     Converts an input value into a Path object if it's not already one.
 
-    :param p: The input value, which can be a string or a Path object.
-    :return: The input value as a Path object.
+    Args:
+        p: The input value, which can be a string or a Path object.
+
+    Returns:
+        The input value as a Path object.
     """
     if isinstance(p, str):
         p = Path(p)
@@ -174,8 +198,8 @@ def clear_cache(dir: Union[str, Path]) -> None:
     """
     Clears the cache directory by removing all `.json` files in it.
 
-    :param dir: The path of the directory to be cleared.
-    :return: None
+    Args:
+        dir: The path of the directory to be cleared.
     """
 
     dir = get_path_from(dir)
@@ -195,9 +219,13 @@ def get_size_from_path(p: str | Path, raw: bool = False) -> str | int | float:
     """
     Returns a nice string for any given file size.
 
-    :param p: Path to read the size from
-    :param raw: Whether to return the file size as total number of bytes or
-        a human-readable MB/GB amount
+    Args:
+        p: Path to read the size from
+        raw: Whether to return the file size as total number of bytes or
+            a human-readable MB/GB amount
+
+    Returns:
+        Return `str` followed by `MB` or `GB` for size if not `raw` otherwise `float`.
     """
 
     p = get_path_from(p)
@@ -222,15 +250,17 @@ def get_size_from_path(p: str | Path, raw: bool = False) -> str | int | float:
 
 def write_json(p: Union[str, Path], o: dict, add_created: bool = True) -> None:
     """
-    Easier access to writing JSON files. Checks whether parent exists.
+    Easier access to writing `json` files. Checks whether parent exists.
 
-    :param p: Path to write JSON to
-    :param o: Object to write to JSON file
-    :param add_created: If set to True will add ``created_at`` and
-        ``updated_at`` to the dictionary's fields (and if ``created_at`` and
-        ``updated_at`` already exist in the fields, they will be forcefully
-        updated)
-    :return: None
+    Args:
+        p: Path to write `json` to
+        o: Object to write to `json` file
+        add_created: If set to True will add `created_at` and `updated_at`
+            to the dictionary's fields. If `created_at` and `updated_at`
+            already exist in the fields, they will be forcefully updated.
+
+    Returns:
+        None
     """
 
     def _append_created_fields(o):
@@ -268,12 +298,15 @@ def write_json(p: Union[str, Path], o: dict, add_created: bool = True) -> None:
 
 def load_json(p: Union[str, Path], crash: bool = False) -> dict | list:
     """
-    Easier access to reading JSON files.
+    Easier access to reading `json` files.
 
-    :param p: Path to read JSON from
-    :param crash: Whether the program should crash if there is a JSON decode
-        error, default: ``False``
-    :return: The decoded JSON contents from the path, but an empty dictionary
+    Args:
+        p: Path to read `json` from
+        crash: Whether the program should crash if there is a `json` decode
+            error, default: ``False``
+
+    Returns:
+        The decoded `json` contents from the path, but an empty dictionary
         if the file cannot be decoded and ``crash`` is set to ``False``
     """
 
@@ -295,17 +328,20 @@ def list_json_files(
     include_names: list = [],
 ) -> Generator[Path, None, None] | list[Path]:
     """
-    List JSON files under the path specified in ``p``.
+    List `json` files under the path specified in ``p``.
 
-    :param p: The path to search for JSON files
-    :param drill: A flag indicating whether to drill down the subdirectories
-        or not. Default is ``False``
-    :param exclude_names: A list of file names to exclude from the search
-        result. Default is an empty list
-    :param include_names: A list of file names to include in the search result
-        If provided, the ``exclude_names`` argument will be ignored. Default
-        is an empty list
-    :return: A list of `Path` objects pointing to the found JSON files
+    Args:
+        p: The path to search for `json` files
+        drill: A flag indicating whether to drill down the subdirectories
+            or not. Default is ``False``
+        exclude_names: A list of file names to exclude from the search
+            result. Default is an empty list
+        include_names: A list of file names to include in search result.
+            If provided, the ``exclude_names`` argument will be ignored.
+            Default is an empty list
+
+    Returns:
+        A list of `Path` objects pointing to the found `json` files
     """
 
     q: str = "**/*.json" if drill else "*.json"
@@ -326,16 +362,19 @@ def load_multiple_json(
     crash: bool = False,
 ) -> list:
     """
-    Load multiple JSON files and return a list of their content.
+    Load multiple `json` files and return a list of their content.
 
-    :param p: The path to search for JSON files
-    :param drill: A flag indicating whether to drill down the subdirectories
-        or not. Default is ``False``
-    :param filter_na: A flag indicating whether to filter out the content that
-        is ``None``. Default is ``True``.
-    :param crash: A flag indicating whether to raise an exception when an
-        error occurs while loading a JSON file. Default is ``False``.
-    :return: A list of the content of the loaded JSON files.
+    Args:
+        p: The path to search for `json` files
+        drill: A flag indicating whether to drill down the subdirectories
+            or not. Default is `False`
+        filter_na: A flag indicating whether to filter out the content that
+            is `None`. Default is `True`.
+        crash: A flag indicating whether to raise an exception when an
+            error occurs while loading a `json` file. Default is `False`.
+
+    Returns:
+        A `list` of the content of the loaded `json` files.
     """
 
     files = list_json_files(p, drill=drill)
@@ -354,55 +393,67 @@ def filter_json_fields(
 ) -> dict | list:
     """Return `keys` and `values` from `json_dict` where any `fields` equal `value`.
 
-    :param file_path: The file `path` to load based on extension and filter
-    :param fields: Which fields to check equal `value`
-    :param value: Value to filter by
-    :return: A `dict` of records indexed by `pk` which fit filter criteria
+    Args:
+        file_path: The file `path` to load based on extension and filter
+        fields: Which fields to check equal `value`
+        value: Value to filter by
 
-    >>> from pprint import pprint
-    >>> entry_fixture: dict = [
-    ...     {"pk": 4889, "model": "mitchells.entry",
-    ...      "fields": {"title": "BIRMINGHAM POST .",
-    ...                 "price_raw": ['2d'],
-    ...                 "year": 1920,
-    ...                 "date_established_raw": "1857",
-    ...                 "persons": [], "newspaper": ""}},
-    ...      {"pk": 9207, "model": "mitchells.entry",
-    ...       "fields": {"title": "ULVERSTONE ADVERTISER .",
-    ...                  "price_raw": ['2 \u00bd d', '3 \u00bd d'],
-    ...                  "year": 1856,
-    ...                  "date_established_raw": "1848",
-    ...                  "persons": ['Stephen Soulby'],
-    ...                  "newspaper": "",}},
-    ...     {"pk": 15, "model": "mitchells.entry",
-    ...      "fields": {"title": "LLOYD'S WEEKLY LONDON NEWSPAPER .",
-    ...                 "price_raw": ['2d', '3d'],
-    ...                 "year": 1857,
-    ...                 "date_established_raw": "November , 1842",
-    ...                 "persons": ['Mr. Douglas Jerrold', 'Edward Lloyd'],
-    ...                 "newspaper": 1187}}
-    ...     ]
-    >>> pprint(filter_json_fields(entry_fixture, fields=("newspaper", "persons"), value=""))
-    [{'fields': {'date_established_raw': '1857',
-                 'newspaper': '',
-                 'persons': [],
-                 'price_raw': ['2d'],
-                 'title': 'BIRMINGHAM POST .',
-                 'year': 1920},
-      'model': 'mitchells.entry',
-      'pk': 4889},
-     {'fields': {'date_established_raw': '1848',
-                 'newspaper': '',
-                 'persons': ['Stephen Soulby'],
-                 'price_raw': ['2 \u00bd d', '3 \u00bd d'],
-                 'title': 'ULVERSTONE ADVERTISER .',
-                 'year': 1856},
-      'model': 'mitchells.entry',
-      'pk': 9207}]
+    Returns:
+        A `dict` of records indexed by `pk` which fit filter criteria
+
+    Raises:
+        ValueError: ``file_path`` must have a `.json` `suffix`
+
+    Examples:
+        >>> from pprint import pprint
+        >>> entry_fixture: dict = [
+        ...     {"pk": 4889, "model": "mitchells.entry",
+        ...      "fields": {"title": "BIRMINGHAM POST .",
+        ...                 "price_raw": ['2d'],
+        ...                 "year": 1920,
+        ...                 "date_established_raw": "1857",
+        ...                 "persons": [], "newspaper": ""}},
+        ...      {"pk": 9207, "model": "mitchells.entry",
+        ...       "fields": {"title": "ULVERSTONE ADVERTISER .",
+        ...                  "price_raw": ['2 \u00bd d', '3 \u00bd d'],
+        ...                  "year": 1856,
+        ...                  "date_established_raw": "1848",
+        ...                  "persons": ['Stephen Soulby'],
+        ...                  "newspaper": "",}},
+        ...     {"pk": 15, "model": "mitchells.entry",
+        ...      "fields": {"title": "LLOYD'S WEEKLY LONDON NEWSPAPER .",
+        ...                 "price_raw": ['2d', '3d'],
+        ...                 "year": 1857,
+        ...                 "date_established_raw": "November , 1842",
+        ...                 "persons": ['Mr. Douglas Jerrold', 'Edward Lloyd'],
+        ...                 "newspaper": 1187}}
+        ...     ]
+        >>> pprint(filter_json_fields(entry_fixture,
+        ...                           fields=("newspaper", "persons"),
+        ...                           value=""))
+        [{'fields': {'date_established_raw': '1857',
+                     'newspaper': '',
+                     'persons': [],
+                     'price_raw': ['2d'],
+                     'title': 'BIRMINGHAM POST .',
+                     'year': 1920},
+          'model': 'mitchells.entry',
+          'pk': 4889},
+         {'fields': {'date_established_raw': '1848',
+                     'newspaper': '',
+                     'persons': ['Stephen Soulby'],
+                     'price_raw': ['2 \u00bd d', '3 \u00bd d'],
+                     'title': 'ULVERSTONE ADVERTISER .',
+                     'year': 1856},
+          'model': 'mitchells.entry',
+          'pk': 9207}]
     """
     if not json_results:
         assert file_path
-        # if file_path.suffix == ".json":
+        try:
+            assert Path(file_path).suffix == ".json"
+        except AssertionError:
+            raise ValueError(f"{file_path} must be `json` format.")
         json_results = load_json(Path(file_path), **kwargs)
     assert json_results
     if isinstance(json_results, dict):
