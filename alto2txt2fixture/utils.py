@@ -448,6 +448,7 @@ def filter_json_fields(
                      'year': 1856},
           'model': 'mitchells.entry',
           'pk': 9207}]
+
          ```
     """
     if not json_results:

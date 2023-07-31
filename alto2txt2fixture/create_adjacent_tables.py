@@ -78,6 +78,7 @@ def get_outpaths_dict(names: Sequence[str], module_name: str) -> TableOutputConf
          'PoliticalLeaning': {'csv': 'mitchells.PoliticalLeaning.csv',
                               'json': 'mitchells.PoliticalLeaning.json'},
          'Price': {'csv': 'mitchells.Price.csv', 'json': 'mitchells.Price.json'}}
+
         ```
     """
     return {

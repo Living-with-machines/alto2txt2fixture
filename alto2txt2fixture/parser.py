@@ -234,6 +234,7 @@ def get_translator(
         ...      )]
         >>> get_translator(fields)
         {'start': {'field1': {'translation1': 1}}}
+
         ```
     """
     _ = dict()
