@@ -70,6 +70,7 @@ def get_outpaths_dict(names: Sequence[str], module_name: str) -> TableOutputConf
             `csv` and `json` filenames.
 
     Examples:
+        ```pycon
         >>> from pprint import pprint
         >>> pprint(get_outpaths_dict(MITCHELLS_TABELS, "mitchells"))
         {'Entry': {'csv': 'mitchells.Entry.csv', 'json': 'mitchells.Entry.json'},
@@ -77,6 +78,7 @@ def get_outpaths_dict(names: Sequence[str], module_name: str) -> TableOutputConf
          'PoliticalLeaning': {'csv': 'mitchells.PoliticalLeaning.csv',
                               'json': 'mitchells.PoliticalLeaning.json'},
          'Price': {'csv': 'mitchells.Price.csv', 'json': 'mitchells.Price.json'}}
+        ```
     """
     return {
         name: OutputPathDict(

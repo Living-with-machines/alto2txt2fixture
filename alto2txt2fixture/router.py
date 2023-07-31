@@ -693,7 +693,6 @@ class DataProvider(Cache):
         collection_type: related data sources and potential linkage source
 
     Examples:
-
         ```pycon
         >>> from pprint import pprint
         >>> hmd = DataProvider("hmd")

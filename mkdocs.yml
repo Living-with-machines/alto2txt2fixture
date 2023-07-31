@@ -32,6 +32,7 @@ plugins:
   - literate-nav:
       nav_file: SUMMARY.md
   - section-index
+  - include-markdown
   - mkdocstrings:
       handlers:
         python:

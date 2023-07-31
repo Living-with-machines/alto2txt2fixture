@@ -223,6 +223,7 @@ def get_translator(
             ```
 
     Examples:
+        ```pycon
         >>> fields = [
         ...     TranslatorTuple(
         ...         start='start__field1',
@@ -233,6 +234,7 @@ def get_translator(
         ...      )]
         >>> get_translator(fields)
         {'start': {'field1': {'translation1': 1}}}
+        ```
     """
     _ = dict()
     for field in fields:

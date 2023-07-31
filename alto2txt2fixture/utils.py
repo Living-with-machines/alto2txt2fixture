@@ -405,6 +405,7 @@ def filter_json_fields(
         ValueError: ``file_path`` must have a `.json` `suffix`
 
     Examples:
+        ```pycon
         >>> from pprint import pprint
         >>> entry_fixture: dict = [
         ...     {"pk": 4889, "model": "mitchells.entry",
@@ -447,6 +448,7 @@ def filter_json_fields(
                      'year': 1856},
           'model': 'mitchells.entry',
           'pk': 9207}]
+         ```
     """
     if not json_results:
         assert file_path
