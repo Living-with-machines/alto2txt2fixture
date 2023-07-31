@@ -9,9 +9,10 @@ from .settings import settings
 
 def setup_jisc_papers(path: str = settings.JISC_PAPERS_CSV) -> pd.DataFrame:
     """
-    Creates a DataFrame with correct informations based on the JISC_PAPERS_CSV from the settings.
+    Create a `DataFrame` with information in `JISC_PAPERS_CSV` in settings.
 
-    Returns: DataFrame with all JISC titles.
+    Returns:
+        `DataFrame` with all JISC titles.
     """
 
     if not Path(path).exists():
@@ -92,14 +93,30 @@ def get_jisc_title(
     jisc_papers: pd.DataFrame,
     input_sub_path: str,
     publication_code: str,
-    abbr: str = None,
+    abbr: str | None = None,
 ) -> str:
     """
-    Takes an input_sub_path, a publication_code, and an (optional) abbreviation for any newspaper, and tries to
-    locate the title in the jisc_papers DataFrame provided (usually loaded with the setup_jisc_papers function
-    above).
+    Match a newspaper ``title`` with ``jisc_papers`` records.
 
-    Returns a string (or crashes).
+    Takes an ``input_sub_path``, a ``publication_code``, and an (optional)
+    abbreviation for any newspaper to locate the ``title`` in the
+    ``jisc_papers`` `DataFrame`. ``jisc_papers`` is usually loaded via the
+    ``setup_jisc_papers`` function.
+
+    Args:
+        title: target newspaper title
+        issue_date: target newspaper issue_date
+        jisc_papers: `DataFrame` of `jisc_papers` to match
+        input_sub_path: path of files to narrow down query input_sub_path
+        publication_code: unique codes to match newspaper records
+        abbr: an optional abbreviation of the newspaper title
+
+    Returns:
+        Matched ``title`` `str` or ``abbr``.
+
+
+    Returns:
+        A string estimating the JISC equivalent newspaper title
     """
 
     # First option, search the input_sub_path for a valid-looking publication_code

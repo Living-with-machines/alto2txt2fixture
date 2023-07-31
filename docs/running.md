@@ -33,6 +33,7 @@ The program has a number of optional parameters that you can choose to include o
 | `-c`, `--collections` | Which collections to process in the mounted alto2txt directory | `hmd`, `lwm`, `jisc`, `bna` |
 | `-o`, `--output` | Into which directory should the processed files be put? | `./output/fixtures/` |
 | `-m`, `--mountpoint` | Where is the alto2txt directories mounted? | `./input/alto2txt/` |
+| `-t`, `--test-config` | Print the config table but do not run | `False` |
 
 ## Successfully running the program: An example
 

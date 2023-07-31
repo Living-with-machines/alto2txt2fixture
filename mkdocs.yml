@@ -10,6 +10,8 @@ theme:
   palette:
     primary: black
     accent: teal
+  features:
+    - content.code.copy
   icon:
     repo: fontawesome/brands/github-alt
 
@@ -35,13 +37,25 @@ plugins:
         python:
           paths: [alto2txt2fixture]
           options:
-            docstring_style: sphinx
+            docstring_style: google
             separate_signature: true
             show_signature_annotations: true
             line_length: 80
             annotations_path: brief
+            signature_crossrefs: true
+            merge_init_into_class: true
 
 markdown_extensions:
   - admonition
   - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      use_pygments: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
   - pymdownx.superfences
+
+extra_css:
+  - css/code_select.css

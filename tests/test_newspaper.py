@@ -3,6 +3,13 @@ import pytest
 from alto2txt2fixture.__main__ import run
 
 
+def test_newspaper_test_config(capsys) -> None:
+    """Test using `test_config` to only print out run config."""
+    collections_config = "│           COLLECTIONS │ ['hmd', 'lwm', 'jisc', 'bna'] │"
+    run(test_config=True)
+    assert collections_config in capsys.readouterr().out
+
+
 def test_run_without_local_or_blobfuse(capsys, uncached_folder) -> None:
     """Test error mesages from `alto2txt2fixture.run` cli.
 
