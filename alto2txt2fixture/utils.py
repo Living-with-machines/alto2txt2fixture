@@ -1,17 +1,35 @@
 import datetime
+import gc
 import json
 import logging
+from collections import OrderedDict
 from os import PathLike
 from pathlib import Path
-from typing import Final, Generator, Hashable, Iterable, Literal, Sequence, TypeAlias
+from typing import (
+    Any,
+    Final,
+    Generator,
+    Hashable,
+    Iterable,
+    Literal,
+    Sequence,
+    TypeAlias,
+)
 
 import pytz
 from numpy import array_split
+from pandas import DataFrame
 from rich.logging import RichHandler
 from rich.table import Table
 
 from .log import error, info, warning
-from .settings import DATA_PROVIDER_INDEX, NEWSPAPER_COLLECTION_METADATA, settings
+from .settings import (
+    DATA_PROVIDER_INDEX,
+    EXPORT_FORMATS,
+    JSON_INDENT,
+    NEWSPAPER_COLLECTION_METADATA,
+    settings,
+)
 from .types import FixtureDict
 
 FORMAT: str = "%(message)s"
@@ -250,14 +268,17 @@ def get_size_from_path(p: str | Path, raw: bool = False) -> str | float:
     return rel_size
 
 
-def write_json(p: str | Path, o: dict, add_created: bool = True) -> None:
+def write_json(
+    p: str | Path, o: dict, add_created: bool = True, json_indent: int = JSON_INDENT
+) -> None:
     """
     Easier access to writing `json` files. Checks whether parent exists.
 
     Args:
         p: Path to write `json` to
         o: Object to write to `json` file
-        add_created: If set to True will add `created_at` and `updated_at`
+        add_created:
+            If set to True will add `created_at` and `updated_at`
             to the dictionary's fields. If `created_at` and `updated_at`
             already exist in the fields, they will be forcefully updated.
 
@@ -293,7 +314,7 @@ def write_json(p: str | Path, o: dict, add_created: bool = True) -> None:
 
     p.parent.mkdir(parents=True, exist_ok=True)
 
-    p.write_text(json.dumps(o))
+    p.write_text(json.dumps(o, indent=json_indent))
 
     return
 
@@ -406,7 +427,7 @@ def filter_json_fields(
     Raises:
         ValueError: ``file_path`` must have a `.json` `suffix`
 
-    Examples:
+    Example:
         ```pycon
         >>> from pprint import pprint
         >>> entry_fixture: dict = [
@@ -488,7 +509,7 @@ def dict_from_list_fixture_fields(
     Returns:
         A `dict` where extracted `field_name` is key for related `FixtureDict` values.
 
-    Examples:
+    Example:
         ```pycon
         >>> fixture_dict: dict[str, FixtureDict] = dict_from_list_fixture_fields()
         >>> fixture_dict['hmd']['pk']
@@ -518,7 +539,7 @@ def fixture_or_default_dict(
         default_dict: a `dict` to return if ``key`` is not in
             ``fixture_dict`` index
 
-    Examples:
+    Example:
         ```pycon
         >>> newspaper_dict: dict[str, FixtureDict] = dict_from_list_fixture_fields(
         ...     NEWSPAPER_COLLECTION_METADATA)
@@ -561,7 +582,7 @@ def check_newspaper_collection_configuration(
     Returns:
         A set of ``collections`` without a matching `newspaper_collections` record.
 
-    Examples:
+    Example:
         ```pycon
         >>> check_newspaper_collection_configuration()
         set()
@@ -584,8 +605,8 @@ def check_newspaper_collection_configuration(
 
 
 def fixture_fields(
-    fixture_dict: FixtureDict, include_pk: bool = True
-) -> tuple[str, ...]:
+    fixture_dict: FixtureDict, include_pk: bool = True, as_dict: bool = False
+) -> tuple[str, ...] | dict[str, Any]:
     """Generate a tuple of `FixtureDict` `field` names.
 
     Note:
@@ -595,20 +616,33 @@ def fixture_fields(
         fixture_dict: A `FixtureDict` instance to extract names from `fields`
         include_pk: Whether to include the `pk` (primary key) column
 
-    Examples:
+    Example:
         ```pycon
         >>> fixture_fields(NEWSPAPER_COLLECTION_METADATA[0])
         ('pk', 'name', 'code', 'legacy_code', 'collection', 'source_note')
-        >>> fixture_fields(NEWSPAPER_COLLECTION_METADATA[0], False)
+        >>> fixture_fields(NEWSPAPER_COLLECTION_METADATA[0], include_pk=False)
         ('name', 'code', 'legacy_code', 'collection', 'source_note')
+        >>> hmd_dict: dict[str, Any] = fixture_fields(
+        ...     NEWSPAPER_COLLECTION_METADATA[1], as_dict=True)
+        >>> hmd_dict['code']
+        'bl-hmd'
+        >>> hmd_dict['pk']
+        2
+        >>> hmd_dict = fixture_fields(
+        ...     NEWSPAPER_COLLECTION_METADATA[1], include_pk=False, as_dict=True)
+        >>> 'pk' in hmd_dict
+        False
 
         ```
     """
-    field_names: tuple[str, ...] = tuple(fixture_dict["fields"].keys())
+    fields: OrderedDict[str, Any] = OrderedDict(fixture_dict["fields"])
     if include_pk:
-        return ("pk",) + field_names
+        fields["pk"] = fixture_dict["pk"]
+        fields.move_to_end("pk", last=False)
+    if as_dict:
+        return fields
     else:
-        return field_names
+        return tuple(fields.keys())
 
 
 def gen_fixture_tables(
@@ -621,7 +655,7 @@ def gen_fixture_tables(
         fixture_tables: `dict` where `key` is for `Table` title and `value` is a `FixtureDict`
         include_fixture_pk_column: whether to include the `pk` field from `FixtureDict`
 
-    Examples:
+    Example:
         ```pycon
         >>> table_name: str = "data_provider"
         >>> tables = tuple(
@@ -649,3 +683,188 @@ def gen_fixture_tables(
             )
             fixture_table.add_row(*row_values)
         yield fixture_table
+
+
+def save_fixture(
+    generator: Sequence | Generator = [],
+    prefix: str = "",
+    output_path: PathLike | str = settings.OUTPUT,
+    max_elements_per_file: int = settings.MAX_ELEMENTS_PER_FILE,
+    json_indent: int = JSON_INDENT,
+) -> None:
+    """Saves fixtures generated by a generator to separate JSON files.
+
+    This function takes a generator and saves the generated fixtures to
+    separate JSON files. The fixtures are saved in batches, where each batch
+    is determined by the ``max_elements_per_file`` parameter.
+
+    Args:
+        generator: A generator that yields the fixtures to be saved.
+        prefix: A string prefix to be added to the file names of the
+            saved fixtures.
+        output_path: Path to folder fixtures are saved to
+        max_elements_per_file: Maximum `JSON` records saved in each file
+        json_indent: Number of indent spaces per line in saved `JSON`
+
+
+    Returns:
+        This function saves the fixtures to files but does not return
+            any value.
+
+    Example:
+        ```pycon
+        >>> save_fixture(NEWSPAPER_COLLECTION_METADATA,
+        ...              prefix='test', output_path='tests/')
+        >>> imported_fixture = load_json('tests/test-1.json')
+        >>> imported_fixture[1]['pk']
+        2
+        >>> imported_fixture[1]['fields'][DATA_PROVIDER_INDEX]
+        'hmd'
+
+        ```
+
+    """
+    internal_counter = 1
+    counter = 1
+    lst = []
+    Path(output_path).mkdir(parents=True, exist_ok=True)
+    for item in generator:
+        lst.append(item)
+        internal_counter += 1
+        if internal_counter > max_elements_per_file:
+            Path(f"{output_path}/{prefix}-{counter}.json").write_text(
+                json.dumps(lst, indent=json_indent)
+            )
+
+            # Save up some memory
+            del lst
+            gc.collect()
+
+            # Re-instantiate
+            lst = []
+            internal_counter = 1
+            counter += 1
+    else:
+        Path(f"{output_path}/{prefix}-{counter}.json").write_text(
+            json.dumps(lst, indent=json_indent)
+        )
+
+    return
+
+
+def fixtures_dict2csv(
+    fixtures: Iterable[FixtureDict] | Generator[FixtureDict, None, None],
+    prefix: str = "",
+    output_path: PathLike | str = settings.OUTPUT,
+    index: bool = False,
+    max_elements_per_file: int = settings.MAX_ELEMENTS_PER_FILE,
+) -> None:
+    """Saves fixtures generated by a generator to separate separate `CSV` files.
+
+    This function takes an `Iterable` or `Generator` of fixtures and saves to
+    separate `CSV` files. The fixtures are saved in batches, where each batch
+    is determined by the ``max_elements_per_file`` parameter.
+
+    Args:
+        fixtures: An `Iterable` or `Generator` of the fixtures to be saved.
+        prefix: A string prefix to be added to the file names of the
+            saved fixtures.
+        output_path: Path to folder fixtures are saved to
+        max_elements_per_file: Maximum `JSON` records saved in each file
+
+    Returns:
+        This function saves fixtures to files and does not return a value.
+
+    Example:
+        ```pycon
+        >>> fixtures_dict2csv(NEWSPAPER_COLLECTION_METADATA,
+        ...                   prefix='test', output_path='tests/')
+        >>> imported_fixture = read_csv('tests/test-1.csv')
+        >>> imported_fixture.iloc[1]['pk']
+        2
+        >>> imported_fixture.iloc[1][DATA_PROVIDER_INDEX]
+        'hmd'
+
+        ```
+
+    """
+    internal_counter: int = 1
+    counter: int = 1
+    lst: list = []
+    Path(output_path).mkdir(parents=True, exist_ok=True)
+    for item in fixtures:
+        lst.append(fixture_fields(item, as_dict=True))
+        internal_counter += 1
+        if internal_counter > max_elements_per_file:
+            df: DataFrame = DataFrame.from_records(lst)
+            df.to_csv(Path(f"{output_path}/{prefix}-{counter}.csv"), index=index)
+            # Save up some memory
+            del lst
+            gc.collect()
+
+            # Re-instantiate
+            lst: list = []
+            internal_counter = 1
+            counter += 1
+    else:
+        df: DataFrame = DataFrame.from_records(lst)
+        df.to_csv(Path(f"{output_path}/{prefix}-{counter}.csv"), index=index)
+
+    return
+    save_fixture(records, prefix=f"test-{table_name}", output_path=path)
+
+
+def export_fixtures(
+    fixture_tables: dict[str, Sequence[FixtureDict]],
+    path: str | PathLike = settings.FIXTURE_TABLES_OUTPUT,
+    prefix: str = "test-",
+    formats: Sequence[EXPORT_FORMATS] = settings.FIXTURE_TABLES_FORMATS,
+) -> None:
+    """Export ``fixture_tables`` in ``formats``.
+
+    Note:
+        This is still in experimental phase of development and not recommended
+        for production.
+
+    Args:
+        fixture_tables: `dict` of table name (eg: `dataprovider`) and `FixtureDict`
+        path: Path to save exports in
+        prefix: `str` to prefix export filenames with
+        formats: list of `EXPORT_FORMATS` to export
+
+    Example:
+        ```pycon
+        >>> test_fixture_tables: dict[str, FixtureDict] = {
+        ...     'test0': NEWSPAPER_COLLECTION_METADATA,
+        ...     'test1': NEWSPAPER_COLLECTION_METADATA}
+        >>> export_fixtures(test_fixture_tables, path='tests/')
+        ...     # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+        <BLANKLINE>
+        ...Warning: Saving test0...
+        ...Warning: Saving test1...
+        >>> fixture0_json = load_json('tests/test-test0-1.json')
+        >>> fixture0_df = read_csv('tests/test-test0-1.csv')
+        >>> fixture1_json = load_json('tests/test-test1-1.json')
+        >>> fixture1_df = read_csv('tests/test-test1-1.csv')
+        >>> fixture0_json == fixture1_json
+        True
+        >>> all(fixture0_df == fixture1_df)
+        True
+        >>> fixture0_json[1]['pk']
+        2
+        >>> fixture0_json[1]['fields'][DATA_PROVIDER_INDEX]
+        'hmd'
+        >>> fixture0_df[['pk', DATA_PROVIDER_INDEX]].iloc[1].to_list()
+        [2, 'hmd']
+
+        ```
+    """
+    for table_name, records in fixture_tables.items():
+        warning(
+            f"Saving {table_name} fixture in {formats} formats "
+            f"to {path} *without* checks..."
+        )
+        if "json" in formats:
+            save_fixture(records, prefix=f"{prefix}{table_name}", output_path=path)
+        if "csv" in formats:
+            fixtures_dict2csv(records, prefix=f"{prefix}{table_name}", output_path=path)

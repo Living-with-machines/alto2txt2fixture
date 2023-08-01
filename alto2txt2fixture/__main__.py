@@ -29,8 +29,7 @@ from .cli import show_fixture_tables, show_setup
 from .parser import parse
 from .router import route
 from .settings import DATA_PROVIDER_INDEX, settings
-from .types import FixtureDict
-from .utils import clear_cache
+from .utils import clear_cache, export_fixtures
 
 
 def parse_args(argv=None):
@@ -65,9 +64,15 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         "-f",
-        "--fixture-tables",
+        "--show-fixture-tables",
         default=True,
         help="Print included fixture table configurations",
+        action=BooleanOptionalAction,
+    )
+    parser.add_argument(
+        "--export-fixture-tables",
+        default=True,
+        help="Experimental: export fixture tables prior to data processing",
         action=BooleanOptionalAction,
     )
     parser.add_argument(
@@ -105,8 +110,6 @@ def run(
 
     args = parse_args()
 
-    fixture_tables: list[FixtureDict] = []
-
     if args.collections:
         COLLECTIONS = [x.lower() for x in args.collections]
     else:
@@ -132,9 +135,16 @@ def run(
         MAX_ELEMENTS_PER_FILE=settings.MAX_ELEMENTS_PER_FILE,
     )
 
-    if args.fixture_tables:
+    if args.show_fixture_tables:
         # Show a table of fixtures used, defaults to DataProvider Table
         show_fixture_tables(settings, data_provider_index=data_provider_field)
+
+    if args.export_fixture_tables:
+        export_fixtures(
+            fixture_tables=settings.FIXTURE_TABLES,
+            path=OUTPUT,
+            formats=settings.FIXTURE_TABLES_FORMATS,
+        )
 
     if not args.test_config and not test_config:
         # Routing alto2txt into subdirectories with structured files

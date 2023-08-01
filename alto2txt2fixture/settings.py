@@ -7,6 +7,8 @@ Most of these are managed within the `settings` variable within this module.
     See the command line interface [parameters documentation][optional-parameters] for means of modifying `settings` when run.
 
 Attributes:
+    JSON_INDEX:
+        Amount of indentation to include in output `JSON` files
     DATA_PROVIDER_INDEX:
         The `field` used to index `DataProvider` records
     NEWSPAPER_COLLECTION_METADATA:
@@ -14,17 +16,22 @@ Attributes:
     SETUP_TITLE:
         the title printed at the commandline via `cli.show_setup()` function
     settings:
-        a `docdict` configuration file for running `newspaper` portions of `alto2txt2fixture`
+        a `docdict` configuration for running `newspaper` portions of `alto2txt2fixture`
 
 """
-from typing import Final
+from typing import Final, Literal, TypeAlias
 
 from .types import FixtureDict, dotdict
 
 # To understand the settings object, see documentation.
 
+JSON_INDENT: int = 2
 
 DATA_PROVIDER_INDEX: Final[str] = "legacy_code"
+
+SETUP_TITLE: str = "alto2txt2fixture setup"
+
+EXPORT_FORMATS: TypeAlias = Literal["json", "csv"]
 
 NEWSPAPER_COLLECTION_METADATA: Final[list[FixtureDict]] = [
     FixtureDict(
@@ -61,7 +68,7 @@ NEWSPAPER_COLLECTION_METADATA: Final[list[FixtureDict]] = [
         },
     ),
     FixtureDict(
-        pk=3,
+        pk=4,
         model="newspapers.dataprovider",
         fields={
             "name": "Living with Machines",
@@ -72,8 +79,6 @@ NEWSPAPER_COLLECTION_METADATA: Final[list[FixtureDict]] = [
         },
     ),
 ]
-
-SETUP_TITLE: str = "alto2txt2fixture setup"
 
 settings: dotdict = dotdict(
     **{
@@ -91,6 +96,8 @@ settings: dotdict = dotdict(
         "FIXTURE_TABLES": {
             "dataprovider": NEWSPAPER_COLLECTION_METADATA,
         },
+        "FXITURE_TABLES_OUTPUT": "./output/fixture-test-tables/",
+        "FIXTURE_TABLES_FORMATS": ["json", "csv"],
     }
 )
 

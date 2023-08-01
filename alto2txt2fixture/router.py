@@ -1,3 +1,4 @@
+import json
 import uuid
 import zipfile
 from pathlib import Path
@@ -11,7 +12,7 @@ from tqdm import tqdm
 from .jisc import get_jisc_title, setup_jisc_papers
 from .log import error, warning
 from .patterns import PUBLICATION_CODE
-from .settings import DATA_PROVIDER_INDEX, NEWSPAPER_COLLECTION_METADATA
+from .settings import DATA_PROVIDER_INDEX, JSON_INDENT, NEWSPAPER_COLLECTION_METADATA
 from .types import FixtureDict, dotdict
 from .utils import (
     dict_from_list_fixture_fields,
@@ -58,7 +59,7 @@ class Cache:
         """
         return Path(f"{CACHE_HOME}/{self.collection}/{self.kind}/{self.id}.json")
 
-    def write_to_cache(self) -> Optional[bool]:
+    def write_to_cache(self, json_indent: int = JSON_INDENT) -> Optional[bool]:
         """
         Writes the cache data to a file at the specified cache path. The cache
         data is first converted to a dictionary using the as_dict method. If
@@ -80,7 +81,7 @@ class Cache:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(path, "w+") as f:
-            f.write(json.dumps(self.as_dict()))
+            f.write(json.dumps(self.as_dict(), indent=json_indent))
 
         return
 
@@ -468,7 +469,7 @@ class Item(Cache):
             + f"/{self.newspaper.publication_code}/items.jsonl"
         )
 
-    def write_to_cache(self) -> None:
+    def write_to_cache(self, json_indent=JSON_INDENT) -> None:
         """
         Special cache-write function that appends rather than writes at the
         end of the process.
@@ -481,7 +482,7 @@ class Item(Cache):
         path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(path, "a+") as f:
-            f.write(json.dumps(self.as_dict()) + "\n")
+            f.write(json.dumps(self.as_dict(), indent=json_indent) + "\n")
 
         return
 
@@ -700,7 +701,7 @@ class DataProvider(Cache):
         collection_type: related data sources and potential linkage source
         index_field: field name for querying existing records
 
-    Examples:
+    Example:
         ```pycon
         >>> from pprint import pprint
         >>> hmd = DataProvider("hmd")
@@ -794,12 +795,11 @@ class Document:
         collection:
             A string that represents the collection of the publication
         root:
-            An xml element that represents the root of the publication
+            An `XML` element that represents the root of the publication
         zip_file:
-            A path to a valid zip file
+            A path to a valid `zip` file
         jisc_papers:
-            A pandas DataFrame object that holds information about the JISC
-            papers
+            A `pandas` `DataFrame` object that holds information about the JISC papers
         meta:
             TODO
     """
@@ -939,6 +939,7 @@ class Archive:
         size_raw: The raw size of the archive, in bytes.
         roots: The root elements of the XML documents contained in the archive.
         meta: Metadata about the archive, such as its path, size, and number of contents.
+        json_indent: Indentation formatting of `json` output
 
     Raises:
         RuntimeError: If the ``path`` does not exist.
@@ -950,6 +951,7 @@ class Archive:
         collection: str = "",
         report_id: str | None = None,
         jisc_papers: pd.DataFrame | None = None,
+        json_indent: int = JSON_INDENT,
     ):
         """Constructor method."""
 
@@ -981,6 +983,7 @@ class Archive:
         self.report: Path = (
             self.report_parent / f"{self.path.stem.replace('_metadata', '')}.json"
         )
+        self.json_indent: int = json_indent
 
     def __len__(self):
         """The number of files inside the zip archive."""
@@ -1005,14 +1008,16 @@ class Archive:
         self.meta.start = str(self.meta.start)
         self.meta.end = str(self.meta.end)
 
-        write_json(self.report, self.meta, add_created=False)
+        write_json(
+            self.report, self.meta, add_created=False, json_indent=self.json_indent
+        )
 
         if self.meta.item_paths:
             for item_doc in self.meta.item_paths:
                 Path(item_doc).write_text(
                     "\n".join(
                         [
-                            json.dumps(x)
+                            json.dumps(x, indent=self.json_indent)
                             for x in [
                                 json.loads(x)
                                 for x in {

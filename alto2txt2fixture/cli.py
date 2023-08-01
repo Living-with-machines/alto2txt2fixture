@@ -42,22 +42,30 @@ def show_fixture_tables(
         data_provider_index: key to index `dataprovider` from ``NEWSPAPER_COLLECTION_METADATA``
 
     Returns:
-        A `list` of `rich.Table` instances
+        A `list` of `rich.Table` renders from configurations in ``run_settings.FIXTURE_TABLES``
 
-    Examples:
+    Example:
         ```pycon
-        >>> fixture_tables = show_fixture_tables(settings)
-        ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-        <BLANKLINE>
-        ...dataprovider...Heritage Made Digital   │ bl-hmd │ hmd...
+        >>> fixture_tables: list[Table] = show_fixture_tables(
+        ...     settings,
+        ...     print_in_call=False)
         >>> len(fixture_tables)
         1
         >>> fixture_tables[0].title
         'dataprovider'
         >>> [column.header for column in fixture_tables[0].columns]
         ['pk', 'name', 'code', 'legacy_code', 'collection', 'source_note']
+        >>> fixture_tables = show_fixture_tables(settings)
+        ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+        <BLANKLINE>
+        ...dataprovider...Heritage...│ bl-hmd...│ hmd...
 
         ```
+
+    Note:
+        It is possible for the example test to fail in different screen sizes. Try
+        increasing the window or screen width of terminal used to check before
+        raising an issue.
     """
     if run_settings.FIXTURE_TABLES:
         if "dataprovider" in run_settings.FIXTURE_TABLES:
