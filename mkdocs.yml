@@ -26,6 +26,7 @@ nav:
 plugins:
   - search:
       lang: en
+  - autorefs
   - gen-files:
       scripts:
         - docs/gen_ref_pages.py

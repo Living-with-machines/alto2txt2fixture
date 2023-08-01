@@ -1,13 +1,20 @@
-import os
-from typing import Final
+"""
+The `settings` module provides configuration for running `alto2txt2fixture`.
 
-from rich.console import Console
-from rich.table import Table
+Most of these are managed within the `settings` variable within this module.
+
+!!! note
+    See the command line interface [parameters documentation][optional-parameters] for means of modifying `settings` when run.
+
+"""
+from typing import Final
 
 from .types import FixtureDict, dotdict
 
 # To understand the settings object, see documentation.
 
+
+DATA_PROVIDER_INDEX: Final[str] = "legacy_code"
 
 NEWSPAPER_COLLECTION_METADATA: Final[list[FixtureDict]] = [
     FixtureDict(
@@ -56,7 +63,9 @@ NEWSPAPER_COLLECTION_METADATA: Final[list[FixtureDict]] = [
     ),
 ]
 
-settings = dotdict(
+SETUP_TITLE: str = "alto2txt2fixture setup"
+
+settings: dotdict = dotdict(
     **{
         "MOUNTPOINT": "./input/alto2txt/",
         "OUTPUT": "./output/fixtures/",
@@ -69,29 +78,11 @@ settings = dotdict(
         "JISC_PAPERS_CSV": "./input/JISC papers.csv",
         "MAX_ELEMENTS_PER_FILE": int(2e6),
         "REPORT_DIR": "./output/reports/",
-        "NEWSPAPER_COLLECTION_METADATA": NEWSPAPER_COLLECTION_METADATA,
+        "FIXTURE_TABLES": {
+            "dataprovider": NEWSPAPER_COLLECTION_METADATA,
+        },
     }
 )
 
 # Correct settings to adhere to standards
 settings.SKIP_FILE_SIZE *= 1e9
-
-
-def show_setup(clear: bool = True, **kwargs) -> None:
-    """Generate a `rich.table.Table` for printing configuration to console."""
-    if clear and os.name == "posix":
-        os.system("clear")
-    elif clear:
-        os.system("cls")
-
-    table = Table(title="alto2txt2fixture setup")
-
-    table.add_column("Setting", justify="right", style="cyan", no_wrap=True)
-    table.add_column("Value", style="magenta")
-    for key, value in kwargs.items():
-        table.add_row(str(key), str(value))
-
-    console = Console()
-    console.print(table)
-
-    return

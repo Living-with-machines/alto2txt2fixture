@@ -5,14 +5,21 @@ from typing import Generator, Optional
 from xml.etree import ElementTree as ET
 
 import pandas as pd
+from slugify import slugify
 from tqdm import tqdm
 
 from .jisc import get_jisc_title, setup_jisc_papers
 from .log import error, warning
 from .patterns import PUBLICATION_CODE
-from .settings import NEWSPAPER_COLLECTION_METADATA
+from .settings import DATA_PROVIDER_INDEX, NEWSPAPER_COLLECTION_METADATA
 from .types import FixtureDict, dotdict
-from .utils import get_now, get_size_from_path, write_json
+from .utils import (
+    dict_from_list_fixture_fields,
+    fixture_or_default_dict,
+    get_now,
+    get_size_from_path,
+    write_json,
+)
 
 
 class Cache:
@@ -203,7 +210,7 @@ class Newspaper(Cache):
             )
         return self._newspaper
 
-    def publication_code_from_input_sub_path(self) -> str:
+    def publication_code_from_input_sub_path(self) -> str | None:
         """
         A method that returns the publication code from the input sub-path of
         the publication process.
@@ -367,19 +374,19 @@ class Item(Cache):
         if not isinstance(newspaper, Newspaper):
             raise RuntimeError("Expected newspaper to be of type router.Newspaper")
 
-        self.root = root
-        self.issue_code = issue_code
-        self.digitisation = digitisation
-        self.ingest = ingest
-        self.collection = collection
-        self.newspaper = newspaper
-        self.meta = meta
+        self.root: ET.Element = root
+        self.issue_code: str = issue_code
+        self.digitisation: dict = digitisation
+        self.ingest: dict = ingest
+        self.collection: str = collection
+        self.newspaper: Newspaper | None = newspaper
+        self.meta: dotdict = meta
 
         self._item_elem = None
         self._item_code = None
         self._item = None
 
-        path = str(self.get_cache_path())
+        path: str = str(self.get_cache_path())
         if not self.meta.item_paths:
             self.meta.item_paths = [path]
         elif path not in self.meta.item_paths:
@@ -486,15 +493,15 @@ class Issue(Cache):
     issue object and the manipulation of its data.
 
     Attributes:
-        root (xml.etree.ElementTree.Element):
+        root:
             An xml element that represents the root of the publication
-        newspaper (router.Newspaper, optional):
+        newspaper:
             The parent newspaper
-        collection (str):
+        collection:
             A string that represents the collection of the publication
-        input_sub_path (str):
+        input_sub_path:
             TODO
-        meta (dotdict):
+        meta:
             TODO
     """
 
@@ -511,16 +518,16 @@ class Issue(Cache):
     ):
         """Constructor method."""
 
-        self.publication = publication
-        self.newspaper = newspaper
-        self.collection = collection
-        self.input_sub_path = input_sub_path
-        self.meta = meta
+        self.publication: ET.Element = publication
+        self.newspaper: Newspaper | None = newspaper
+        self.collection: str = collection
+        self.input_sub_path: str = input_sub_path
+        self.meta: dotdict = meta
 
         self._issue = None
         self._issue_date = None
 
-        path = str(self.get_cache_path())
+        path: str = str(self.get_cache_path())
         if not self.meta.issue_paths:
             self.meta.issue_paths = [path]
         elif path not in self.meta.issue_paths:
@@ -604,8 +611,8 @@ class Ingest(Cache):
         if not isinstance(root, ET.Element):
             raise RuntimeError(f"Expected root to be xml.etree.Element: {type(root)}")
 
-        self.root = root
-        self.collection = collection
+        self.root: ET.Element = root
+        self.collection: str = collection
 
     def as_dict(self) -> dict:
         """
@@ -691,6 +698,7 @@ class DataProvider(Cache):
         kind: Indication of object type, defaults to `data-provider`
         providers_meta_data: structured dict of metadata for known collection sources
         collection_type: related data sources and potential linkage source
+        index_field: field name for querying existing records
 
     Examples:
         ```pycon
@@ -713,26 +721,21 @@ class DataProvider(Cache):
     kind: str = "data-provider"
     providers_meta_data: list[FixtureDict] = NEWSPAPER_COLLECTION_METADATA
     collection_type: str = "newspapers"
+    index_field: str = DATA_PROVIDER_INDEX
 
     def __init__(self, collection: str):
         """Constructor method."""
         self.collection: str = collection
 
     @property
-    def providers_legacy_code_id_dict(self) -> dict[str, FixtureDict]:
-        """Return all `legacy_code` values from `providers_meta_data`."""
-        return {
-            provider["fields"]["legacy_code"]: provider
-            for provider in self.providers_meta_data
-        }
+    def providers_index_dict(self) -> dict[str, FixtureDict]:
+        """Return all ``self.index_field`` values from `providers_meta_data`."""
+        return dict_from_list_fixture_fields(self.providers_meta_data, self.index_field)
 
     @property
     def meta_data(self) -> FixtureDict | dict:
         """Return ``self.providers_meta_data[self.collection]`` or `{}`."""
-        if self.collection in self.providers_legacy_code_id_dict:
-            return self.providers_legacy_code_id_dict[self.collection]
-        else:
-            return {}
+        return fixture_or_default_dict(self.collection, self.providers_index_dict)
 
     @property
     def meta_data_fields(self) -> FixtureDict | dict:
@@ -768,8 +771,10 @@ class DataProvider(Cache):
         else:
             return {
                 "name": self.collection,
-                "collection": self.collection_type,
+                "code": slugify(self.collection),
                 "source_note": "",
+                "legacy_code": None,
+                "collection": self.collection_type,
             }
 
     @property
@@ -786,41 +791,41 @@ class Document:
     different aspects of the document.
 
     Attributes:
-        collection (str):
+        collection:
             A string that represents the collection of the publication
-        root (xml.etree.ElementTree.Element):
+        root:
             An xml element that represents the root of the publication
-        zip_file (str):
+        zip_file:
             A path to a valid zip file
-        jisc_papers (pandas.DataFrame, optional):
+        jisc_papers:
             A pandas DataFrame object that holds information about the JISC
             papers
-        meta (dotdict):
+        meta:
             TODO
     """
 
     def __init__(self, *args, **kwargs):
         """Constructor method."""
 
-        self.collection = kwargs.get("collection")
+        self.collection: str | None = kwargs.get("collection")
         if not self.collection or not isinstance(self.collection, str):
             raise RuntimeError("A valid collection must be passed")
 
-        self.root = kwargs.get("root")
+        self.root: ET.Element | None = kwargs.get("root")
         if not self.root or not isinstance(self.root, ET.Element):
             raise RuntimeError("A valid XML root must be passed")
 
-        self.zip_file = kwargs.get("zip_file")
+        self.zip_file: str | None = kwargs.get("zip_file")
         if self.zip_file and not isinstance(self.zip_file, str):
             raise RuntimeError("A valid zip file must be passed")
 
-        self.jisc_papers = kwargs.get("jisc_papers")
+        self.jisc_papers: pd.DataFrame | None = kwargs.get("jisc_papers")
         if not isinstance(self.jisc_papers, pd.DataFrame):
             raise RuntimeError(
                 "A valid DataFrame containing JISC papers must be passed"
             )
 
-        self.meta = kwargs.get("meta")
+        self.meta: dotdict | None = kwargs.get("meta")
 
         self._publication_elem = None
         self._input_sub_path = None
@@ -925,9 +930,15 @@ class Archive:
     Attributes:
         path: The path to the zip archive.
         collection: The collection of the XML files in the archive. Default is "".
+        report: The file path of the report file for the archive.
         report_id: The report ID for the archive. If not provided, a random UUID is
             generated.
+        report_parent: The parent directory of the report file for the archive.
         jisc_papers: A DataFrame of JISC papers.
+        size: The size of the archive, in human-readable format.
+        size_raw: The raw size of the archive, in bytes.
+        roots: The root elements of the XML documents contained in the archive.
+        meta: Metadata about the archive, such as its path, size, and number of contents.
 
     Raises:
         RuntimeError: If the ``path`` does not exist.
@@ -936,51 +947,40 @@ class Archive:
     def __init__(
         self,
         path: str | Path,
-        collection: str | None = "",
+        collection: str = "",
         report_id: str | None = None,
         jisc_papers: pd.DataFrame | None = None,
     ):
         """Constructor method."""
 
-        self.path = Path(path)
+        self.path: Path = Path(path)
 
         if not self.path.exists():
             raise RuntimeError("Path does not exist.")
 
-        self.size = get_size_from_path(self.path)
-        """The size of the archive, in human-readable format."""
+        self.size: str | float = get_size_from_path(self.path)
+        self.size_raw: str | float = get_size_from_path(self.path, raw=True)
+        self.zip_file: zipfile.ZipFile = zipfile.ZipFile(self.path)
+        self.collection: str = collection
+        self.roots: Generator[ET.Element, None, None] = self.get_roots()
 
-        self.size_raw = get_size_from_path(self.path, raw=True)
-        """The raw size of the archive, in bytes."""
-
-        self.zip_file = zipfile.ZipFile(self.path)
-        self.collection = collection
-
-        self.roots = self.get_roots()
-        """The root elements of the XML documents contained in the archive."""
-
-        self.meta = dotdict(
+        self.meta: dotdict = dotdict(
             path=str(self.path),
             bytes=self.size_raw,
             size=self.size,
             contents=len(self.filelist),
         )
-        """Metadata about the archive, such as its path, size, and number of contents."""
 
         if not report_id:
-            self.report_id = str(uuid.uuid4())
+            self.report_id: str = str(uuid.uuid4())
         else:
             self.report_id = report_id
 
-        self.jisc_papers = jisc_papers
-
-        self.report_parent = Path(f"{REPORT_DIR}/{self.report_id}")
-        """The parent directory of the report file for the archive."""
-
-        self.report = (
+        self.jisc_papers: pd.DataFrame = jisc_papers
+        self.report_parent: Path = Path(f"{REPORT_DIR}/{self.report_id}")
+        self.report: Path = (
             self.report_parent / f"{self.path.stem.replace('_metadata', '')}.json"
         )
-        """The file path of the report file for the archive."""
 
     def __len__(self):
         """The number of files inside the zip archive."""
@@ -1100,15 +1100,15 @@ class Collection:
     def __init__(self, name: str = "hmd", jisc_papers: Optional[pd.DataFrame] = None):
         """Constructor method."""
 
-        self.name = name
-        self.jisc_papers = jisc_papers
-        self.dir = Path(f"{MNT}/{self.name}-alto2txt/metadata")
-        self.zip_files = sorted(
+        self.name: str = name
+        self.jisc_papers: pd.DataFrame | None = jisc_papers
+        self.dir: Path = Path(f"{MNT}/{self.name}-alto2txt/metadata")
+        self.zip_files: list[Path] = sorted(
             list(self.dir.glob("*.zip")), key=lambda x: x.stat().st_size
         )
-        self.zip_file_count = sum([1 for _ in self.dir.glob("*.zip")])
-        self.report_id = str(uuid.uuid4())
-        self.empty = self.zip_file_count == 0
+        self.zip_file_count: int = sum([1 for _ in self.dir.glob("*.zip")])
+        self.report_id: str = str(uuid.uuid4())
+        self.empty: bool = self.zip_file_count == 0
 
     @property
     def archives(self):
