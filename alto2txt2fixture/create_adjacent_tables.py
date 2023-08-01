@@ -299,7 +299,11 @@ def run(
     time_stamp: str = "",
     output_path: Path = OUTPUT,
 ) -> None:
-    """Download, process and link ``files_dict`` to `json` and `csv`."""
+    """Download, process and link ``files_dict`` to `json` and `csv`.
+
+    Note:
+        This will require access to `https://zooniversedata.blob.core.windows.net/downloads/`.
+    """
 
     # Ensure time_stamp from the point of calling `run`
     if not time_stamp:

@@ -6,6 +6,16 @@ Most of these are managed within the `settings` variable within this module.
 !!! note
     See the command line interface [parameters documentation][optional-parameters] for means of modifying `settings` when run.
 
+Attributes:
+    DATA_PROVIDER_INDEX:
+        The `field` used to index `DataProvider` records
+    NEWSPAPER_COLLECTION_METADATA:
+        A list of `FixtureDict`s specifying speific newspaper data providers
+    SETUP_TITLE:
+        the title printed at the commandline via `cli.show_setup()` function
+    settings:
+        a `docdict` configuration file for running `newspaper` portions of `alto2txt2fixture`
+
 """
 from typing import Final
 
