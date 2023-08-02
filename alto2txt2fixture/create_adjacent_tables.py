@@ -11,6 +11,7 @@ import pandas as pd
 from rich import print
 from rich.progress import BarColumn, DownloadColumn, Progress
 
+from .settings import JSON_INDENT
 from .utils import get_now, logger
 
 OUTPUT: Final[Path] = Path("output/tables")
@@ -69,7 +70,8 @@ def get_outpaths_dict(names: Sequence[str], module_name: str) -> TableOutputConf
         A ``TableOutputConfigType``: a `dict` of table ``names`` and output
             `csv` and `json` filenames.
 
-    Examples:
+    Example:
+        ```pycon
         >>> from pprint import pprint
         >>> pprint(get_outpaths_dict(MITCHELLS_TABELS, "mitchells"))
         {'Entry': {'csv': 'mitchells.Entry.csv', 'json': 'mitchells.Entry.json'},
@@ -77,6 +79,8 @@ def get_outpaths_dict(names: Sequence[str], module_name: str) -> TableOutputConf
          'PoliticalLeaning': {'csv': 'mitchells.PoliticalLeaning.csv',
                               'json': 'mitchells.PoliticalLeaning.json'},
          'Price': {'csv': 'mitchells.Price.csv', 'json': 'mitchells.Price.json'}}
+
+        ```
     """
     return {
         name: OutputPathDict(
@@ -148,7 +152,7 @@ def csv2json_list(
     csv_path: PathLike,
     output_path: Path = OUTPUT,
     saved: list[Path] | None = None,
-    indent: int = 2,
+    indent: int = JSON_INDENT,
 ) -> list:
     """Save `csv_path` as a `json` file and return as a `list`."""
     json_data = []
@@ -231,7 +235,8 @@ def download_data(
         overwrite: `bool` to overwrite ``LOCAL_CACHE`` files or not
         exclude: `list` of files to exclude from ``files_dict``
 
-    Examples:
+    Example:
+        ```pycon
         >>> tmp: Path = getfixture('tmpdir')
         >>> set_path: Path = tmp.chdir()
         >>> download_data(exclude=[
@@ -250,6 +255,8 @@ def download_data(
         100% ... 59.8/59.8 kB
         Downloading cache...wikidata_gazetteer_selected_columns.csv
         100% ... 47.8/47.8 MB
+
+        ```
     """
     if not files_dict:
         files_dict = deepcopy(FILES)
@@ -296,7 +303,11 @@ def run(
     time_stamp: str = "",
     output_path: Path = OUTPUT,
 ) -> None:
-    """Download, process and link ``files_dict`` to `json` and `csv`."""
+    """Download, process and link ``files_dict`` to `json` and `csv`.
+
+    Note:
+        This will require access to `https://zooniversedata.blob.core.windows.net/downloads/`.
+    """
 
     # Ensure time_stamp from the point of calling `run`
     if not time_stamp:

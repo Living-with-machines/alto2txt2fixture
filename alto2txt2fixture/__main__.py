@@ -25,10 +25,11 @@ __main__), the ``run`` function is executed.
 
 from argparse import ArgumentParser, BooleanOptionalAction
 
-from alto2txt2fixture.parser import parse
-from alto2txt2fixture.router import route
-from alto2txt2fixture.settings import settings, show_setup
-from alto2txt2fixture.utils import clear_cache
+from .cli import show_fixture_tables, show_setup
+from .parser import parse
+from .router import route
+from .settings import DATA_PROVIDER_INDEX, settings
+from .utils import clear_cache, export_fixtures
 
 
 def parse_args(argv=None):
@@ -61,10 +62,31 @@ def parse_args(argv=None):
         help="Only print the configuration",
         action=BooleanOptionalAction,
     )
+    parser.add_argument(
+        "-f",
+        "--show-fixture-tables",
+        default=True,
+        help="Print included fixture table configurations",
+        action=BooleanOptionalAction,
+    )
+    parser.add_argument(
+        "--export-fixture-tables",
+        default=True,
+        help="Experimental: export fixture tables prior to data processing",
+        action=BooleanOptionalAction,
+    )
+    parser.add_argument(
+        "--data-provider-field",
+        type=str,
+        default=DATA_PROVIDER_INDEX,
+        help="Key for indexing DataProvider records",
+    )
     return parser.parse_args(argv)
 
 
-def run(test_config: bool = False) -> None:
+def run(
+    test_config: bool = False, data_provider_field: str = DATA_PROVIDER_INDEX
+) -> None:
     """
     The run function is the main function that starts the alto2txt2fixture
     process.
@@ -112,6 +134,18 @@ def run(test_config: bool = False) -> None:
         REPORT_DIR=settings.REPORT_DIR,
         MAX_ELEMENTS_PER_FILE=settings.MAX_ELEMENTS_PER_FILE,
     )
+
+    if args.show_fixture_tables:
+        # Show a table of fixtures used, defaults to DataProvider Table
+        show_fixture_tables(settings, data_provider_index=data_provider_field)
+
+    if args.export_fixture_tables:
+        export_fixtures(
+            fixture_tables=settings.FIXTURE_TABLES,
+            path=OUTPUT,
+            formats=settings.FIXTURE_TABLES_FORMATS,
+        )
+
     if not args.test_config and not test_config:
         # Routing alto2txt into subdirectories with structured files
         route(

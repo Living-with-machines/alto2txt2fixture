@@ -26,12 +26,14 @@ nav:
 plugins:
   - search:
       lang: en
+  - autorefs
   - gen-files:
       scripts:
         - docs/gen_ref_pages.py
   - literate-nav:
       nav_file: SUMMARY.md
   - section-index
+  - include-markdown
   - mkdocstrings:
       handlers:
         python:

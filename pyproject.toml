@@ -5,28 +5,30 @@ description = ""
 authors = ["Kalle Westerling <kalle.westerling@bl.uk>"]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.11,<3.12"
 tqdm = "^4.65.0"
 pandas = "^2.0.3"
 colorama = "^0.4.6"
-numpy = "^1.25.0"
+numpy = "^1.25.1"
 pytz = "^2022.7.1"
 rich = "^12.6.0"
 types-pytz = "^2023.3.0.0"
+python-slugify = "^8.0.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest-sugar = "^0.9.7"
 ipython = "^8.14.0"
 pytest-cov = "^4.1.0"
-mkdocs-material = "^9.1.18"
+mkdocs-material = "^9.1.21"
 pre-commit = "^3.3.3"
 mkdocs-gen-files = "^0.5.0"
 mkdocs-section-index = "^0.3.5"
 mkdocs-literate-nav = "^0.6.0"
-mkdocstrings-python = "^1.1.2"
+mkdocstrings-python = "^1.2.1"
 mypy = "^1.4.1"
 black = "^23.7.0"
 pygments = "^2.15.1"
+mkdocs-include-markdown-plugin = "^4.0.4"
 
 [tool.isort]
 profile = "black"
@@ -39,7 +41,7 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-a2t2f-news = "alto2txt2fixture.__main__:main"
+a2t2f-news = "alto2txt2fixture.__main__:run"
 a2tsf-adj = "alto2txt2fixture.create_adjacent_tables:run"
 
 [tool.pytest.ini_options]
