@@ -7,12 +7,12 @@ from coverage_badge.__main__ import main as gen_cov_badge
 from alto2txt2fixture.create_adjacent_tables import OUTPUT, run
 from alto2txt2fixture.utils import load_multiple_json
 
-BADGE_PATH: Path = Path("docs") / "assets" / "coverage.svg"
+BADGE_PATH: Path = Path("docs") / "img" / "coverage.svg"
 
 
 @pytest.fixture
 def uncached_folder(monkeypatch, tmpdir) -> Path:
-    """Change local path to be fresh of cached data."""
+    """Change local path to avoid using pre-cached data."""
     return monkeypatch.chdir(tmpdir)
 
 
