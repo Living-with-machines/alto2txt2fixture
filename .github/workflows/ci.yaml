@@ -35,6 +35,11 @@ jobs:
         uses: pre-commit/action@main
       - name: Run pytest
         run: poetry run pytest -h auto
+      - name: Archive coverage svg
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-badge
+          path: docs/img/coverage.svg
 
   deploy:
     runs-on: ubuntu-latest
@@ -54,8 +59,10 @@ jobs:
         run: |
           pip3 install poetry
           poetry install --with dev
-      - name: Run pytest
-        run: poetry run pytest -h auto
+      - name: Download coverage svg
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-badge
       - name: Deploy mkdocs
         run: poetry run mkdocs gh-deploy --force
       - name: Update pre-commit
