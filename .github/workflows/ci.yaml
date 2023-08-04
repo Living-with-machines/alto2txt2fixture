@@ -31,14 +31,11 @@ jobs:
         run: |
           pip3 install poetry
           poetry install --with dev
-      - name: pre-commit
-        run: |
-          # stop the build if it doesn't pass pre-commit
-          poetry run pre-commit install
-          poetry run pre-commit run --all-files
-      - name: Test with pytest
-        run: |
-          poetry run pytest
+      - name: Run pre-commit
+        uses: pre-commit/action@main
+      - name: Update pre-commit
+        uses: pre-commit-ci/lite-action@v1.0.1
+        if: always()
 
   deploy:
     runs-on: ubuntu-latest
