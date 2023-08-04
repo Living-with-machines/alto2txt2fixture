@@ -95,6 +95,7 @@ def test_mitchells_entry_15_newspaper_field(
     assert mitchells_entry_15["fields"]["newspaper"] == 1187
 
 
+@pytest.mark.az
 @pytest.mark.downloads
 def test_mitchells_empty_newspaper_field(
     all_create_adjacent_tables_json_results: list,

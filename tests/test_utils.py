@@ -22,6 +22,7 @@ def test_json_results_ordering(all_create_adjacent_tables_json_results: list) ->
         assert json_fixture[0]["model"] == Path(json_outfile_names[i]).stem
 
 
+@pytest.mark.az
 @pytest.mark.slow
 @pytest.mark.downloads
 def test_download(uncached_folder) -> None:

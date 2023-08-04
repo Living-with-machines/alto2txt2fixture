@@ -57,8 +57,9 @@ addopts = """
 --durations=3
 """
 markers = [
-  "slow: mark test as slow (deselect with '-m \"not slow\"')",
-  "downloads: mark test that downloads (deselect with '-m \"not downloads\"')",
+  "slow: slow (deselect with '-m \"not slow\"')",
+  "downloads: involve downloading (deselect with '-m \"not downloads\"')",
+  "az: use living-with-machines azure data (deselect with '-m \"not az\"')",
 ]
 
 [tool.mypy]
