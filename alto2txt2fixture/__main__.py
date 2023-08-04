@@ -1,11 +1,11 @@
 """
-Main entry point for the alto2txt2fixture module.
+Main entry point for ``alto2txt2fixture``.
 
 This module defines the run function which is the main driver for the entire
 process.
 
 It imports various functions from other modules and uses them to route and
-parse alto2txt data.
+parse [`alto2txt`](https://github.com/Living-with-machines/alto2txt) data.
 
 The following steps are performed in the run function:
 
@@ -14,9 +14,9 @@ The following steps are performed in the run function:
     module.
 2.  Prints a setup report to the console, showing the values of the relevant
     parameters.
-3.  Calls the route function to route alto2txt data into subdirectories with
+3.  Calls the route function to route `alto2txt` data into subdirectories with
     structured files.
-4.  Calls the parse function to parse the resulting JSON files.
+4.  Calls the parse function to parse the resulting `JSON` files.
 5.  Calls the clear_cache function to clear the cache.
 
 If the script is run as a main program (i.e., if the name of the script is
@@ -88,7 +88,7 @@ def run(
     test_config: bool = False, data_provider_field: str = DATA_PROVIDER_INDEX
 ) -> None:
     """
-    The run function is the main function that starts the alto2txt2fixture
+    The run function is the main function that starts the `alto2txt2fixture`
     process.
 
     It first calls parse_args to parse the command line arguments, which

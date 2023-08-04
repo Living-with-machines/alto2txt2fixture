@@ -3,7 +3,7 @@ repo_url: https://github.com/Living-with-machines/alto2txt2fixture
 
 site_name: alto2txt2fixture
 site_dir: _build
-site_author: Kalle Westerling
+site_author: Aoife Hughes, Griffith Rees, Kalle Westerling
 
 theme:
   name: material

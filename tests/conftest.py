@@ -26,8 +26,6 @@ def adjacent_data_run_results() -> None:
 
 
 @pytest.fixture(scope="session")
-def all_create_adjacent_tables_json_results(
-    adjacent_data_run_results,
-) -> Generator[list, None, None]:
+def all_create_adjacent_tables_json_results() -> Generator[list, None, None]:
     """Return a list of `json` results from `adjacent_data_run_results`."""
     yield load_multiple_json(Path(OUTPUT))
