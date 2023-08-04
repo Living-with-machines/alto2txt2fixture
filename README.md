@@ -2,7 +2,13 @@
 
 <!--index-start-->
 
-![mit-license](https://img.shields.io/github/license/living-with-machines/alto2txt2fixture) ![CI](https://github.com/living-with-machines/alto2txt2fixture/actions/workflows/ci.yaml/badge.svg) ![coverage](docs/assets/coverage.svg) ![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
+<!-- prettier-ignore-start -->
+![mit-license](https://img.shields.io/github/license/living-with-machines/alto2txt2fixture)
+![CI](https://github.com/living-with-machines/alto2txt2fixture/actions/workflows/ci.yaml/badge.svg)
+![coverage](docs/assets/coverage.svg)
+![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Living-with-machines/alto2txt2fixture/main.svg)
+![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
+<!-- prettier-ignore-end -->
 
 `alto2txt2fixture` is a standalone tool to convert [`alto2txt`](https://github.org/living-with-machines/alto2txt) `XML` output and other related datasets into `JSON` (and where feasible `CSV`) data with corresponding relational IDs to ease general use and ingestion into a relational database.
 
