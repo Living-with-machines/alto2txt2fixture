@@ -23,7 +23,12 @@ If the script is run as a main program (i.e., if the name of the script is
 __main__), the ``run`` function is executed.
 """
 
-from argparse import ArgumentParser, BooleanOptionalAction
+from argparse import (
+    ArgumentParser,
+    BooleanOptionalAction,
+    Namespace,
+    RawTextHelpFormatter,
+)
 
 from .cli import show_fixture_tables, show_setup
 from .parser import parse
@@ -32,8 +37,28 @@ from .settings import DATA_PROVIDER_INDEX, settings
 from .utils import clear_cache, export_fixtures
 
 
-def parse_args(argv=None):
-    parser = ArgumentParser()
+def parse_args(argv: list[str] | None = None) -> Namespace:
+    """Manage command line arguments for `run()`
+
+    This constructs an `ArgumentParser` instance to manage
+    configurating calls of `run()` to manage `newspaper`
+    `XML` to `JSON` converstion.
+
+    Arguments:
+        argv: a list of command line options passed to `ArgumentParser`
+
+    Returns:
+        A `Namespace` `dict`-like configuration for `run()`
+    """
+    argv = [] if not argv else argv
+    parser = ArgumentParser(
+        prog="a2t2f-news",
+        description="Process alto2txt XML into and Django JSON Fixture files",
+        epilog=(
+            "Note: this is still in beta mode and contributions welcome\n\n" + __doc__
+        ),
+        formatter_class=RawTextHelpFormatter,
+    )
     parser.add_argument(
         "-c",
         "--collections",
@@ -84,31 +109,30 @@ def parse_args(argv=None):
     return parser.parse_args(argv)
 
 
-def run(
-    test_config: bool = False, data_provider_field: str = DATA_PROVIDER_INDEX
-) -> None:
-    """
-    The run function is the main function that starts the `alto2txt2fixture`
-    process.
+def run(argv: list[str] | None = None) -> None:
+    """The `__main__` cli for the `alto2txt2fixture` newspapers process.
 
-    It first calls parse_args to parse the command line arguments, which
-    includes the ``collections``, ``output``, and ``mountpoint``. If any of
-    these arguments are specified, they will be used, otherwise they will
-    default to the values in the ``settings`` module.
+    First `parse_args` is called for command line arguments including:
 
-    The ``show_setup`` function is then called to display the configurations
+    - `collections`
+    - `output`
+    - `mountpoint`
+
+    If any of these arguments are specified, they will be used, otherwise they
+    will default to the values in the `settings` module.
+
+    The `show_setup` function is then called to display the configurations
     being used.
 
-    The ``route`` function is then called to route the alto2txt files into
+    The `route` function is then called to route the alto2txt files into
     subdirectories with structured files.
 
-    The ``parse`` function is then called to parse the resulting JSON files.
+    The `parse` function is then called to parse the resulting JSON files.
 
-    Finally, the ``clear_cache`` function is called to clear the cache
+    Finally, the `clear_cache` function is called to clear the cache
     (pending the user's confirmation).
     """
-
-    args = parse_args()
+    args: Namespace = parse_args(argv=argv)
 
     if args.collections:
         COLLECTIONS = [x.lower() for x in args.collections]
@@ -137,7 +161,7 @@ def run(
 
     if args.show_fixture_tables:
         # Show a table of fixtures used, defaults to DataProvider Table
-        show_fixture_tables(settings, data_provider_index=data_provider_field)
+        show_fixture_tables(settings, data_provider_index=args.data_provider_field)
 
     if args.export_fixture_tables:
         export_fixtures(
@@ -146,7 +170,7 @@ def run(
             formats=settings.FIXTURE_TABLES_FORMATS,
         )
 
-    if not args.test_config and not test_config:
+    if not args.test_config:
         # Routing alto2txt into subdirectories with structured files
         route(
             COLLECTIONS,
