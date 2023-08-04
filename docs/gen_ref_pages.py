@@ -26,8 +26,13 @@ for path in sorted(Path(PACKAGE_PATH).rglob("*.py")):
         parts = parts[:-1]
         doc_path = doc_path.with_name("index.md")
         full_doc_path = full_doc_path.with_name("index.md")
-    elif parts[-1] == "__main__":
-        continue
+    # Commented out default `mkdocstrings` config excluding __main__.py
+    # For context, quoting creator of `mkdocstrings`:
+    # https://pawamoy.github.io/posts/somewhat-modern-python-development/
+    # "I urge Python developers to expose their CLI entrypoint outside of
+    # __main__, and to make it accept command line parameters"
+    # elif parts[-1] == "__main__":
+    #     continue
 
     nav[parts] = doc_path.as_posix()
 

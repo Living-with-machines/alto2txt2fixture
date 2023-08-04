@@ -1,3 +1,3 @@
 from __future__ import annotations
 
-__all__ = ("route", "parser", "utils", "parser", "settings")
+__all__: tuple[str, ...] = ("route", "parser", "utils", "parser", "settings")
