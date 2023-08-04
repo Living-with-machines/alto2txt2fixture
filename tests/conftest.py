@@ -37,4 +37,5 @@ def all_create_adjacent_tables_json_results() -> Generator[list, None, None]:
 def pytest_sessionfinish(session, exitstatus):
     """Generate badges for docs after tests finish."""
     if exitstatus == 0:
+        BADGE_PATH.parent.mkdir(parents=True, exist_ok=True)
         gen_cov_badge(["-o", f"{BADGE_PATH}", "-f"])
