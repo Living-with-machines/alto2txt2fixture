@@ -33,7 +33,7 @@ def test_admin_counties_config() -> RemoteDataFilesType:
     }
 
 
-@pytest.mark.downloads
+@pytest.mark.download
 def test_download_custom_folder(
     uncached_folder, test_admin_counties_config, capsys
 ) -> None:
@@ -44,7 +44,7 @@ def test_download_custom_folder(
     )
 
 
-@pytest.mark.downloads
+@pytest.mark.download
 def test_local_result_paths(adjacent_data_run_results) -> None:
     """Test `Mitchells` and `Gazetteer` `json` and `csv` results."""
     for data_paths in FILES.values():
@@ -57,7 +57,7 @@ def test_local_result_paths(adjacent_data_run_results) -> None:
         assert Path(OUTPUT / paths_dict["json"]).is_file()
 
 
-@pytest.mark.downloads
+@pytest.mark.download
 def test_csv2json_list(adjacent_data_run_results) -> None:
     """Test converting a `csv` file to `json` `Django` `fixture`."""
     test_mitchells_write_folder: Path = Path("test_mitchells")
@@ -75,7 +75,7 @@ def test_csv2json_list(adjacent_data_run_results) -> None:
     assert mitchells_json == mitchells_out
 
 
-@pytest.mark.downloads
+@pytest.mark.download
 def test_mitchells_entry_15_newspaper_field(
     all_create_adjacent_tables_json_results: list,
 ) -> None:
@@ -95,8 +95,7 @@ def test_mitchells_entry_15_newspaper_field(
     assert mitchells_entry_15["fields"]["newspaper"] == 1187
 
 
-@pytest.mark.az
-@pytest.mark.downloads
+@pytest.mark.download
 def test_mitchells_empty_newspaper_field(
     all_create_adjacent_tables_json_results: list,
 ) -> None:
@@ -108,7 +107,7 @@ def test_mitchells_empty_newspaper_field(
     assert len(empty_newspaper_records) == 0
 
 
-@pytest.mark.downloads
+@pytest.mark.download
 def test_correct_gazetteer_null(all_create_adjacent_tables_json_results: list) -> None:
     """Test fixinging `Gazetteer` `AdminCounty` references."""
     empty_gazetteer_place_records: list | dict = filter_json_fields(

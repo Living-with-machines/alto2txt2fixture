@@ -58,8 +58,7 @@ addopts = """
 """
 markers = [
   "slow: slow (deselect with '-m \"not slow\"')",
-  "downloads: involve downloading (deselect with '-m \"not downloads\"')",
-  "az: use living-with-machines azure data (deselect with '-m \"not az\"')",
+  "download: requires downloading (deselect with '-m \"not download\"')",
 ]
 
 [tool.mypy]
