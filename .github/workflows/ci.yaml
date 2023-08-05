@@ -64,7 +64,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: coverage-badge
-          path: docs/img/coverage.svg
+          path: img/coverage.svg
       - name: Deploy mkdocs
         run: poetry run mkdocs gh-deploy --force
       - name: Update pre-commit
