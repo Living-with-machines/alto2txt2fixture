@@ -5,7 +5,7 @@
 <!-- prettier-ignore-start -->
 ![mit-license](https://img.shields.io/github/license/living-with-machines/alto2txt2fixture)
 ![CI](https://github.com/living-with-machines/alto2txt2fixture/actions/workflows/ci.yaml/badge.svg)
-![coverage](docs/img/coverage.svg)
+![coverage](img/coverage.svg)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Living-with-machines/alto2txt2fixture/main.svg)](https://results.pre-commit.ci/latest/github/Living-with-machines/alto2txt2fixture/main)
 ![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
 <!-- prettier-ignore-end -->
