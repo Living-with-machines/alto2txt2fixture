@@ -4,10 +4,11 @@
 
 <!-- prettier-ignore-start -->
 ![mit-license](https://img.shields.io/github/license/living-with-machines/alto2txt2fixture)
-![CI](https://github.com/living-with-machines/alto2txt2fixture/actions/workflows/ci.yaml/badge.svg)
+[![CI](https://github.com/living-with-machines/alto2txt2fixture/actions/workflows/ci.yaml/badge.svg)](https://github.com/Living-with-machines/alto2txt2fixture/actions)
 ![coverage](https://living-with-machines.github.io/alto2txt2fixture/img/coverage.svg)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Living-with-machines/alto2txt2fixture/main.svg)](https://results.pre-commit.ci/latest/github/Living-with-machines/alto2txt2fixture/main)
-![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://black.readthedocs.io/en/stable/)
+[![doc](https://github.com/Living-with-machines/lwmdb/actions/workflows/pages/pages-build-deployment/badge.svg?branch=gh-pages)](https://living-with-machines.github.io/alto2txt2fixture/)
 <!-- prettier-ignore-end -->
 
 `alto2txt2fixture` is a standalone tool to convert [`alto2txt`](https://github.org/living-with-machines/alto2txt) `XML` output and other related datasets into `JSON` (and where feasible `CSV`) data with corresponding relational IDs to ease general use and ingestion into a relational database.
