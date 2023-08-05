@@ -6,4 +6,5 @@
     include-markdown  "../README.md"
     start="<!--index-start-->"
     end="<!--index-end-->"
+    rewrite_relative_urls=false
 %}
