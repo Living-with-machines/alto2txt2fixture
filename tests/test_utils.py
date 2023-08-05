@@ -11,7 +11,7 @@ from alto2txt2fixture.create_adjacent_tables import (
 from alto2txt2fixture.utils import check_newspaper_collection_configuration
 
 
-@pytest.mark.downloads
+@pytest.mark.download
 def test_json_results_ordering(all_create_adjacent_tables_json_results: list) -> None:
     """Test the ordering of `all_create_adjacent_tables_json_results`."""
     json_outfile_names: TableOutputConfigType = sorted(
@@ -23,7 +23,7 @@ def test_json_results_ordering(all_create_adjacent_tables_json_results: list) ->
 
 
 @pytest.mark.slow
-@pytest.mark.downloads
+@pytest.mark.download
 def test_download(uncached_folder) -> None:
     """Assuming intenet connectivity, test downloading needed files."""
     download_data()

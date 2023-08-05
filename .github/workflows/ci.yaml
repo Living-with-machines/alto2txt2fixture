@@ -34,15 +34,26 @@ jobs:
       - name: Run pre-commit
         uses: pre-commit/action@main
       - name: Run pytest
-        run: poetry run pytest -h auto
+        run: poetry run pytest -n auto -m "not download"
+      - name: Archive coverage svg
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-badge
+          path: docs/img/coverage.svg
 
   deploy:
     runs-on: ubuntu-latest
+    needs: build
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
           python-version: 3.x
+      - name: Download coverage svg
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-badge
+          path: docs/img/
       - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
       - uses: actions/cache@v3
         with:
@@ -54,8 +65,6 @@ jobs:
         run: |
           pip3 install poetry
           poetry install --with dev
-      - name: Run pytest
-        run: poetry run pytest -h auto
       - name: Deploy mkdocs
         run: poetry run mkdocs gh-deploy --force
       - name: Update pre-commit
