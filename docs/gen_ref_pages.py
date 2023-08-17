@@ -13,6 +13,7 @@ PACKAGE_PATH: str = "."
 DOCS_PATH_NAME: str = "docs"
 TESTS_PATH_NAME: str = "tests"
 
+
 for path in sorted(Path(PACKAGE_PATH).rglob("*.py")):
     if DOCS_PATH_NAME in str(path) or TESTS_PATH_NAME in str(path):
         continue

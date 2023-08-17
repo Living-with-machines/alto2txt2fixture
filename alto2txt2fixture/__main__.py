@@ -139,8 +139,10 @@ def run(local_args: list[str] | None = None) -> None:
     (pending the user's confirmation).
 
     Arguments:
-        local_args:
-            Options passed to `parse_args()`
+        local_args: Options passed to `parse_args()`
+
+    Returns:
+        None
     """
     args: Namespace = parse_args(argv=local_args)
 

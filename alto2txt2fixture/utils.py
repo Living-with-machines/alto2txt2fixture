@@ -564,6 +564,8 @@ def fixture_or_default_dict(
         >>> hmd_dict: FixtureDict = fixture_or_default_dict(
         ...     'hmd', newspaper_dict
         ... )
+        >>> hmd_dict == newspaper_dict['hmd']
+        True
         >>> fixture_or_default_dict(
         ...     'hmd', NEWSPAPER_COLLECTION_METADATA
         ... )
@@ -604,8 +606,19 @@ def check_newspaper_collection_configuration(
         ```pycon
         >>> check_newspaper_collection_configuration()
         set()
+        >>> unmatched: set[str] = check_newspaper_collection_configuration(
+        ...     ["cat", "dog"])  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+        <BLANKLINE>
+        ...Warning: 2 `collections` not in `newspaper_collections`: ...
+        >>> unmatched == {'dog', 'cat'}
+        True
 
         ```
+
+        !!! note
+
+            Set orders are random so checking `unmatched == {'dog, 'cat'}` to
+            ensure correctness irrespective of order in the example above.
 
     """
     newspaper_collection_names: tuple[str, ...] = tuple(

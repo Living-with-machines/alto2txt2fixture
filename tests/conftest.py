@@ -9,6 +9,20 @@ from alto2txt2fixture.utils import load_multiple_json
 
 BADGE_PATH: Path = Path("docs") / "img" / "coverage.svg"
 
+HMD_PLAINTEXT_FIXTURE: Path = Path("tests") / "0002645_plaintext.zip"
+
+
+@pytest.fixture
+def hmd_metadata_fixture() -> Path:
+    """Path for 0002645 1853 metadata fixture."""
+    return Path("tests") / "0002645_metadata.zip"
+
+
+@pytest.fixture
+def hmd_plaintext_fixture() -> Path:
+    """Path for 0002645 1853 plaintext fixture."""
+    return Path("tests") / "0002645_plaintext.zip"
+
 
 @pytest.fixture
 def uncached_folder(monkeypatch, tmpdir) -> Path:
