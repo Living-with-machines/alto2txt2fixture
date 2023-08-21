@@ -708,7 +708,7 @@ class DataProvider(Cache):
         >>> hmd.pk
         2
         >>> pprint(hmd.as_dict())
-        {'code': 'bl-hmd',
+        {'code': 'bl_hmd',
          'collection': 'newspapers',
          'legacy_code': 'hmd',
          'name': 'Heritage Made Digital',

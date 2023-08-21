@@ -1,4 +1,7 @@
-from typing import Any, NamedTuple, TypedDict
+from typing import Any, Literal, NamedTuple, TypedDict
+
+LEGACY_NEWSPAPER_OCR_FORMATS = Literal["bna", "hmd", "jisc", "lwm"]
+NEWSPAPER_OCR_FORMATS = Literal["fmp", "bl_hmd", "jisc", "bl_lwm"]
 
 
 class dotdict(dict):
@@ -9,18 +12,65 @@ class dotdict(dict):
     __delattr__ = dict.__delitem__
 
 
-class FixtureDict(TypedDict):
+class FixtureDictBaseClass(TypedDict):
+    """A base `dict` structure for `json` fixtures."""
+
+    pk: int
+    model: str
+
+
+class FixtureDict(FixtureDictBaseClass):
     """A `dict` structure to ease use as a `json` database fixture.
 
     Attributes:
         pk: an id to uniquely define and query each entry
         model: what model a given record is for
-        fields: a `dict` of record information conforming to ``model`` table
+        fields: a `dict` of record information conforming to `model` table
+    """
+
+    fields: dict[str, Any]
+
+
+class DataProviderFieldsDict(TypedDict):
+    """Fields within the `fields` portion of a `FixtureDict` to fit `lwmdb`.
+
+    Attributes:
+        name:
+            The name of the collection data source. For `lwmdb` this should
+            be less than 600 characters.
+        code:
+            A short slug-like, url-compatible (replace spaces with `-`)
+            `str` to uniquely identify a data provider in `urls`, `api` calls etc.
+            Designed to fit `NEWSPAPER_OCR_FORMATS` and any future slug-like codes.
+        legacy_code:
+            Either blank or a legacy slug-like, url-compatible (replace spaces with
+            `-`) `str` originally used by `alto2txt` following
+            `LEGACY_NEWSPAPER_OCR_FORMATSNEWSPAPER_OCR_FORMATS`.
+        collection:
+            Data Provider type.
+        source_note:
+            A sentence about the data provider.
+    """
+
+    name: str
+    code: str | NEWSPAPER_OCR_FORMATS
+    legacy_code: LEGACY_NEWSPAPER_OCR_FORMATS | None
+    collection: str
+    source_note: str | None
+
+
+class DataProviderFixtureDict(FixtureDictBaseClass):
+    """A `dict` structure for `DataProvider` sources in line with `lwmdb`.
+
+    Attributes:
+        pk: an id to uniquely define and query each entry
+        model: what model a given record is for
+        fields: a `DataProviderFieldsDict`
     """
 
     pk: int
     model: str
-    fields: dict[str, Any]
+    fields: DataProviderFieldsDict
 
 
 class TranslatorTuple(NamedTuple):

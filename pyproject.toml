@@ -60,6 +60,7 @@ markers = [
   "slow: slow (deselect with '-m \"not slow\"')",
   "download: requires downloading (deselect with '-m \"not download\"')",
 ]
+doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS"]
 
 [tool.mypy]
 python_version = "3.11"

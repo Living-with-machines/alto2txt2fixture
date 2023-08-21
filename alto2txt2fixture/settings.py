@@ -21,20 +21,18 @@ Attributes:
 """
 from typing import Final, Literal, TypeAlias
 
-from .types import FixtureDict, dotdict
+from .types import DataProviderFixtureDict, dotdict
 
 # To understand the settings object, see documentation.
 
 JSON_INDENT: int = 2
-
 DATA_PROVIDER_INDEX: Final[str] = "legacy_code"
-
 SETUP_TITLE: str = "alto2txt2fixture setup"
-
 EXPORT_FORMATS: TypeAlias = Literal["json", "csv"]
 
-NEWSPAPER_COLLECTION_METADATA: Final[list[FixtureDict]] = [
-    FixtureDict(
+
+NEWSPAPER_COLLECTION_METADATA: Final[list[DataProviderFixtureDict]] = [
+    DataProviderFixtureDict(
         pk=1,
         model="newspapers.dataprovider",
         fields={
@@ -45,18 +43,18 @@ NEWSPAPER_COLLECTION_METADATA: Final[list[FixtureDict]] = [
             "source_note": "FindMyPast-funded digitised newspapers provided by the British Newspaper Archive",
         },
     ),
-    FixtureDict(
+    DataProviderFixtureDict(
         pk=2,
         model="newspapers.dataprovider",
         fields={
             "name": "Heritage Made Digital",
-            "code": "bl-hmd",
+            "code": "bl_hmd",
             "legacy_code": "hmd",
             "collection": "newspapers",
             "source_note": "British Library-funded digitised newspapers provided by the British Newspaper Archive",
         },
     ),
-    FixtureDict(
+    DataProviderFixtureDict(
         pk=3,
         model="newspapers.dataprovider",
         fields={
@@ -67,7 +65,7 @@ NEWSPAPER_COLLECTION_METADATA: Final[list[FixtureDict]] = [
             "source_note": "JISC-funded digitised newspapers provided by the British Newspaper Archive",
         },
     ),
-    FixtureDict(
+    DataProviderFixtureDict(
         pk=4,
         model="newspapers.dataprovider",
         fields={
@@ -79,6 +77,12 @@ NEWSPAPER_COLLECTION_METADATA: Final[list[FixtureDict]] = [
         },
     ),
 ]
+
+
+NEWSPAPER_DATA_PROVIDER_CODE_DICT: dict[str, DataProviderFixtureDict] = {
+    provider["fields"]["code"]: provider for provider in NEWSPAPER_COLLECTION_METADATA
+}
+
 
 settings: dotdict = dotdict(
     **{

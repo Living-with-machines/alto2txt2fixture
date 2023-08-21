@@ -239,9 +239,7 @@ def download_data(
         ```pycon
         >>> tmp: Path = getfixture('tmpdir')
         >>> set_path: Path = tmp.chdir()
-        >>> download_data(exclude=[
-        ...     "mitchells", "Newspaper-1", "linking"
-        ... ])  # doctest: +ELLIPSIS
+        >>> download_data(exclude=["mitchells", "Newspaper-1", "linking"])
         Excluding mitchells...
         Excluding Newspaper-1...
         Excluding linking...

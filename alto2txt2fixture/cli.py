@@ -1,13 +1,10 @@
 import os
 
-from rich.console import Console
 from rich.table import Table
 
 from .settings import DATA_PROVIDER_INDEX, SETUP_TITLE, settings
 from .types import dotdict
-from .utils import check_newspaper_collection_configuration, gen_fixture_tables
-
-console = Console()
+from .utils import check_newspaper_collection_configuration, console, gen_fixture_tables
 
 
 def show_setup(clear: bool = True, title: str = SETUP_TITLE, **kwargs) -> None:
@@ -56,9 +53,8 @@ def show_fixture_tables(
         >>> [column.header for column in fixture_tables[0].columns]
         ['pk', 'name', 'code', 'legacy_code', 'collection', 'source_note']
         >>> fixture_tables = show_fixture_tables(settings)
-        ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
         <BLANKLINE>
-        ...dataprovider...Heritage...│ bl-hmd...│ hmd...
+        ...dataprovider...Heritage...│ bl_hmd...│ hmd...
 
         ```
 
