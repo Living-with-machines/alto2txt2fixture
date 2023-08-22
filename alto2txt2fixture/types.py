@@ -1,3 +1,4 @@
+from os import PathLike
 from typing import Any, Literal, NamedTuple, TypedDict
 
 LEGACY_NEWSPAPER_OCR_FORMATS = Literal["bna", "hmd", "jisc", "lwm"]
@@ -94,3 +95,43 @@ class TranslatorTuple(NamedTuple):
     start: str
     finish: str | list
     lst: list[dict]
+
+
+class PlaintextFixtureFieldsDict(TypedDict):
+
+    """A typed `dict` for Plaintext Fixutres to match `lwmdb.Fulltext` `model`
+
+    Attributes:
+        text:
+            Plaintext, potentially quite large newspaper articles.
+            May have unusual or unreadable sequences of characters
+            due to issues with Optical Character Recognition quality.
+        path:
+            Path of provided plaintext file. If `compressed_path` is
+            `None`, this is the original relative `Path` of the `plaintext` file.
+        compressed_path:
+            The path of a compressed data source, the extraction of which provides
+            access to `plaintext` files.
+    """
+
+    text: str
+    path: PathLike
+    compressed_path: PathLike | None
+
+
+class PlaintextFixtureDict(FixtureDictBaseClass):
+    """A `dict` structure for `Fulltext` sources in line with `lwmdb`.
+
+    Attributes:
+        model: `str` in `django` fixture spec to indicate what model a record is for
+        fields: a `PlaintextFixtureFieldsDict` `dict` instance
+        pk: `int` id for fixture record
+
+    Note:
+        No `pk` is included. By not specifying one, `django` should generate new onces during
+        import.
+    """
+
+    pk: int
+    model: str
+    fields: PlaintextFixtureFieldsDict

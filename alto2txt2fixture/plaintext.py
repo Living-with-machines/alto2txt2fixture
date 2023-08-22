@@ -1,18 +1,26 @@
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from logging import getLogger
 from os import PathLike
 from pathlib import Path
 from shutil import disk_usage, rmtree, unpack_archive
-from typing import Final, Generator
+from typing import Final, Generator, TypedDict
 from zipfile import ZipFile, ZipInfo
 
+from tqdm.rich import tqdm
+
 from .settings import NEWSPAPER_DATA_PROVIDER_CODE_DICT
-from .types import DataProviderFixtureDict
+from .types import (
+    DataProviderFixtureDict,
+    PlaintextFixtureDict,
+    PlaintextFixtureFieldsDict,
+)
 from .utils import (
     DiskUsageTuple,
     console,
     free_hd_space_in_GB,
     path_globs_to_tuple,
+    save_fixture,
     valid_compression_files,
 )
 
@@ -35,6 +43,9 @@ FULLTEXT_DECOMPRESSED_PATH = Path("uncompressed/")
 FULLTEXT_DEFAULT_PLAINTEXT_ZIP_GLOB_REGEX: Final[
     str
 ] = f"*{FULLTEXT_FILE_NAME_SUFFIX}.{FULLTEXT_FILE_COMPRESSED_EXTENSION}"
+DEFAULT_MAX_PLAINTEXT_PER_FIXTURE_FILE: Final[int] = 2000
+DEFAULT_PLAINTEXT_FILE_NAME_PREFIX: Final[str] = "plaintext_fixture_"
+DEFAULT_PLAINTEXT_FIXTURE_OUTPUT: Final[PathLike] = Path("output") / "plaintext"
 
 SAS_ENV_VARIABLE = "FULLTEXT_SAS_TOKEN"
 
@@ -88,10 +99,81 @@ SAS_ENV_VARIABLE = "FULLTEXT_SAS_TOKEN"
 #     return f"{publication_code}{suffix}.{extension}"
 
 
+class FulltextPathDict(TypedDict):
+    """A `dict` for storing fixture paths and primary key.
+
+    Attributes:
+
+        path:
+            Plaintext file path.
+
+        compressed_path:
+            If `path` is within a compressed file,
+            `compressed_path` is that source. Else None.
+
+        primary_key:
+            An `int` >= 1 for `SQL` fixture `pk`.
+    """
+
+    path: PathLike
+    compressed_path: PathLike | None
+    primary_key: int
+
+
 @dataclass
 class PlainTextFixture:
 
     """Convert `plaintext` results from `alto2txt` into `json` fixtures.
+
+    Attributes:
+        path:
+            PathLike source for fixtures as either a folder or file.
+
+        data_provider_code:
+            A short string to uniquely identify `DataProviders`,
+            primarily to match sources in `self.data_provider_code_dict`.
+
+        files:
+            A iterable `PathLike` collection of to either read as
+            plaintext or decomepress to extract plaintext.
+
+        glob_regex_str:
+            A Regular Expression to filter plaintext files from uncompressed
+            `self.files`, more specifically `self.compressed_files`.
+
+        data_provider:
+            If available a `DataProviderFixtureDict` for `DataProvider` metadata.
+            By default all options are stored in `self.data_provider_code_dict`.
+
+        model:
+            Name of `lwmdb` model the exported `json` `fixture` is designed for.
+
+        extract_subdir:
+            Folder to extract `self.compressed_files` to.
+
+        plaintext_extension:
+            What file extension to use to filter `plaintext` files.
+
+        data_provider_code_dict:
+            A `dict` of metadata for preconfigured `DataProvider` records in `lwmdb`.
+
+        max_plaintext_per_fixture_file:
+            A maximum number of fixtures per fixture file, designed to configure
+            chunking fixtures.
+
+        fixture_prefix:
+            A `str` to prefix all saved `json` fixture filenames.
+
+        export_directory:
+            Directory to save all exported fixtures to.
+
+        _disk_usage:
+            Available harddrive space. Designed to help mitigate decompressing too
+            many files for available disk space.
+
+        self._uncompressed_source_file_dict:
+            A dictionary of extracted plaintext to compressed source file. This is
+            a field in `json` fixture records.
 
     Example:
         ```pycon
@@ -154,18 +236,26 @@ class PlainTextFixture:
     model: str = FULLTEXT_DJANGO_MODEL
     archive_subdir: PathLike = ARCHIVE_SUBDIR
     extract_subdir: PathLike = EXTRACTED_SUBDIR
+    plaintext_extension: str = "txt"
     # decompress_subdir: PathLike = FULLTEXT_DECOMPRESSED_PATH
     download_dir: PathLike = DOWNLOAD_DIR
     fulltext_container_suffix: str = FULLTEXT_CONTAINER_SUFFIX
     data_provider_code_dict: dict[str, DataProviderFixtureDict] = field(
         default_factory=lambda: NEWSPAPER_DATA_PROVIDER_CODE_DICT
     )
+    max_plaintext_per_fixture_file: int = DEFAULT_MAX_PLAINTEXT_PER_FIXTURE_FILE
+    fixture_prefix: str = DEFAULT_PLAINTEXT_FILE_NAME_PREFIX
+    export_directory: PathLike = DEFAULT_PLAINTEXT_FIXTURE_OUTPUT
 
     def __post_init__(self) -> None:
         """Manage populating additional attributes if necessary."""
         self._check_and_set_files_attr(force=True)
         self._check_and_set_data_provider(force=True)
         self._disk_usage: DiskUsageTuple = disk_usage(self.path)
+        self._uncompressed_source_file_dict: OrderedDict[
+            PathLike, PathLike
+        ] = OrderedDict()
+        self._pk_plaintext_dict: OrderedDict[PathLike, int] = OrderedDict()
 
     def __len__(self) -> int:
         """Return the number of files to process."""
@@ -253,6 +343,27 @@ class PlainTextFixture:
         """Return a tuple of all `self.files` with known archive filenames."""
         return tuple(valid_compression_files(files=self.files)) if self.files else ()
 
+    # @property
+    # def decompressed_paths_generator(self) -> Generator[Path, None, None]:
+    #     """Return a generated of all `self.files` with known archive filenames."""
+    #     if self.compressed_files and not self.extract_path.exists():
+    #         console.print('Compressed files not yet extracted. Try `extract_compression()`.')
+    #     else:
+    #         for path in Path(self.extract_path).glob(f'*{self.plaintext_extension}'):
+    #             yield path
+
+    @property
+    def plaintext_provided_uncompressed(self) -> tuple[PathLike, ...]:
+        """Return a tuple of all `self.files` with `self.plaintext_extension`."""
+        if self.files:
+            return tuple(
+                file
+                for file in self.files.glob()
+                if Path(file).suffix == self.plaintext_extension
+            )
+        else:
+            return ()
+
     @property
     def zipinfo(self) -> Generator[list[ZipInfo], None, None]:
         """If `self.compressed_files` is in `zip`, return info, else None."""
@@ -269,9 +380,80 @@ class PlainTextFixture:
         """Extract `self.compressed_files` to `self.extracted_subdir_name`."""
         self.extract_path.mkdir(parents=True, exist_ok=True)
         console.log(f"Extract path: {self.extract_path}")
-        for compressed_file in self.compressed_files:
+        for compressed_file in tqdm(
+            self.compressed_files,
+            desc=f"Compressed files from {repr(self)}",
+        ):
             console.log(f"Extracting: {compressed_file} ...")
             unpack_archive(compressed_file, self.extract_path)
+            for path in self.extract_path.glob(f"*{self.plaintext_extension}"):
+                if path not in self._uncompressed_source_file_dict:
+                    self._uncompressed_source_file_dict[path] = compressed_file
+
+    # @property
+    # def is_likely_decompressed(self) -> bool:
+    #     """Return estimate if all `self.compressed_files` are decompressed."""
+    #     if self.extract_path.exists():
+    #         return all( for file in self.compressed_files)
+    #     return all()
+
+    def plaintext_paths(self) -> Generator[FulltextPathDict, None, None]:
+        """Return a generator of all `plaintext` files for potential fixtures."""
+        if self.compressed_files and not self.extract_path.exists():
+            console.print(
+                "Compressed files not yet extracted. Try `extract_compression()`."
+            )
+        else:
+            i: int = 0
+            pk: int
+            for i, uncompressed_tuple in enumerate(
+                tqdm(
+                    self._uncompressed_source_file_dict.items(),
+                    desc="Configuring compressed path configs",
+                )
+            ):
+                pk = i + 1  # Most `SQL` `pk` begins at 1
+                self._pk_plaintext_dict[uncompressed_tuple[0]] = pk
+                yield FulltextPathDict(
+                    path=uncompressed_tuple[0],
+                    compressed_path=uncompressed_tuple[1],
+                    primary_key=pk,
+                )
+            for j, path in enumerate(
+                tqdm(
+                    self.plaintext_provided_uncompressed,
+                    desc="Configuring uncompressed path configs",
+                )
+            ):
+                pk = j + i + 1
+                self._pk_plaintext_dict[path] = pk
+                yield FulltextPathDict(path=path, compressed_path=None, primary_key=pk)
+
+    def plaintext_paths_to_dicts(self) -> Generator[PlaintextFixtureDict, None, None]:
+        """Generate fixture dicts from `self.plaintext_paths`."""
+        for plaintext_path_dict in tqdm(
+            self.plaintext_paths(),
+            desc=f"Processing {self.plaintext_extension} files to PlaintextFixtureDict",
+        ):
+            fields: PlaintextFixtureFieldsDict = PlaintextFixtureFieldsDict(
+                text=Path(plaintext_path_dict["path"]).read_text(),
+                path=plaintext_path_dict["path"],
+                compressed_path=plaintext_path_dict["compressed_path"],
+            )
+            yield PlaintextFixtureDict(
+                model=self.model,
+                fields=fields,
+                pk=plaintext_path_dict["primary_key"],
+            )
+
+    def export_to_json_fixtures(self) -> None:
+        """Iterate over `self.plaintext_paths` exporting to `json` `django` fixtures."""
+        save_fixture(
+            self.plaintext_paths_to_dicts(),
+            prefix=self.fixture_prefix,
+            output_path=self.export_directory,
+            add_created=True,
+        )
 
     # def delete_compressed(self, index: int | str | None = None) -> None:
     def delete_decompressed(self) -> None:
