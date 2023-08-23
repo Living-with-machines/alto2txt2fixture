@@ -28,10 +28,10 @@ logger = getLogger("rich")
 
 FULLTEXT_DJANGO_MODEL: Final[str] = "fulltext.fulltext"
 
-HOME_DIR: PathLike = Path.home()
-DOWNLOAD_DIR: PathLike = HOME_DIR / "metadata-db/"
-ARCHIVE_SUBDIR: PathLike = Path("archives")
-EXTRACTED_SUBDIR: PathLike = Path("extracted")
+# HOME_DIR: PathLike = Path.home()
+# DOWNLOAD_DIR: PathLike = HOME_DIR / "metadata-db/"
+# ARCHIVE_SUBDIR: PathLike = Path("archives")
+DEFAULT_EXTRACTED_SUBDIR: Final[PathLike] = Path("extracted")
 FULLTEXT_METHOD: str = "download"
 FULLTEXT_CONTAINER_SUFFIX: str = "-alto2txt"
 FULLTEXT_CONTAINER_PATH: PathLike = Path("plaintext/")
@@ -183,12 +183,12 @@ class PlainTextFixture:
     # mount_path: PathLike | None = Path(settings.MOUNTPOINT)
     data_provider: DataProviderFixtureDict | None = None
     model_str: str = FULLTEXT_DJANGO_MODEL
-    archive_subdir: PathLike = ARCHIVE_SUBDIR
-    extract_subdir: PathLike = EXTRACTED_SUBDIR
+    # archive_subdir: PathLike = ARCHIVE_SUBDIR
+    extract_subdir: PathLike = DEFAULT_EXTRACTED_SUBDIR
     plaintext_extension: str = TXT_FIXTURE_FILE_EXTENSION
     plaintext_glob_regex: str = TXT_FIXTURE_FILE_GLOB_REGEX
     # decompress_subdir: PathLike = FULLTEXT_DECOMPRESSED_PATH
-    download_dir: PathLike = DOWNLOAD_DIR
+    # download_dir: PathLike = DOWNLOAD_DIR
     fulltext_container_suffix: str = FULLTEXT_CONTAINER_SUFFIX
     data_provider_code_dict: dict[str, DataProviderFixtureDict] = field(
         default_factory=lambda: NEWSPAPER_DATA_PROVIDER_CODE_DICT
