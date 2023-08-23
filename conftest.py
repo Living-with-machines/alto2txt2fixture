@@ -60,8 +60,20 @@ def all_create_adjacent_tables_json_results() -> Generator[list, None, None]:
 
 
 @pytest.fixture
-def bl_lwm_plaintext() -> PlainTextFixture:
-    return PlainTextFixture(path=LWM_PLAINTEXT_FIXTURE, data_provider_code="bl_lwm")
+def bl_lwm_plaintext() -> Generator[PlainTextFixture, None, None]:
+    bl_lwm: PlainTextFixture = PlainTextFixture(
+        path=LWM_PLAINTEXT_FIXTURE, data_provider_code="bl_lwm"
+    )
+    yield bl_lwm
+    bl_lwm.delete_decompressed()
+
+
+@pytest.fixture
+def bl_lwm_plaintext_extracted(
+    bl_lwm_plaintext,
+) -> Generator[PlainTextFixture, None, None]:
+    bl_lwm_plaintext.extract_compressed()
+    yield bl_lwm_plaintext
 
 
 def pytest_sessionfinish(session, exitstatus):

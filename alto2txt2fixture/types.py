@@ -1,4 +1,3 @@
-from os import PathLike
 from typing import Any, Literal, NamedTuple, TypedDict
 
 LEGACY_NEWSPAPER_OCR_FORMATS = Literal["bna", "hmd", "jisc", "lwm"]
@@ -115,8 +114,8 @@ class PlaintextFixtureFieldsDict(TypedDict):
     """
 
     text: str
-    path: PathLike
-    compressed_path: PathLike | None
+    path: str
+    compressed_path: str | None
 
 
 class PlaintextFixtureDict(FixtureDictBaseClass):
