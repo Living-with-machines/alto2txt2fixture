@@ -116,6 +116,7 @@ class PlaintextFixtureFieldsDict(TypedDict):
     text: str
     path: str
     compressed_path: str | None
+    errors: str | None
 
 
 class PlaintextFixtureDict(FixtureDictBaseClass):

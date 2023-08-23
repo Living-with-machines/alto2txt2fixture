@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Generator
+from typing import Final, Generator
 
 import pytest
 from coverage_badge.__main__ import main as gen_cov_badge
@@ -12,14 +12,15 @@ MODULE_PATH: Path = Path().absolute()
 
 BADGE_PATH: Path = Path("docs") / "img" / "coverage.svg"
 
-HMD_PLAINTEXT_FIXTURE: Path = (
-    Path("tests") / "test_plaintext" / "bl_hmd"
-)  # "0002645_plaintext.zip"
-LWM_PLAINTEXT_FIXTURE: Path = Path("tests") / "test_plaintext" / "bl_lwm"
+# HMD_PLAINTEXT_FIXTURE: Path = (
+#     Path("tests") / "bl_hmd"
+# )  # "0002645_plaintext.zip"
+LWM_PLAINTEXT_FIXTURE: Final[Path] = Path("tests") / "bl_lwm"
+# LWM_PLAINTEXT_FIXTURE_extension: Final[str] =
 
 
 # @pytest.fixture
-# def hmd_metadata_fixture() -> Path:
+# l def hmd_metadata_fixture() -> Path:
 #     """Path for 0002645 1853 metadata fixture."""
 #     return Path("tests") / "0002645_metadata.zip"
 #

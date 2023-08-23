@@ -119,7 +119,7 @@ class PlainTextFixture:
             A maximum number of fixtures per fixture file, designed to configure
             chunking fixtures.
 
-        fixture_prefix:
+        saved_fixture_prefix:
             A `str` to prefix all saved `json` fixture filenames.
 
         export_directory:
@@ -138,28 +138,28 @@ class PlainTextFixture:
         >>> from pprint import pprint
         >>> plaintext_bl_lwm = PlainTextFixture(
         ...     data_provider_code='bl_lwm',
-        ...     path='tests/test_plaintext/bl_lwm',
+        ...     path='tests/bl_lwm',
         ...     compressed_glob_regex="*_plaintext.zip",
         ...     )
         >>> plaintext_bl_lwm
-        <PlainTextFixture(path='tests/test_plaintext/bl_lwm')>
+        <PlainTextFixture(path='tests/bl_lwm')>
         >>> str(plaintext_bl_lwm)
         "PlainTextFixture for 2 'bl_lwm' files"
         >>> plaintext_bl_lwm.free_hd_space_in_GB > 1
         True
         >>> pprint(plaintext_bl_lwm.compressed_files)
-        (PosixPath('tests/test_plaintext/bl_lwm/0003079_plaintext.zip'),
-         PosixPath('tests/test_plaintext/bl_lwm/0003548_plaintext.zip'))
+        (PosixPath('tests/bl_lwm/0003548-test_plaintext.zip'),
+         PosixPath('tests/bl_lwm/0003079-test_plaintext.zip'))
         >>> plaintext_bl_lwm.extract_compressed()
-        [...] Extract path:...tests/test_plaintext/bl_lwm/extracted...
-        ...Extracting:...tests/test_plaintext/bl_lwm/0003079_plaintext.zip ...
-        ...Extracting:...tests/test_plaintext/bl_lwm/0003548_plaintext.zip ...
-        100%...━━━━━━━━━...[...]
+        [...] Extract path:...tests/bl_lwm/extracted...
+        ...Extracting:...tests/bl_lwm/0003548-test_plaintext.zip ...
+        ...Extracting:...tests/bl_lwm/0003079-test_plaintext.zip ...
+        ...%...[...]
         >>> plaintext_bl_lwm.delete_decompressed()
-        Deleteing all files in: tests/test_plaintext/bl_lwm/extracted
+        Deleteing all files in: tests/bl_lwm/extracted
 
         ```
-
+        tests/bl_lwm/0003079-test_plaintext.zip
     Todo:
         Work through lines below to conclude `doctest`
 
@@ -194,7 +194,7 @@ class PlainTextFixture:
         default_factory=lambda: NEWSPAPER_DATA_PROVIDER_CODE_DICT
     )
     max_plaintext_per_fixture_file: int = DEFAULT_MAX_PLAINTEXT_PER_FIXTURE_FILE
-    fixture_prefix: str = DEFAULT_PLAINTEXT_FILE_NAME_PREFIX
+    saved_fixture_prefix: str = DEFAULT_PLAINTEXT_FILE_NAME_PREFIX
     export_directory: PathLike = DEFAULT_PLAINTEXT_FIXTURE_OUTPUT
 
     def __post_init__(self) -> None:
@@ -326,15 +326,15 @@ class PlainTextFixture:
             ```pycon
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext')
             >>> zipfile_info_list = list(plaintext_bl_lwm.zipinfo)
-            Getting zipfile info from <PlainTextFixture(path='tests/test_plaintext/bl_lwm')>
+            Getting zipfile info from <PlainTextFixture(path='tests/bl_lwm')>
             >>> zipfile_info_list[0][-1].filename
-            '0003079/1898/0114/0003079_18980114_art0041.txt'
+            '0003548/1904/0707/0003548_19040707_art0059.txt'
             >>> zipfile_info_list[-1][-1].filename
-            '0003548/1904/0616/0003548_19040616_art0053.txt'
+            '0003079/1898/0204/0003079_18980204_sect0001.txt'
             >>> zipfile_info_list[-1][-1].file_size
-            2460
+            70192
             >>> zipfile_info_list[-1][-1].compress_size
-            1187
+            39911
 
             ```
         """
@@ -354,12 +354,15 @@ class PlainTextFixture:
             ```pycon
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext')
             >>> plaintext_bl_lwm.extract_compressed()
-            [...] Extract path:...tests/test_plaintext/bl_lwm/extracted...
-            ...Extracting:...tests/.../0003079_plaintext.zip ...
-            ...Extracting:...tests/.../0003548_plaintext.zip ...
-            100%...━━━━━...[...]
+            <BLANKLINE>
+            ...Extract path:...tests/bl_lwm/extracted...
+            >>> plaintext_bl_lwm._uncompressed_source_file_dict[
+            ...     Path('tests/bl_lwm/extracted/0003079/1898/'
+            ...          '0204/0003079_18980204_sect0001.txt')
+            ...     ]
+            PosixPath('tests/bl_lwm/0003079-test_plaintext.zip')
             >>> plaintext_bl_lwm.delete_decompressed()
-            Deleteing all files in: tests/test_plaintext/bl_lwm/extracted
+            Deleteing all files in: tests/bl_lwm/extracted
 
             ```
 
@@ -385,16 +388,13 @@ class PlainTextFixture:
             ```pycon
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
             <BLANKLINE>
-            ...Extract path:...tests/.../extracted
-            ...Extracting:...tests/.../0003079_plaintext.zip ...
-            ...Extracting:...tests/.../0003548_plaintext.zip ...
-            100%...━━━━━━━...[...]
+            ...Extract path:...tests/bl_lwm/extracted...
             >>> plaintext_paths = plaintext_bl_lwm.plaintext_paths()
             >>> first_path_fixture_dict = next(iter(plaintext_paths))
             >>> first_path_fixture_dict['path'].name
-            '0003079_18980114_art0044.txt'
+            '0003548_19040630_art0002.txt'
             >>> first_path_fixture_dict['compressed_path'].name
-            '0003079_plaintext.zip'
+            '0003548-test_plaintext.zip'
             >>> len(plaintext_bl_lwm._pk_plaintext_dict)
             1
             >>> plaintext_bl_lwm._pk_plaintext_dict[
@@ -443,23 +443,30 @@ class PlainTextFixture:
             ```pycon
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
             <BLANKLINE>
-            ...Extract path:...tests/.../extracted
-            ...Extracting:...tests/.../0003079_plaintext.zip ...
-            ...Extracting:...tests/.../0003548_plaintext.zip ...
-            100%...━━━━━━━...[...]
+            ...Extract path:...tests/bl_lwm/extracted...
             >>> paths_dict = list(plaintext_bl_lwm.plaintext_paths_to_dicts())
-            Compressed configs  :...% ━━━...━━━.../...[ ... it/s ]
-            Uncompressed configs:...% ━━━...━━━.../...[ ... it/s ]
+            Compressed configs  :...%.../...[ ... it/s ]
+            Uncompressed configs:...%.../...[ ... it/s ]
             >>> plaintext_bl_lwm.delete_decompressed()
             Deleteing all files in: tests/.../extracted
 
             ```
         """
+        text: str
+        error_str: str | None = None
         for plaintext_path_dict in self.plaintext_paths():
+            error_str = None
+            try:
+                text = Path(plaintext_path_dict["path"]).read_text()
+            except UnicodeDecodeError as err:
+                logger.warning(err)
+                text = ""
+                error_str = str(err)
             fields: PlaintextFixtureFieldsDict = PlaintextFixtureFieldsDict(
-                text=Path(plaintext_path_dict["path"]).read_text(),
+                text=text,
                 path=str(plaintext_path_dict["path"]),
                 compressed_path=str(plaintext_path_dict["compressed_path"]),
+                errors=error_str,
             )
             yield PlaintextFixtureDict(
                 model=self.model_str,
@@ -483,9 +490,9 @@ class PlainTextFixture:
             >>> tmpdir: Path = getfixture("tmpdir")
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
             <BLANKLINE>
-            ...Extract path:...tests/.../extracted...
-            100%...━━━━━━━...[...]
+            ...Extract path:...tests/bl_lwm/extracted...
             >>> plaintext_bl_lwm.export_to_json_fixtures(output_path=tmpdir)
+            <BLANKLINE>
             Compressed configs...%...[...]
             Uncompressed configs...%...[...]
             >>> import json
@@ -494,12 +501,13 @@ class PlainTextFixture:
             1
             >>> exported_json[0]['model']
             'fulltext.fulltext'
-            >>> exported_json[0]['fields']['text']
-            '~,,!...'
+            >>> ('NEW TREDEGAR & BARGOED' in
+            ...   exported_json[0]['fields']['text'])
+            True
             >>> exported_json[0]['fields']['path']
-            '.../extracted/.../0003079_18980114_art0044.txt'
+            '.../extracted/.../0003548_19040630_art0002.txt'
             >>> exported_json[0]['fields']['compressed_path']
-            'tests/.../0003079_plaintext.zip'
+            'tests/.../0003548-test_plaintext.zip'
             >>> exported_json[0]['fields']['created_at']
             '20...'
             >>> (exported_json[0]['fields']['updated_at'] ==
@@ -510,7 +518,7 @@ class PlainTextFixture:
 
         """
         output_path = self.export_directory if not output_path else output_path
-        prefix = self.fixture_prefix if not prefix else prefix
+        prefix = self.saved_fixture_prefix if not prefix else prefix
         save_fixture(
             self.plaintext_paths_to_dicts(),
             prefix=prefix,
@@ -541,10 +549,11 @@ class PlainTextFixture:
             >>> len(plaintext_lwm)
             2
             >>> plaintext_lwm._check_and_set_files_attr()
-            [...]...DEBUG...No changes from...
-            ...<PlainText..._set...and...check...dir...
+            <BLANKLINE>
+            ...DEBUG...No changes from...
+            ...<PlainText..._set...dir...
             >>> plaintext_lwm.path = (
-            ...    'tests/test_plaintext/bl_lwm/0003548_plaintext.zip')
+            ...    'tests/bl_lwm/0003079-test_plaintext.zip')
             >>> plaintext_lwm._check_and_set_files_attr()
             Traceback (most recent call last):
                 ...
@@ -554,7 +563,7 @@ class PlainTextFixture:
             >>> plaintext_lwm._check_and_set_files_attr(force=True)
             DEBUG...Force change to...<PlainText...`files`...zip...
             >>> plaintext_lwm.files
-            ('tests/test_plaintext/bl_lwm/0003548_plaintext.zip',)
+            ('tests/bl_lwm/0003079-test_plaintext.zip',)
             >>> len(plaintext_lwm)
             1
 
