@@ -970,16 +970,16 @@ def path_globs_to_tuple(
         ```pycon
         >>> from pprint import pprint
         >>> pprint(path_globs_to_tuple('tests/bl_lwm', '*text.zip'))
-        (PosixPath('tests/bl_lwm/0003548-test_plaintext.zip'),
-         PosixPath('tests/bl_lwm/0003079-test_plaintext.zip'))
+        (PosixPath('tests/bl_lwm/0003079-test_plaintext.zip'),
+         PosixPath('tests/bl_lwm/0003548-test_plaintext.zip'))
         >>> pprint(path_globs_to_tuple('tests/bl_lwm', '*.txt'))
-        (PosixPath('tests/bl_lwm/0003548_19040707_art0037.txt'),
-         PosixPath('tests/bl_lwm/0003079_18980121_sect0001.txt'))
+        (PosixPath('tests/bl_lwm/0003079_18980121_sect0001.txt'),
+         PosixPath('tests/bl_lwm/0003548_19040707_art0037.txt'))
 
         ```
 
     """
-    return tuple(Path(path).glob(glob_regex_str))
+    return tuple(sorted(Path(path).glob(glob_regex_str)))
 
 
 class DiskUsageTuple(NamedTuple):

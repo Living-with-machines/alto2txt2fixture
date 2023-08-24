@@ -5,7 +5,13 @@ import pytest
 from coverage_badge.__main__ import main as gen_cov_badge
 
 from alto2txt2fixture.create_adjacent_tables import OUTPUT, run
-from alto2txt2fixture.plaintext import PlainTextFixture
+from alto2txt2fixture.plaintext import (
+    DEFAULT_INITIAL_PK,
+    FULLTEXT_DJANGO_MODEL,
+    PlainTextFixture,
+    PlaintextFixtureDict,
+    PlaintextFixtureFieldsDict,
+)
 from alto2txt2fixture.utils import load_multiple_json
 
 MODULE_PATH: Path = Path().absolute()
@@ -75,6 +81,20 @@ def bl_lwm_plaintext_extracted(
 ) -> Generator[PlainTextFixture, None, None]:
     bl_lwm_plaintext.extract_compressed()
     yield bl_lwm_plaintext
+
+
+@pytest.fixture
+def first_lwm_plaintext_json_dict() -> PlaintextFixtureDict:
+    return PlaintextFixtureDict(
+        pk=DEFAULT_INITIAL_PK,
+        model=FULLTEXT_DJANGO_MODEL,
+        fields=PlaintextFixtureFieldsDict(
+            text="billel\n\nB. RANNS,\n\nDRAPER & OUTFITTER,\nSTATION ROAD,\nCHAPELTOWN,\nu NNW SWIM I • LUSA LIMIT\nOF MI\n\n' NE'TEST Gi\n\n110111 TEM SIMON.\n",
+            path="tests/bl_lwm/extracted/0003079/1898/0107/0003079_18980107_art0001.txt",
+            compressed_path="tests/bl_lwm/0003079-test_plaintext.zip",
+            errors=None,
+        ),
+    )
 
 
 def pytest_sessionfinish(session, exitstatus):

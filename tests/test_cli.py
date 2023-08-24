@@ -8,7 +8,7 @@ from alto2txt2fixture.types import FixtureDict
 runner = CliRunner()
 
 
-def test_plaintext_cli(tmpdir):
+def test_plaintext_cli(tmpdir, first_lwm_plaintext_json_dict):
     """Test running `plaintext` file export via `cli`."""
     result = runner.invoke(
         cli,
@@ -26,14 +26,18 @@ def test_plaintext_cli(tmpdir):
         tmpdir / "test-cli-plaintext-fixture" / "plaintext_fixture-1.json"
     )
     assert exported_json[0]["model"] == "fulltext.fulltext"
-    assert "NEW TREDEGAR & BARGOED" in exported_json[0]["fields"]["text"]
+    # assert "DRAPER & OUTFITTER" in exported_json[0]["fields"]["text"]
+    assert (
+        exported_json[0]["fields"]["text"]
+        == first_lwm_plaintext_json_dict["fields"]["text"]
+    )
     assert (
         exported_json[0]["fields"]["path"]
-        == "tests/bl_lwm/extracted/0003548/1904/0630/0003548_19040630_art0002.txt"
+        == first_lwm_plaintext_json_dict["fields"]["path"]
     )
     assert (
         exported_json[0]["fields"]["compressed_path"]
-        == "tests/bl_lwm/0003548-test_plaintext.zip"
+        == first_lwm_plaintext_json_dict["fields"]["compressed_path"]
     )
     assert (
         exported_json[0]["fields"]["updated_at"]

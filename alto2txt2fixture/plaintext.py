@@ -28,18 +28,10 @@ logger = getLogger("rich")
 
 FULLTEXT_DJANGO_MODEL: Final[str] = "fulltext.fulltext"
 
-# HOME_DIR: PathLike = Path.home()
-# DOWNLOAD_DIR: PathLike = HOME_DIR / "metadata-db/"
-# ARCHIVE_SUBDIR: PathLike = Path("archives")
 DEFAULT_EXTRACTED_SUBDIR: Final[PathLike] = Path("extracted")
-FULLTEXT_METHOD: str = "download"
-FULLTEXT_CONTAINER_SUFFIX: str = "-alto2txt"
-FULLTEXT_CONTAINER_PATH: PathLike = Path("plaintext/")
-FULLTEXT_STORAGE_ACCOUNT_URL: str = "https://alto2txt.blob.core.windows.net"
 
 FULLTEXT_FILE_NAME_SUFFIX: Final[str] = "_plaintext"
 ZIP_FILE_EXTENSION: Final[str] = "zip"
-FULLTEXT_DECOMPRESSED_PATH = Path("uncompressed/")
 FULLTEXT_DEFAULT_PLAINTEXT_ZIP_GLOB_REGEX: Final[
     str
 ] = f"*{FULLTEXT_FILE_NAME_SUFFIX}.{ZIP_FILE_EXTENSION}"
@@ -48,6 +40,7 @@ TXT_FIXTURE_FILE_GLOB_REGEX: Final[str] = f"**/*.{TXT_FIXTURE_FILE_EXTENSION}"
 DEFAULT_MAX_PLAINTEXT_PER_FIXTURE_FILE: Final[int] = 2000
 DEFAULT_PLAINTEXT_FILE_NAME_PREFIX: Final[str] = "plaintext_fixture"
 DEFAULT_PLAINTEXT_FIXTURE_OUTPUT: Final[PathLike] = Path("output") / "plaintext"
+DEFAULT_INITIAL_PK: int = 1
 
 SAS_ENV_VARIABLE = "FULLTEXT_SAS_TOKEN"
 
@@ -125,6 +118,10 @@ class PlainTextFixture:
         export_directory:
             Directory to save all exported fixtures to.
 
+        initial_pk:
+            Default begins at 1, can be set to another number if needed to
+            add to add more to pre-existing set of records up to a given `pk`
+
         _disk_usage:
             Available harddrive space. Designed to help mitigate decompressing too
             many files for available disk space.
@@ -148,12 +145,12 @@ class PlainTextFixture:
         >>> plaintext_bl_lwm.free_hd_space_in_GB > 1
         True
         >>> pprint(plaintext_bl_lwm.compressed_files)
-        (PosixPath('tests/bl_lwm/0003548-test_plaintext.zip'),
-         PosixPath('tests/bl_lwm/0003079-test_plaintext.zip'))
+        (PosixPath('tests/bl_lwm/0003079-test_plaintext.zip'),
+         PosixPath('tests/bl_lwm/0003548-test_plaintext.zip'))
         >>> plaintext_bl_lwm.extract_compressed()
         [...] Extract path:...tests/bl_lwm/extracted...
-        ...Extracting:...tests/bl_lwm/0003548-test_plaintext.zip ...
         ...Extracting:...tests/bl_lwm/0003079-test_plaintext.zip ...
+        ...Extracting:...tests/bl_lwm/0003548-test_plaintext.zip ...
         ...%...[...]
         >>> plaintext_bl_lwm.delete_decompressed()
         Deleteing all files in: tests/bl_lwm/extracted
@@ -179,20 +176,15 @@ class PlainTextFixture:
     data_provider_code: str | None = None
     files: tuple[PathLike, ...] | None = None
     compressed_glob_regex: str = FULLTEXT_DEFAULT_PLAINTEXT_ZIP_GLOB_REGEX
-    # format: str
-    # mount_path: PathLike | None = Path(settings.MOUNTPOINT)
     data_provider: DataProviderFixtureDict | None = None
     model_str: str = FULLTEXT_DJANGO_MODEL
-    # archive_subdir: PathLike = ARCHIVE_SUBDIR
     extract_subdir: PathLike = DEFAULT_EXTRACTED_SUBDIR
     plaintext_extension: str = TXT_FIXTURE_FILE_EXTENSION
     plaintext_glob_regex: str = TXT_FIXTURE_FILE_GLOB_REGEX
-    # decompress_subdir: PathLike = FULLTEXT_DECOMPRESSED_PATH
-    # download_dir: PathLike = DOWNLOAD_DIR
-    fulltext_container_suffix: str = FULLTEXT_CONTAINER_SUFFIX
     data_provider_code_dict: dict[str, DataProviderFixtureDict] = field(
         default_factory=lambda: NEWSPAPER_DATA_PROVIDER_CODE_DICT
     )
+    initial_pk: int = 1
     max_plaintext_per_fixture_file: int = DEFAULT_MAX_PLAINTEXT_PER_FIXTURE_FILE
     saved_fixture_prefix: str = DEFAULT_PLAINTEXT_FILE_NAME_PREFIX
     export_directory: PathLike = DEFAULT_PLAINTEXT_FIXTURE_OUTPUT
@@ -264,8 +256,8 @@ class PlainTextFixture:
     def _set_and_check_path_is_dir(self, force: bool = False) -> None:
         """Test if `self.path` is a path and change if `force = True`."""
         assert Path(self.path).is_dir()
-        file_paths_tuple: tuple[PathLike, ...] = path_globs_to_tuple(
-            self.path, self.compressed_glob_regex
+        file_paths_tuple: tuple[PathLike, ...] = tuple(
+            sorted(path_globs_to_tuple(self.path, self.compressed_glob_regex))
         )
         if self.files:
             if self.files == file_paths_tuple:
@@ -304,16 +296,22 @@ class PlainTextFixture:
     @property
     def compressed_files(self) -> tuple[PathLike, ...]:
         """Return a tuple of all `self.files` with known archive filenames."""
-        return tuple(valid_compression_files(files=self.files)) if self.files else ()
+        return (
+            tuple(sorted(valid_compression_files(files=self.files)))
+            if self.files
+            else ()
+        )
 
     @property
     def plaintext_provided_uncompressed(self) -> tuple[PathLike, ...]:
         """Return a tuple of all `self.files` with `self.plaintext_extension`."""
         if self.files:
             return tuple(
-                file
-                for file in self.files
-                if Path(file).suffix == self.plaintext_extension
+                sorted(
+                    file
+                    for file in self.files
+                    if Path(file).suffix == self.plaintext_extension
+                )
             )
         else:
             return ()
@@ -328,12 +326,12 @@ class PlainTextFixture:
             >>> zipfile_info_list = list(plaintext_bl_lwm.zipinfo)
             Getting zipfile info from <PlainTextFixture(path='tests/bl_lwm')>
             >>> zipfile_info_list[0][-1].filename
-            '0003548/1904/0707/0003548_19040707_art0059.txt'
-            >>> zipfile_info_list[-1][-1].filename
             '0003079/1898/0204/0003079_18980204_sect0001.txt'
-            >>> zipfile_info_list[-1][-1].file_size
+            >>> zipfile_info_list[-1][-1].filename
+            '0003548/1904/0707/0003548_19040707_art0059.txt'
+            >>> zipfile_info_list[0][-1].file_size
             70192
-            >>> zipfile_info_list[-1][-1].compress_size
+            >>> zipfile_info_list[0][-1].compress_size
             39911
 
             ```
@@ -375,7 +373,7 @@ class PlainTextFixture:
         ):
             logger.info(f"Extracting: {compressed_file} ...")
             unpack_archive(compressed_file, self.extract_path)
-            for path in self.extract_path.glob(self.plaintext_glob_regex):
+            for path in sorted(self.extract_path.glob(self.plaintext_glob_regex)):
                 if path not in self._uncompressed_source_file_dict:
                     self._uncompressed_source_file_dict[path] = compressed_file
 
@@ -392,9 +390,9 @@ class PlainTextFixture:
             >>> plaintext_paths = plaintext_bl_lwm.plaintext_paths()
             >>> first_path_fixture_dict = next(iter(plaintext_paths))
             >>> first_path_fixture_dict['path'].name
-            '0003548_19040630_art0002.txt'
+            '0003079_18980107_art0001.txt'
             >>> first_path_fixture_dict['compressed_path'].name
-            '0003548-test_plaintext.zip'
+            '0003079-test_plaintext.zip'
             >>> len(plaintext_bl_lwm._pk_plaintext_dict)
             1
             >>> plaintext_bl_lwm._pk_plaintext_dict[
@@ -411,30 +409,34 @@ class PlainTextFixture:
         else:
             i: int = 0
             pk: int
-            for i, uncompressed_tuple in enumerate(
-                tqdm(
-                    self._uncompressed_source_file_dict.items(),
-                    desc="Compressed configs  :",
-                    total=len(self._uncompressed_source_file_dict),
-                )
-            ):
-                pk = i + 1  # Most `SQL` `pk` begins at 1
-                self._pk_plaintext_dict[uncompressed_tuple[0]] = pk
-                yield FulltextPathDict(
-                    path=uncompressed_tuple[0],
-                    compressed_path=uncompressed_tuple[1],
-                    primary_key=pk,
-                )
-            for j, path in enumerate(
-                tqdm(
-                    self.plaintext_provided_uncompressed,
-                    desc="Uncompressed configs:",
-                    total=len(self.plaintext_provided_uncompressed),
-                )
-            ):
-                pk = j + i + 1
-                self._pk_plaintext_dict[path] = pk
-                yield FulltextPathDict(path=path, compressed_path=None, primary_key=pk)
+            if self._uncompressed_source_file_dict:
+                for i, uncompressed_tuple in enumerate(
+                    tqdm(
+                        self._uncompressed_source_file_dict.items(),
+                        desc="Compressed configs  :",
+                        total=len(self._uncompressed_source_file_dict),
+                    )
+                ):
+                    pk = i + self.initial_pk  # Most `SQL` `pk` begins at 1
+                    self._pk_plaintext_dict[uncompressed_tuple[0]] = pk
+                    yield FulltextPathDict(
+                        path=uncompressed_tuple[0],
+                        compressed_path=uncompressed_tuple[1],
+                        primary_key=pk,
+                    )
+            if self.plaintext_provided_uncompressed:
+                for j, path in enumerate(
+                    tqdm(
+                        self.plaintext_provided_uncompressed,
+                        desc="Uncompressed configs:",
+                        total=len(self.plaintext_provided_uncompressed),
+                    )
+                ):
+                    pk = j + i + self.initial_pk
+                    self._pk_plaintext_dict[path] = pk
+                    yield FulltextPathDict(
+                        path=path, compressed_path=None, primary_key=pk
+                    )
 
     def plaintext_paths_to_dicts(self) -> Generator[PlaintextFixtureDict, None, None]:
         """Generate fixture dicts from `self.plaintext_paths`.
@@ -446,7 +448,6 @@ class PlainTextFixture:
             ...Extract path:...tests/bl_lwm/extracted...
             >>> paths_dict = list(plaintext_bl_lwm.plaintext_paths_to_dicts())
             Compressed configs  :...%.../...[ ... it/s ]
-            Uncompressed configs:...%.../...[ ... it/s ]
             >>> plaintext_bl_lwm.delete_decompressed()
             Deleteing all files in: tests/.../extracted
 
@@ -488,26 +489,30 @@ class PlainTextFixture:
         Example:
             ```pycon
             >>> tmpdir: Path = getfixture("tmpdir")
+            >>> first_lwm_plaintext_json_dict: PlaintextFixtureDict = (
+            ...     getfixture("first_lwm_plaintext_json_dict")
+            ... )
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
             <BLANKLINE>
             ...Extract path:...tests/bl_lwm/extracted...
             >>> plaintext_bl_lwm.export_to_json_fixtures(output_path=tmpdir)
             <BLANKLINE>
             Compressed configs...%...[...]
-            Uncompressed configs...%...[...]
             >>> import json
             >>> exported_json = json.load(tmpdir/'plaintext_fixture-1.json')
-            >>> exported_json[0]['pk']
-            1
-            >>> exported_json[0]['model']
-            'fulltext.fulltext'
-            >>> ('NEW TREDEGAR & BARGOED' in
-            ...   exported_json[0]['fields']['text'])
+            >>> exported_json[0]['pk'] == first_lwm_plaintext_json_dict['pk']
             True
-            >>> exported_json[0]['fields']['path']
-            '.../extracted/.../0003548_19040630_art0002.txt'
-            >>> exported_json[0]['fields']['compressed_path']
-            'tests/.../0003548-test_plaintext.zip'
+            >>> exported_json[0]['model'] == first_lwm_plaintext_json_dict['model']
+            True
+            >>> (exported_json[0]['fields']['text'] ==
+            ...  first_lwm_plaintext_json_dict['fields']['text'])
+            True
+            >>> (exported_json[0]['fields']['path'] ==
+            ...  first_lwm_plaintext_json_dict['fields']['path'])
+            True
+            >>> (exported_json[0]['fields']['compressed_path'] ==
+            ...  first_lwm_plaintext_json_dict['fields']['compressed_path'])
+            True
             >>> exported_json[0]['fields']['created_at']
             '20...'
             >>> (exported_json[0]['fields']['updated_at'] ==
