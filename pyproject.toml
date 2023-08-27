@@ -63,6 +63,10 @@ markers = [
   "download: requires downloading (deselect with '-m \"not download\"')",
 ]
 doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS"]
+testpaths = [
+  "tests",
+  "alto2txt2fixture"
+]
 
 [tool.mypy]
 python_version = "3.11"

@@ -18,12 +18,10 @@ MODULE_PATH: Path = Path().absolute()
 
 BADGE_PATH: Path = Path("docs") / "img" / "coverage.svg"
 
+LWM_PLAINTEXT_FIXTURE: Final[Path] = Path("tests") / "bl_lwm"
 # HMD_PLAINTEXT_FIXTURE: Path = (
 #     Path("tests") / "bl_hmd"
 # )  # "0002645_plaintext.zip"
-LWM_PLAINTEXT_FIXTURE: Final[Path] = Path("tests") / "bl_lwm"
-# LWM_PLAINTEXT_FIXTURE_extension: Final[str] =
-
 
 # @pytest.fixture
 # l def hmd_metadata_fixture() -> Path:
@@ -81,6 +79,15 @@ def bl_lwm_plaintext_extracted(
 ) -> Generator[PlainTextFixture, None, None]:
     bl_lwm_plaintext.extract_compressed()
     yield bl_lwm_plaintext
+
+
+@pytest.fixture
+def bl_lwm_plaintext_json_export(
+    bl_lwm_plaintext_extracted,
+    tmpdir,
+) -> Generator[PlainTextFixture, None, None]:
+    bl_lwm_plaintext_extracted.export_to_json_fixtures(output_path=tmpdir)
+    yield bl_lwm_plaintext_extracted
 
 
 @pytest.fixture

@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from typer.testing import CliRunner
 
 from alto2txt2fixture.cli import cli
@@ -8,6 +9,7 @@ from alto2txt2fixture.types import FixtureDict
 runner = CliRunner()
 
 
+@pytest.mark.slow
 def test_plaintext_cli(tmpdir, first_lwm_plaintext_json_dict):
     """Test running `plaintext` file export via `cli`."""
     result = runner.invoke(
@@ -21,7 +23,7 @@ def test_plaintext_cli(tmpdir, first_lwm_plaintext_json_dict):
         ],
     )
     assert result.exit_code == 0
-    assert "Extract path: tests/bl_lwm/extracted" in result.stdout
+    assert "Extract path: 'tests/bl_lwm/extracted'" in result.stdout
     exported_json: list[FixtureDict] = json.load(
         tmpdir / "test-cli-plaintext-fixture" / "plaintext_fixture-1.json"
     )

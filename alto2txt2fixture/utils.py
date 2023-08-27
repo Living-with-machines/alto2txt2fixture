@@ -3,9 +3,9 @@ import gc
 import json
 import logging
 from collections import OrderedDict
-from os import PathLike, getcwd
+from os import PathLike, chdir, getcwd
 from pathlib import Path
-from shutil import disk_usage, get_unpack_formats
+from shutil import disk_usage, get_unpack_formats, make_archive
 from typing import (
     Any,
     Final,
@@ -55,6 +55,10 @@ VALID_COMPRESSION_FORMATS: Final[tuple[str, ...]] = tuple(
 BYTES_PER_GIGABYTE: Final[int] = 1024 * 1024 * 1024
 
 NewspaperElements: Final[TypeAlias] = Literal["newspaper", "issue", "item"]
+JSON_FILE_EXTENSION: str = "json"
+ZIP_FILE_EXTENSION: Final[str] = "zip"
+
+JSON_FILE_GLOB_STRING: str = f"**/*{JSON_FILE_EXTENSION}"
 
 
 def get_now(as_str: bool = False) -> datetime.datetime | str:
@@ -1047,3 +1051,79 @@ def valid_compression_files(files: Sequence[PathLike]) -> list[PathLike]:
         for file in files
         if "".join(Path(file).suffixes) in VALID_COMPRESSION_FORMATS
     ]
+
+
+def compress_fixture(
+    path: PathLike,
+    output_path: PathLike | str = settings.OUTPUT,
+    suffix: str = "",
+    format: str = ZIP_FILE_EXTENSION,
+) -> None:
+    """Compress exported `fixtures` files using `make_archive`.
+
+    Args:
+        path:
+            `Path` to file to compress
+
+        fixture_glob:
+            A `glob` string for matching fxitures to compress within `path`
+
+        output_path:
+            Compressed file name (without extension specified from `format`).
+
+        format:
+           A `str` of one of the registered compression formats.
+           `Python` provides `zip`, `tar`, `gztar`, `bztar`, and `xztar`
+
+        suffix:
+            `str` to add to comprssed filename saved.
+            For example: if `path = plaintext_fixture-1.json` and
+            `suffix=_compressed`, then the saved file might be called
+            `plaintext_fixture_compressed-1.json.zip`
+
+        fixture_extension:
+            What `str` to glob files within `path` for compression.
+
+        delete_source:
+            Whether to delete the `path` file after compression.
+
+    Example:
+        ```pycon
+        >>> tmpdir: Path = getfixture("tmpdir")
+        >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_json_export')
+        <BLANKLINE>
+        ...Compressed configs...%...[...]
+        >>> compress_fixture(
+        ...     path=plaintext_bl_lwm._exported_json_paths[0],
+        ...     output_path=tmpdir)
+        Compressing.../plaintext_fixture-1.json to 'zip'
+        >>> from zipfile import ZipFile, ZipInfo
+        >>> zipfile_info_list: list[ZipInfo] = ZipFile(
+        ...     tmpdir/'plaintext_fixture-1.json.zip'
+        ... ).infolist()
+        >>> len(zipfile_info_list)
+        1
+        >>> Path(zipfile_info_list[0].filename).name
+        'plaintext_fixture-1.json'
+
+        ```
+    """
+    chdir(str(Path(path).parent))
+    save_path: Path = Path(output_path) / f"{path}{suffix}"
+    console.print(f"Compressing {path} to '{format}'")
+    make_archive(str(save_path), format=format, base_dir=path)
+
+
+def paths_with_newlines(paths: Iterable[PathLike]) -> str:
+    """Return a `str` of `paths` separated by \n.
+
+    Example:
+        ```pycon
+        >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext')
+        >>> print(paths_with_newlines(plaintext_bl_lwm.compressed_files))
+        'tests/bl_lwm/0003079-test_plaintext.zip'
+        'tests/bl_lwm/0003548-test_plaintext.zip'
+
+        ```
+    """
+    return "\n".join(f"'{f}'" for f in paths)

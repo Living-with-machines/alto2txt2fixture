@@ -7,6 +7,7 @@ from shutil import disk_usage, rmtree, unpack_archive
 from typing import Final, Generator, TypedDict
 from zipfile import ZipFile, ZipInfo
 
+from rich.table import Table
 from tqdm.rich import tqdm
 
 from .settings import NEWSPAPER_DATA_PROVIDER_CODE_DICT
@@ -16,10 +17,12 @@ from .types import (
     PlaintextFixtureFieldsDict,
 )
 from .utils import (
+    ZIP_FILE_EXTENSION,
     DiskUsageTuple,
     console,
     free_hd_space_in_GB,
     path_globs_to_tuple,
+    paths_with_newlines,
     save_fixture,
     valid_compression_files,
 )
@@ -31,7 +34,6 @@ FULLTEXT_DJANGO_MODEL: Final[str] = "fulltext.fulltext"
 DEFAULT_EXTRACTED_SUBDIR: Final[PathLike] = Path("extracted")
 
 FULLTEXT_FILE_NAME_SUFFIX: Final[str] = "_plaintext"
-ZIP_FILE_EXTENSION: Final[str] = "zip"
 FULLTEXT_DEFAULT_PLAINTEXT_ZIP_GLOB_REGEX: Final[
     str
 ] = f"*{FULLTEXT_FILE_NAME_SUFFIX}.{ZIP_FILE_EXTENSION}"
@@ -138,6 +140,17 @@ class PlainTextFixture:
         ...     path='tests/bl_lwm',
         ...     compressed_glob_regex="*_plaintext.zip",
         ...     )
+        >>> plaintext_bl_lwm.info()
+                      PlainTextFixture for 2 'bl_lwm' files
+        ┌─────────────────────┬───────────────────────────────────────────┐
+        │ Path                │ 'tests/bl_lwm'                            │
+        │ Compressed Files    │ 'tests/bl_lwm/0003079-test_plaintext.zip' │
+        │                     │ 'tests/bl_lwm/0003548-test_plaintext.zip' │
+        │ Extract Path        │ 'str(self.extract_path)'                  │
+        │ Uncompressed Files  │                                           │
+        │ Data Provider       │ Living with Machines                      │
+        │ Initial Primary Key │ 1                                         │
+        └─────────────────────┴───────────────────────────────────────────┘
         >>> plaintext_bl_lwm
         <PlainTextFixture(path='tests/bl_lwm')>
         >>> str(plaintext_bl_lwm)
@@ -148,27 +161,14 @@ class PlainTextFixture:
         (PosixPath('tests/bl_lwm/0003079-test_plaintext.zip'),
          PosixPath('tests/bl_lwm/0003548-test_plaintext.zip'))
         >>> plaintext_bl_lwm.extract_compressed()
-        [...] Extract path:...tests/bl_lwm/extracted...
-        ...Extracting:...tests/bl_lwm/0003079-test_plaintext.zip ...
-        ...Extracting:...tests/bl_lwm/0003548-test_plaintext.zip ...
-        ...%...[...]
+        <BLANKLINE>
+        ...Extract path:...'tests/bl_lwm/extracted'...
+        ...Extracting:...'tests/bl_lwm/0003079-test_plaintext.zip' ...
+        ...Extracting:...'tests/bl_lwm/0003548-test_plaintext.zip' ...
+        ...%...[...]...
         >>> plaintext_bl_lwm.delete_decompressed()
-        Deleteing all files in: tests/bl_lwm/extracted
+        Deleting all files in: 'tests/bl_lwm/extracted'
 
-        ```
-        tests/bl_lwm/0003079-test_plaintext.zip
-    Todo:
-        Work through lines below to conclude `doctest`
-
-        ```python
-        plain_text_hmd.newspaper_publication_paths
-        plain_text_hmd.issues_paths
-        plain_text_hmd.items_paths
-        plain_text_hmd.summary
-        plain_text_hmd.output_paths
-        plain_text_hmd.export_to_json()
-        plain_text_hmd.output_paths
-        plain_text_hmd.compress_json()
         ```
     """
 
@@ -204,21 +204,60 @@ class PlainTextFixture:
         return len(self.files) if self.files else 0
 
     def __str__(self) -> str:
-        """Return summary with `DataProvider` if available."""
+        """Return class name with count and `DataProvider` if available."""
         return (
             f"{type(self).__name__} "
             f"for {len(self)} "
-            f"{self._data_provider_name_quoted_with_trailing_space}files"
+            f"{self._data_provider_code_quoted_with_trailing_space}files"
         )
 
     def __repr__(self) -> str:
-        """Return summary with `DataProvider` if available."""
+        """Return `class` name with `path` attribute."""
         return f"<{type(self).__name__}(path='{self.path}')>"
 
     @property
-    def _data_provider_name_quoted_with_trailing_space(self) -> str | None:
+    def _data_provider_code_quoted_with_trailing_space(self) -> str | None:
         """Return `self.data_provider` `code` attributre with trailing space or `None`."""
-        return f"'{self.data_provider_name}' " if self.data_provider_name else None
+        return f"'{self.data_provider_code}' " if self.data_provider_code else None
+
+    @property
+    def info_table(self) -> str:
+        """Generate a `rich.ltable.Table` of config information.
+
+        Example:
+            ```pycon
+            >>> hmd_plaintext_fixture = PlainTextFixture(
+            ...     path=".",
+            ...     data_provider_code="bl_hmd")
+            >>> table = hmd_plaintext_fixture.info_table
+            >>> table.title
+            "PlainTextFixture for 0 'bl_hmd' files"
+
+            ```
+
+        """
+        table: Table = Table(title=str(self), show_header=False)
+        table.add_row("Path", f"'{self.path}'")
+        table.add_row("Compressed Files", self._compressed_file_names)
+        table.add_row("Extract Path", f"'str(self.extract_path)'")
+        table.add_row("Uncompressed Files", self._provided_uncompressed_file_names)
+        table.add_row("Data Provider", str(self.data_provider_name))
+        table.add_row("Initial Primary Key", str(self.initial_pk))
+        return table
+
+    def info(self) -> None:
+        """Print `self.info_table` to the `console`."""
+        console.print(self.info_table)
+
+    @property
+    def _compressed_file_names(self) -> str:
+        """`self.compressed_files` `paths` separated by `\n`."""
+        return paths_with_newlines(self.compressed_files)
+
+    @property
+    def _provided_uncompressed_file_names(self) -> str:
+        """`self.plaintext_provided_uncompressed` `paths` separated by `\n`."""
+        return paths_with_newlines(self.plaintext_provided_uncompressed)
 
     @property
     def data_provider_name(self) -> str | None:
@@ -226,8 +265,37 @@ class PlainTextFixture:
 
         Todo:
             * Add check without risk of recursion for `self.data_provider_code`
+
+        Example:
+            ```pycon
+            >>> bl_hmd = PlainTextFixture(
+            ...     path=".",
+            ...     data_provider_code="bl_hmd")
+            >>> bl_hmd.data_provider_name
+            'Heritage Made Digital'
+            >>> bl_lwm = PlainTextFixture(
+            ...     path='.',
+            ...     data_provider=NEWSPAPER_DATA_PROVIDER_CODE_DICT['bl_lwm'],
+            ...     )
+            >>> bl_lwm.data_provider_name
+            'Living with Machines'
+            >>> plaintext_fixture = PlainTextFixture(
+            ...     path=".")
+            <BLANKLINE>
+            ...`.data_provider` and `.data_provider_code` are 'None'...
+            ...in <PlainTextFixture(path='.')>...
+            >>> plaintext_fixture.data_provider_name
+
+            ```
+
+            `
         """
-        return self.data_provider_code if self.data_provider_code else None
+        if self.data_provider and "name" in self.data_provider["fields"]:
+            return self.data_provider["fields"]["name"]
+        elif self.data_provider_code:
+            return self.data_provider_code
+        else:
+            return None
 
     @property
     def free_hd_space_in_GB(self) -> float:
@@ -285,13 +353,8 @@ class PlainTextFixture:
         """Path any compressed files would be extracted to."""
         if Path(self.path).is_file():
             return Path(self.path).parent / self.extract_subdir
-        elif Path(self.path).is_dir():
-            return Path(self.path) / self.extract_subdir
         else:
-            raise ValueError(
-                f"`extract_path` only valid if `self.path` is a "
-                f"`file` or `dir`: {self.path}"
-            )
+            return Path(self.path) / self.extract_subdir
 
     @property
     def compressed_files(self) -> tuple[PathLike, ...]:
@@ -323,7 +386,7 @@ class PlainTextFixture:
         Example:
             ```pycon
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext')
-            >>> zipfile_info_list = list(plaintext_bl_lwm.zipinfo)
+            >>> zipfile_info_list: list[ZipInfo] = list(plaintext_bl_lwm.zipinfo)
             Getting zipfile info from <PlainTextFixture(path='tests/bl_lwm')>
             >>> zipfile_info_list[0][-1].filename
             '0003079/1898/0204/0003079_18980204_sect0001.txt'
@@ -353,25 +416,25 @@ class PlainTextFixture:
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext')
             >>> plaintext_bl_lwm.extract_compressed()
             <BLANKLINE>
-            ...Extract path:...tests/bl_lwm/extracted...
+            ...Extract path:...'tests/bl_lwm/extracted'...
             >>> plaintext_bl_lwm._uncompressed_source_file_dict[
             ...     Path('tests/bl_lwm/extracted/0003079/1898/'
             ...          '0204/0003079_18980204_sect0001.txt')
             ...     ]
             PosixPath('tests/bl_lwm/0003079-test_plaintext.zip')
             >>> plaintext_bl_lwm.delete_decompressed()
-            Deleteing all files in: tests/bl_lwm/extracted
+            Deleting all files in: 'tests/bl_lwm/extracted'
 
             ```
 
         """
         self.extract_path.mkdir(parents=True, exist_ok=True)
-        console.log(f"Extract path: {self.extract_path}")
+        console.log(f"Extract path: '{self.extract_path}'")
         for compressed_file in tqdm(
             self.compressed_files,
             total=len(self.compressed_files),
         ):
-            logger.info(f"Extracting: {compressed_file} ...")
+            logger.info(f"Extracting: '{compressed_file}' ...")
             unpack_archive(compressed_file, self.extract_path)
             for path in sorted(self.extract_path.glob(self.plaintext_glob_regex)):
                 if path not in self._uncompressed_source_file_dict:
@@ -449,7 +512,7 @@ class PlainTextFixture:
             >>> paths_dict = list(plaintext_bl_lwm.plaintext_paths_to_dicts())
             Compressed configs  :...%.../...[ ... it/s ]
             >>> plaintext_bl_lwm.delete_decompressed()
-            Deleteing all files in: tests/.../extracted
+            Deleting all files in: 'tests/.../extracted'
 
             ```
         """
@@ -498,8 +561,14 @@ class PlainTextFixture:
             >>> plaintext_bl_lwm.export_to_json_fixtures(output_path=tmpdir)
             <BLANKLINE>
             Compressed configs...%...[...]
+            >>> len(plaintext_bl_lwm._exported_json_paths)
+            1
+            >>> plaintext_bl_lwm._exported_json_paths
+            (...Path(...plaintext_fixture-1.json...),)
             >>> import json
-            >>> exported_json = json.load(tmpdir/'plaintext_fixture-1.json')
+            >>> exported_json = json.loads(
+            ...     plaintext_bl_lwm._exported_json_paths[0].read_text()
+            ... )
             >>> exported_json[0]['pk'] == first_lwm_plaintext_json_dict['pk']
             True
             >>> exported_json[0]['model'] == first_lwm_plaintext_json_dict['model']
@@ -520,7 +589,6 @@ class PlainTextFixture:
             True
 
             ```
-
         """
         output_path = self.export_directory if not output_path else output_path
         prefix = self.saved_fixture_prefix if not prefix else prefix
@@ -530,12 +598,32 @@ class PlainTextFixture:
             output_path=output_path,
             add_created=True,
         )
+        self._exported_json_paths = tuple(
+            Path(path) for path in sorted(Path(output_path).glob(f"**/{prefix}*.json"))
+        )
 
     # def delete_compressed(self, index: int | str | None = None) -> None:
     def delete_decompressed(self, ignore_errors: bool = True) -> None:
-        """Remove all uncompressed files."""
-        console.print(f"Deleteing all files in: {self.extract_path}")
-        rmtree(self.extract_path, ignore_errors=ignore_errors)
+        """Remove all files in `self.extract_path`.
+
+        Example:
+            ```pycon
+            >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
+            <BLANKLINE>
+            ...Extract path:...'tests/bl_lwm/extracted'...
+            >>> plaintext_bl_lwm.delete_decompressed()
+            Deleting all files in:...
+            >>> plaintext_bl_lwm.delete_decompressed()
+            <BLANKLINE>
+            ...Extract path empty: 'tests/bl_lwm/extracted'...
+
+            ````
+        """
+        if self.extract_path.exists():
+            console.print(f"Deleting all files in: '{self.extract_path}'")
+            rmtree(self.extract_path, ignore_errors=ignore_errors)
+        else:
+            console.log(f"Extract path empty: '{self.extract_path}'")
 
     def _check_and_set_files_attr(self, force: bool = False) -> None:
         """Check and populate attributes from `self.path` and `self.files`.
@@ -584,34 +672,50 @@ class PlainTextFixture:
             )
 
     def _check_and_set_data_provider(self, force: bool = False) -> None:
-        """Set `self.data_provider` and check `self.data_provider_code`."""
-        if self.data_provider_code:
-            if self.data_provider:
-                if self.data_provider["fields"]["code"] != self.data_provider_code:
-                    raise ValueError(
-                        f"`self.data_provider_code` {self.data_provider_code} "
-                        f"!= {self.data_provider} (`self.data_provider`)."
-                    )
-                else:
-                    logger.debug(
-                        f"{repr(self)} `self.data_provider['fields']['code']` "
-                        f"== `self.data_provider_code`"
-                    )
+        """Set `self.data_provider` and check `self.data_provider_code`.
+
+        Example:
+            ```pycon
+            >>> plaintext_fixture = PlainTextFixture(path=".")
+            <BLANKLINE>
+            ...`.data_provider` and `.data_provider_code` are 'None' in...
+            ...<PlainTextFixture(path='.')>...
+
+            ```
+        """
+        if self.data_provider:
+            data_provider_fields_code: str = self.data_provider["fields"]["code"]
+            if not self.data_provider_code:
+                self.data_provider_code = data_provider_fields_code
+            elif self.data_provider_code == data_provider_fields_code:
+                logger.debug(
+                    f"{repr(self)} `self.data_provider['fields']['code']` "
+                    f"== `self.data_provider_code`"
+                )
+            elif force:
+                logger.warning(
+                    f"Forcing {repr(self)} `data_provider_code` to "
+                    f"{self.data_provider['fields']['code']}\n"
+                    f"Orinal `data_provider_code`: {self.data_provider_code}"
+                )
+                self.data_provider_code = data_provider_fields_code
             else:
-                if self.data_provider_code in self.data_provider_code_dict:
-                    self.data_provider = self.data_provider_code_dict[
-                        self.data_provider_code
-                    ]
-                else:
-                    raise ValueError(
-                        f"`self.data_provider_code` {self.data_provider_code} "
-                        f"not included in `self.data_provider_code_dict`."
-                        f"Available `codes`: {self.data_provider_code_dict.keys()}"
-                    )
-        elif self.data_provider:
-            self.data_provider_code = self.data_provider["fields"]["code"]
+                raise ValueError(
+                    f"`self.data_provider_code` {self.data_provider_code} "
+                    f"!= {self.data_provider} (`self.data_provider`)."
+                )
+        elif self.data_provider_code:
+            if self.data_provider_code in self.data_provider_code_dict:
+                self.data_provider = self.data_provider_code_dict[
+                    self.data_provider_code
+                ]
+            else:
+                raise ValueError(
+                    f"`self.data_provider_code` {self.data_provider_code} "
+                    f"not in `self.data_provider_code_dict`."
+                    f"Available `codes`: {self.data_provider_code_dict.keys()}"
+                )
         else:
             logger.debug(
-                f"Neither `self.data_provider` nor "
-                f"`self.data_provider_code` provided; both are `None` for {repr(self)}"
+                f"`.data_provider` and `.data_provider_code` are 'None' in {repr(self)}"
             )

@@ -33,6 +33,7 @@ def test_admin_counties_config() -> RemoteDataFilesType:
     }
 
 
+@pytest.mark.slow
 @pytest.mark.download
 def test_download_custom_folder(
     uncached_folder, test_admin_counties_config, capsys
@@ -44,6 +45,7 @@ def test_download_custom_folder(
     )
 
 
+@pytest.mark.slow
 @pytest.mark.download
 def test_local_result_paths(adjacent_data_run_results) -> None:
     """Test `Mitchells` and `Gazetteer` `json` and `csv` results."""
