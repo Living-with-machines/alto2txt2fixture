@@ -44,7 +44,6 @@ def test_newspaper_help(help_param: str, capsys: pytest.LogCaptureFixture) -> No
 )
 def test_run_without_local_or_blobfuse(
     local_args: list | None,
-    uncached_folder: None,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.LogCaptureFixture,
 ) -> None:

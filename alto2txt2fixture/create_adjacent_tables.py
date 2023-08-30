@@ -300,7 +300,7 @@ def run(
     saved: list[PathLike] = SAVED,
     time_stamp: str = "",
     output_path: Path = OUTPUT,
-) -> None:
+) -> list[PathLike]:
     """Download, process and link ``files_dict`` to `json` and `csv`.
 
     Note:
@@ -322,6 +322,7 @@ def run(
     output_path.mkdir(exist_ok=True, parents=True)
 
     # Read all the Wikidata Q values from Mitchells
+    assert "local" in files_dict["mitchells"]
     mitchells_df = pd.read_csv(files_dict["mitchells"]["local"], index_col=0)
     mitchell_wikidata_mentions = sorted(
         list(mitchells_df.PLACE_PUB_WIKI.unique()),
@@ -330,6 +331,7 @@ def run(
 
     # Set up wikidata_gazetteer
     gaz_cols = ["wikidata_id", "english_label", "latitude", "longitude", "geonamesIDs"]
+    assert "local" in files_dict["wikidata_gazetteer_selected_columns"]
     wikidata_gazetteer = pd.read_csv(
         files_dict["wikidata_gazetteer_selected_columns"]["local"], usecols=gaz_cols
     )
@@ -758,10 +760,11 @@ def run(
 
     # ###### NOW WE CAN EASILY CREATE JSON files_dict
     for csv_file_path in output_path.glob("*.csv"):
-        csv2json_list(csv_file_path)
+        csv2json_list(csv_file_path, output_path=output_path)
 
     print("Finished - saved files:")
     print("- " + "\n- ".join([str(x) for x in saved]))
+    return saved
 
 
 if __name__ == "__main__":

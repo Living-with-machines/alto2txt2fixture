@@ -24,7 +24,7 @@ def test_json_results_ordering(all_create_adjacent_tables_json_results: list) ->
 
 @pytest.mark.slow
 @pytest.mark.download
-def test_download(uncached_folder) -> None:
+def test_download() -> None:
     """Assuming intenet connectivity, test downloading needed files."""
     download_data()
 

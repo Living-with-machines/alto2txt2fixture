@@ -24,25 +24,26 @@ def dict_admin_counties() -> dict[str, list[str]]:
 
 
 @pytest.fixture()
-def test_admin_counties_config() -> RemoteDataFilesType:
+def test_admin_counties_config(tmpdir) -> RemoteDataFilesType:
     return {
         "dict_admin_counties": {
             "remote": "https://zooniversedata.blob.core.windows.net/downloads/Gazetteer-files/dict_admin_counties.json",
-            "local": Path("cache/extra/path/dict_admin_counties.json"),
+            "local": tmpdir / "dict_admin_counties.json",
         }
     }
 
 
 @pytest.mark.slow
 @pytest.mark.download
-def test_download_custom_folder(
-    uncached_folder, test_admin_counties_config, capsys
-) -> None:
+def test_download_custom_folder(test_admin_counties_config, capsys) -> None:
     download_data(test_admin_counties_config)
     captured: CaptureResult = capsys.readouterr()
-    assert captured.out.startswith(
-        f"Downloading {test_admin_counties_config['dict_admin_counties']['local']}\n100%"
-    )
+    assert captured.out.startswith(f"Downloading")
+    similar_path_parts: list[tuple[str, bool]] = []
+    for part in Path(test_admin_counties_config["dict_admin_counties"]["local"]).parts:
+        similar_path_parts.append((part, part in captured.out))
+    assert sum(int(not matches) for part, matches in similar_path_parts) < 2
+    assert "100%" in captured.out
 
 
 @pytest.mark.slow

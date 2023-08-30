@@ -16,6 +16,7 @@ from typing import (
     NamedTuple,
     Sequence,
     TypeAlias,
+    overload,
 )
 
 import pytz
@@ -59,6 +60,19 @@ JSON_FILE_EXTENSION: str = "json"
 ZIP_FILE_EXTENSION: Final[str] = "zip"
 
 JSON_FILE_GLOB_STRING: str = f"**/*{JSON_FILE_EXTENSION}"
+
+MAX_TRUNCATE_PATH_STR_LEN: Final[int] = 30
+INTERMEDIATE_PATH_TRUNCATION_STR: Final[str] = "."
+
+
+@overload
+def get_now(as_str: Literal[True]) -> str:
+    ...
+
+
+@overload
+def get_now(as_str: Literal[False]) -> datetime.datetime:
+    ...
 
 
 def get_now(as_str: bool = False) -> datetime.datetime | str:
@@ -972,13 +986,14 @@ def path_globs_to_tuple(
 
     Example:
         ```pycon
+        >>> bl_lwm = getfixture("bl_lwm")
         >>> from pprint import pprint
-        >>> pprint(path_globs_to_tuple('tests/bl_lwm', '*text.zip'))
-        (PosixPath('tests/bl_lwm/0003079-test_plaintext.zip'),
-         PosixPath('tests/bl_lwm/0003548-test_plaintext.zip'))
-        >>> pprint(path_globs_to_tuple('tests/bl_lwm', '*.txt'))
-        (PosixPath('tests/bl_lwm/0003079_18980121_sect0001.txt'),
-         PosixPath('tests/bl_lwm/0003548_19040707_art0037.txt'))
+        >>> pprint(path_globs_to_tuple(bl_lwm, '*text.zip'))
+        (PosixPath('/.../bl_lwm/0003079-test_plaintext.zip'),
+         PosixPath('/.../bl_lwm/0003548-test_plaintext.zip'))
+        >>> pprint(path_globs_to_tuple(bl_lwm, '*.txt'))
+        (PosixPath('/.../bl_lwm/0003079_18980121_sect0001.txt'),
+         PosixPath('/.../bl_lwm/0003548_19040707_art0037.txt'))
 
         ```
 
@@ -1096,7 +1111,7 @@ def compress_fixture(
         >>> compress_fixture(
         ...     path=plaintext_bl_lwm._exported_json_paths[0],
         ...     output_path=tmpdir)
-        Compressing.../plaintext_fixture-1.json to 'zip'
+        Compressing.../plain...t_fixture-1.json to 'zip'
         >>> from zipfile import ZipFile, ZipInfo
         >>> zipfile_info_list: list[ZipInfo] = ZipFile(
         ...     tmpdir/'plaintext_fixture-1.json.zip'
@@ -1114,16 +1129,76 @@ def compress_fixture(
     make_archive(str(save_path), format=format, base_dir=path)
 
 
-def paths_with_newlines(paths: Iterable[PathLike]) -> str:
+def paths_with_newlines(
+    paths: Iterable[PathLike], truncate: bool = False, **kwargs
+) -> str:
     """Return a `str` of `paths` separated by \n.
 
     Example:
         ```pycon
         >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext')
         >>> print(paths_with_newlines(plaintext_bl_lwm.compressed_files))
-        'tests/bl_lwm/0003079-test_plaintext.zip'
-        'tests/bl_lwm/0003548-test_plaintext.zip'
+        '/.../bl_lwm/0003079-test_plaintext.zip'
+        '/.../bl_lwm/0003548-test_plaintext.zip'
+        >>> print(
+        ...     paths_with_newlines(plaintext_bl_lwm.compressed_files,
+        ...                         truncate=True)
+        ... )
+        '/..././0003079-test_plaintext.zip'
+        '/..././0003548-test_plaintext.zip'
 
         ```
     """
-    return "\n".join(f"'{f}'" for f in paths)
+    if truncate:
+        return "\n".join(f"'{truncate_path_str(f, **kwargs)}'" for f in paths)
+    else:
+        return "\n".join(f"'{f}'" for f in paths)
+
+
+def truncate_path_str(
+    path: PathLike,
+    max_length: int = MAX_TRUNCATE_PATH_STR_LEN,
+    folder_filler_str: str = INTERMEDIATE_PATH_TRUNCATION_STR,
+    tail_paths: int = 1,
+) -> str:
+    """If `len(text) > max_length` return `text` followed by `trail_str`.
+
+    Args:
+        text: `str` to truncate
+        max_length: maximum length of `text` to allow, anything belond truncated
+        folder_filler_str: what to fill intermediate path names with
+
+    Returns:
+        `text` truncated to `max_length` (if longer than `max_length`),
+        with with `folder_filler_str` for intermediate folder names
+
+    Example:
+        ```pycon
+        >>> love_shadows: Path = (
+        ...     Path('Standing') / 'in' / 'the' / 'shadows'/ 'of' / 'love.')
+        >>> truncate_path_str(love_shadows)
+        'Standing/././././love.'
+        >>> truncate_path_str(love_shadows, max_length=100)
+        'Standing/in/the/shadows/of/love.'
+        >>> truncate_path_str(love_shadows, folder_filler_str="*")
+        'Standing/*/*/*/*/love.'
+        >>> truncate_path_str(Path('/') / love_shadows, folder_filler_str="*")
+        '/Standing/*/*/*/*/love.'
+        >>> truncate_path_str(Path('/') / love_shadows,
+        ...                   folder_filler_str="*", tail_paths=3)
+        '/Standing/*/*/shadows/of/love.'
+
+        ```
+    """
+    if len(str(path)) > max_length:
+        path_parts: tuple[str] = Path(path).parts
+        first_folder_name_index: int = 1 if Path(path).is_absolute() else 0
+        paths_str: str = "/".join(
+            part
+            if i == 0 or i >= len(path_parts) - first_folder_name_index - tail_paths
+            else folder_filler_str
+            for i, part in enumerate(path_parts[first_folder_name_index:])
+        )
+        return "/" + paths_str if first_folder_name_index == 1 else paths_str
+    else:
+        return str(path)
