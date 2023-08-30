@@ -1111,7 +1111,7 @@ def compress_fixture(
         >>> compress_fixture(
         ...     path=plaintext_bl_lwm._exported_json_paths[0],
         ...     output_path=tmpdir)
-        Compressing.../plain...t_fixture-1.json to 'zip'
+        Compressing.../plain...-1.json to 'zip'
         >>> from zipfile import ZipFile, ZipInfo
         >>> zipfile_info_list: list[ZipInfo] = ZipFile(
         ...     tmpdir/'plaintext_fixture-1.json.zip'

@@ -160,11 +160,11 @@ class PlainTextFixture:
         >>> plaintext_bl_lwm.extract_compressed()
         <BLANKLINE>
         ...Extract path:...'/.../bl_lwm/extracted'...
-        ...Extracting:...'/.../bl_lwm/0003079-test_...zip' ...
-        ...Extracting:...'/.../bl_lwm/0003548-test_...zip' ...
+        ...Extracting:...'/.../bl_lwm/0003079...zip' ...
+        ...Extracting:...'/.../bl_lwm/0003548...zip' ...
         ...%...[...]...
         >>> plaintext_bl_lwm.delete_decompressed()
-        Deleting all files in: '/.../bl_lwm/extracted'
+        Deleting all files in: '/.../bl_lwm/..tracted'
 
         ```
     """
@@ -532,7 +532,7 @@ class PlainTextFixture:
             >>> paths_dict = list(plaintext_bl_lwm.plaintext_paths_to_dicts())
             Compressed configs  :...%.../...[ ... it/s ]
             >>> plaintext_bl_lwm.delete_decompressed()
-            Deleting all files in: '/.../.../extracted'
+            Deleting all files in: '/.../.../...tracted'
 
             ```
         """
@@ -664,7 +664,7 @@ class PlainTextFixture:
             >>> plaintext_lwm._check_and_set_files_attr()
             <BLANKLINE>
             ...DEBUG...No changes from...
-            ...<PlainText..._set...dir...
+            ...<PlainText..._set...d...
             >>> plaintext_lwm.path = (
             ...    plaintext_lwm.path / '0003079-test_plaintext.zip')
             >>> plaintext_lwm._check_and_set_files_attr()
@@ -698,7 +698,7 @@ class PlainTextFixture:
             ```pycon
             >>> plaintext_fixture = PlainTextFixture(path=".")
             <BLANKLINE>
-            ...`.data_provider` and `.data_provider_code` are 'None' in...
+            ...`.data_provider` and `.data_provider_code`...'None' in...
             ...<PlainTextFixture(path='.')>...
 
             ```
