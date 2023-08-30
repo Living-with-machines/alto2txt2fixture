@@ -142,15 +142,15 @@ class PlainTextFixture:
         ...     compressed_glob_regex="*_plaintext.zip",
         ...     )
         >>> plaintext_bl_lwm
-        <PlainTextFixture(path='.../bl_lwm')>
+        <PlainTextFixture(path='...bl_lwm')>
         >>> plaintext_bl_lwm.info()
         <BLANKLINE>
                ...PlainTextFixture for 2 'bl_lwm' files...
         ┌─────────────────────┬────────────────────────────────...┐
-        │ Path                │ '/.../bl_lwm'                  ...│
-        │ Compressed Files    │ '/.../bl_lwm/0003079-test_plain...│
-        │                     │ '/.../bl_lwm/0003548-test_plain...│
-        │ Extract Path        │ '/.../bl_lwm/extracted'        ...│
+        │ Path                │ '...bl_lwm'                    ...│
+        │ Compressed Files    │ '...bl_lwm...0003079-test_plain...│
+        │                     │ '...bl_lwm...0003548-test_plain...│
+        │ Extract Path        │ '...bl_lwm...extracted'        ...│
         │ Uncompressed Files  │ None                           ...│
         │ Data Provider       │ 'Living with Machines'         ...│
         │ Initial Primary Key │ 1                              ...│
@@ -159,12 +159,12 @@ class PlainTextFixture:
         True
         >>> plaintext_bl_lwm.extract_compressed()
         <BLANKLINE>
-        ...Extract path:...'/...lwm/extracted...
-        ...Extracting:...'/...lwm/00030...
-        ...Extracting:...'/...lwm/00035...
+        ...Extract path:...'...lwm...extracted...
+        ...Extracting:...'...lwm...00030...
+        ...Extracting:...'...lwm...00035...
         ...%...[...]...
         >>> plaintext_bl_lwm.delete_decompressed()
-        Deleting all files in:...'/.../bl_lwm...tracted'
+        Deleting all files in:...'...bl_lwm...tracted'
 
         ```
     """
@@ -403,11 +403,11 @@ class PlainTextFixture:
             ```pycon
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext')
             >>> zipfile_info_list: list[ZipInfo] = list(plaintext_bl_lwm.zipinfo)
-            Getting zipfile info from <PlainTextFixture(path='/.../bl_lwm')>
+            Getting zipfile info from <PlainTextFixture(path='...bl_lwm')>
             >>> zipfile_info_list[0][-1].filename
-            '0003079/1898/0204/0003079_18980204_sect0001.txt'
+            '0003079...1898...0204...0003079_18980204_sect0001.txt'
             >>> zipfile_info_list[-1][-1].filename
-            '0003548/1904/0707/0003548_19040707_art0059.txt'
+            '0003548...1904...0707...0003548_19040707_art0059.txt'
             >>> zipfile_info_list[0][-1].file_size
             70192
             >>> zipfile_info_list[0][-1].compress_size
@@ -432,7 +432,7 @@ class PlainTextFixture:
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext')
             >>> plaintext_bl_lwm.extract_compressed()
             <BLANKLINE>
-            ...Extract path:...'/.../bl_lwm/extracted'...
+            ...Extract path:...'...bl_lwm...extracted'...
             >>> filter_sect1_txt: list[str] = [txt_file for txt_file in
             ...  plaintext_bl_lwm._uncompressed_source_file_dict.keys()
             ...  if txt_file.name.endswith('204_sect0001.txt')]
@@ -441,9 +441,9 @@ class PlainTextFixture:
             >>> plaintext_bl_lwm._uncompressed_source_file_dict[
             ...     filter_sect1_txt[0]
             ...     ]
-            PosixPath('/.../bl_lwm/0003079-test_plaintext.zip')
+            PosixPath('...bl_lwm...0003079-test_plaintext.zip')
             >>> plaintext_bl_lwm.delete_decompressed()
-            Deleting all files in:...'/.../bl_lwm...tracted'
+            Deleting all files in:...'...bl_lwm...tracted'
 
             ```
 
@@ -469,7 +469,7 @@ class PlainTextFixture:
             ```pycon
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
             <BLANKLINE>
-            ...Extract path:.../.../bl_lwm/extracted...
+            ...Extract path:...bl_lwm...extracted...
             >>> plaintext_paths = plaintext_bl_lwm.plaintext_paths()
             >>> first_path_fixture_dict = next(iter(plaintext_paths))
             >>> first_path_fixture_dict['path'].name
@@ -528,11 +528,11 @@ class PlainTextFixture:
             ```pycon
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
             <BLANKLINE>
-            ...Extract path:.../.../bl_lwm/extracted...
+            ...Extract path:...bl_lwm...extracted...
             >>> paths_dict = list(plaintext_bl_lwm.plaintext_paths_to_dicts())
-            Compressed configs  :...%.../...[ ... it/s ]
+            Compressed configs  :...%...[ ... it/s ]
             >>> plaintext_bl_lwm.delete_decompressed()
-            Deleting all files in: '/.../.../...tracted'
+            Deleting all files in: '...tracted'
 
             ```
         """
@@ -577,7 +577,7 @@ class PlainTextFixture:
             ... )
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
             <BLANKLINE>
-            ...Extract path:.../.../bl_lwm/extracted...
+            ...Extract path:...bl_lwm...extracted...
             >>> plaintext_bl_lwm.export_to_json_fixtures(output_path=bl_lwm / "output")
             <BLANKLINE>
             Compressed configs...%...[...]
@@ -630,12 +630,12 @@ class PlainTextFixture:
             ```pycon
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
             <BLANKLINE>
-            ...Extract path:...'/.../bl_lwm/extracted'...
+            ...Extract path:...'...bl_lwm...extracted'...
             >>> plaintext_bl_lwm.delete_decompressed()
             Deleting all files in:...
             >>> plaintext_bl_lwm.delete_decompressed()
             <BLANKLINE>
-            ...Extract path empty:...'/.../bl_lwm/extracted'...
+            ...Extract path empty:...'...bl_lwm...extracted'...
 
             ````
         """
@@ -676,7 +676,7 @@ class PlainTextFixture:
             >>> plaintext_lwm._check_and_set_files_attr(force=True)
             DEBUG...Force change to...<PlainText...`files`...zip...
             >>> plaintext_lwm.files
-            (...('/.../bl_lwm/0003079-test_plaintext.zip'),)
+            (...('...bl_lwm...0003079-test_plaintext.zip'),)
             >>> len(plaintext_lwm)
             1
 

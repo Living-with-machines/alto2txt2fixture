@@ -322,7 +322,8 @@ def write_json(
 
     Example:
         ```pycon
-        >>> path = 'test-write-json/example.json'
+        >>> tmp_path: Path = getfixture('tmp_path')
+        >>> path: Path = tmp_path / 'test-write-json-example.json'
         >>> write_json(p=path,
         ...            o=NEWSPAPER_COLLECTION_METADATA,
         ...            add_created=True)
@@ -786,9 +787,10 @@ def save_fixture(
 
     Example:
         ```pycon
+        >>> tmp_path: Path = getfixture('tmp_path')
         >>> save_fixture(NEWSPAPER_COLLECTION_METADATA,
-        ...              prefix='test', output_path='tests/')
-        >>> imported_fixture = load_json('tests/test-1.json')
+        ...              prefix='test', output_path=tmp_path)
+        >>> imported_fixture = load_json(tmp_path / 'test-1.json')
         >>> imported_fixture[1]['pk']
         2
         >>> imported_fixture[1]['fields'][DATA_PROVIDER_INDEX]
@@ -862,10 +864,11 @@ def fixtures_dict2csv(
 
     Example:
         ```pycon
+        >>> tmp_path: Path = getfixture('tmp_path')
         >>> from pandas import read_csv
         >>> fixtures_dict2csv(NEWSPAPER_COLLECTION_METADATA,
-        ...                   prefix='test', output_path='tests/')
-        >>> imported_fixture = read_csv('tests/test-1.csv')
+        ...                   prefix='test', output_path=tmp_path)
+        >>> imported_fixture = read_csv(tmp_path / 'test-1.csv')
         >>> imported_fixture.iloc[1]['pk']
         2
         >>> imported_fixture.iloc[1][DATA_PROVIDER_INDEX]
@@ -989,11 +992,11 @@ def path_globs_to_tuple(
         >>> bl_lwm = getfixture("bl_lwm")
         >>> from pprint import pprint
         >>> pprint(path_globs_to_tuple(bl_lwm, '*text.zip'))
-        (PosixPath('/.../bl_lwm/0003079-test_plaintext.zip'),
-         PosixPath('/.../bl_lwm/0003548-test_plaintext.zip'))
+        (PosixPath('...bl_lwm...0003079-test_plaintext.zip'),
+         PosixPath('...bl_lwm...0003548-test_plaintext.zip'))
         >>> pprint(path_globs_to_tuple(bl_lwm, '*.txt'))
-        (PosixPath('/.../bl_lwm/0003079_18980121_sect0001.txt'),
-         PosixPath('/.../bl_lwm/0003548_19040707_art0037.txt'))
+        (PosixPath('...bl_lwm...0003079_18980121_sect0001.txt'),
+         PosixPath('...bl_lwm...0003548_19040707_art0037.txt'))
 
         ```
 
@@ -1111,7 +1114,7 @@ def compress_fixture(
         >>> compress_fixture(
         ...     path=plaintext_bl_lwm._exported_json_paths[0],
         ...     output_path=tmpdir)
-        Compressing.../plain...-1.json to 'zip'
+        Compressing...plain...-1.json to 'zip'
         >>> from zipfile import ZipFile, ZipInfo
         >>> zipfile_info_list: list[ZipInfo] = ZipFile(
         ...     tmpdir/'plaintext_fixture-1.json.zip'
@@ -1138,14 +1141,14 @@ def paths_with_newlines(
         ```pycon
         >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext')
         >>> print(paths_with_newlines(plaintext_bl_lwm.compressed_files))
-        '/.../bl_lwm/0003079-test_plaintext.zip'
-        '/.../bl_lwm/0003548-test_plaintext.zip'
+        '...bl_lwm...0003079-test_plaintext.zip'
+        '...bl_lwm...0003548-test_plaintext.zip'
         >>> print(
         ...     paths_with_newlines(plaintext_bl_lwm.compressed_files,
         ...                         truncate=True)
         ... )
-        '/..././0003079-test_plaintext.zip'
-        '/..././0003548-test_plaintext.zip'
+        '...0003079-test_plaintext.zip'
+        '...0003548-test_plaintext.zip'
 
         ```
     """
@@ -1177,16 +1180,16 @@ def truncate_path_str(
         >>> love_shadows: Path = (
         ...     Path('Standing') / 'in' / 'the' / 'shadows'/ 'of' / 'love.')
         >>> truncate_path_str(love_shadows)
-        'Standing/././././love.'
+        'Standing...love.'
         >>> truncate_path_str(love_shadows, max_length=100)
-        'Standing/in/the/shadows/of/love.'
+        'Standing...in...the...shadows...of...love.'
         >>> truncate_path_str(love_shadows, folder_filler_str="*")
-        'Standing/*/*/*/*/love.'
+        'Standing...*...*...*...*...love.'
         >>> truncate_path_str(Path('/') / love_shadows, folder_filler_str="*")
-        '/Standing/*/*/*/*/love.'
+        '...Standing...*...*...*...*...love.'
         >>> truncate_path_str(Path('/') / love_shadows,
         ...                   folder_filler_str="*", tail_paths=3)
-        '/Standing/*/*/shadows/of/love.'
+        '...Standing...*...*...shadows...of...love.'
 
         ```
     """
