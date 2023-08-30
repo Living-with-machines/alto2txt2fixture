@@ -145,16 +145,16 @@ class PlainTextFixture:
         <PlainTextFixture(path='.../bl_lwm')>
         >>> plaintext_bl_lwm.info()
         <BLANKLINE>
-                    ...PlainTextFixture for 2 'bl_lwm' files...
-        ┌─────────────────────┬─────────────────────────────────────────...┐
-        │ Path                │ '/.../bl_lwm'                           ...│
-        │ Compressed Files    │ '/.../bl_lwm/0003079-test_plaintext.zip'...│
-        │                     │ '/.../bl_lwm/0003548-test_plaintext.zip'...│
-        │ Extract Path        │ '/.../bl_lwm/extracted'                 ...│
-        │ Uncompressed Files  │ None                                    ...│
-        │ Data Provider       │ 'Living with Machines'                  ...│
-        │ Initial Primary Key │ 1                                       ...│
-        └─────────────────────┴─────────────────────────────────────────...┘
+               ...PlainTextFixture for 2 'bl_lwm' files...
+        ┌─────────────────────┬────────────────────────────────...┐
+        │ Path                │ '/.../bl_lwm'                  ...│
+        │ Compressed Files    │ '/.../bl_lwm/0003079-test_plain...│
+        │                     │ '/.../bl_lwm/0003548-test_plain...│
+        │ Extract Path        │ '/.../bl_lwm/extracted'        ...│
+        │ Uncompressed Files  │ None                           ...│
+        │ Data Provider       │ 'Living with Machines'         ...│
+        │ Initial Primary Key │ 1                              ...│
+        └─────────────────────┴────────────────────────────────...┘
         >>> plaintext_bl_lwm.free_hd_space_in_GB > 1
         True
         >>> plaintext_bl_lwm.extract_compressed()
