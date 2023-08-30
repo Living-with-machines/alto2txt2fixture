@@ -164,7 +164,7 @@ class PlainTextFixture:
         ...Extracting:...'/.../bl_lwm/0003548...zip' ...
         ...%...[...]...
         >>> plaintext_bl_lwm.delete_decompressed()
-        Deleting all files in: '/.../bl_lwm/..tracted'
+        Deleting all files in:...'/.../bl_lwm/...tracted'
 
         ```
     """
@@ -443,7 +443,7 @@ class PlainTextFixture:
             ...     ]
             PosixPath('/.../bl_lwm/0003079-test_plaintext.zip')
             >>> plaintext_bl_lwm.delete_decompressed()
-            Deleting all files in: '/.../bl_lwm/extracted'
+            Deleting all files in:...'/.../bl_lwm/...tracted'
 
             ```
 
