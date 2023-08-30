@@ -145,7 +145,7 @@ class PlainTextFixture:
         <PlainTextFixture(path='.../bl_lwm')>
         >>> plaintext_bl_lwm.info()
         <BLANKLINE>
-                   ...PlainTextFixture for 2 'bl_lwm' files...
+                    ...PlainTextFixture for 2 'bl_lwm' files...
         ┌─────────────────────┬─────────────────────────────────────────...┐
         │ Path                │ '/.../bl_lwm'                           ...│
         │ Compressed Files    │ '/.../bl_lwm/0003079-test_plaintext.zip'...│
@@ -159,12 +159,12 @@ class PlainTextFixture:
         True
         >>> plaintext_bl_lwm.extract_compressed()
         <BLANKLINE>
-        ...Extract path:...'/.../bl_lwm/extracted'...
-        ...Extracting:...'/.../bl_lwm/0003079...zip' ...
-        ...Extracting:...'/.../bl_lwm/0003548...zip' ...
+        ...Extract path:...'/.../bl_lwm/extracted...
+        ...Extracting:...'/.../bl_lwm/00030...
+        ...Extracting:...'/.../bl_lwm/00035...
         ...%...[...]...
         >>> plaintext_bl_lwm.delete_decompressed()
-        Deleting all files in:...'/.../bl_lwm/...tracted'
+        Deleting all files in:...'/.../bl_lwm...tracted'
 
         ```
     """
@@ -443,7 +443,7 @@ class PlainTextFixture:
             ...     ]
             PosixPath('/.../bl_lwm/0003079-test_plaintext.zip')
             >>> plaintext_bl_lwm.delete_decompressed()
-            Deleting all files in:...'/.../bl_lwm/...tracted'
+            Deleting all files in:...'/.../bl_lwm...tracted'
 
             ```
 
