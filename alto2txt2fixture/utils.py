@@ -3,7 +3,7 @@ import gc
 import json
 import logging
 from collections import OrderedDict
-from os import PathLike, chdir, getcwd
+from os import PathLike, chdir, getcwd, sep
 from pathlib import Path
 from shutil import disk_usage, get_unpack_formats, make_archive
 from typing import (
@@ -992,11 +992,11 @@ def path_globs_to_tuple(
         >>> bl_lwm = getfixture("bl_lwm")
         >>> from pprint import pprint
         >>> pprint(path_globs_to_tuple(bl_lwm, '*text.zip'))
-        (PosixPath('...bl_lwm...0003079-test_plaintext.zip'),
-         PosixPath('...bl_lwm...0003548-test_plaintext.zip'))
+        (...Path('...bl_lwm...0003079-test_plaintext.zip'),
+         ...Path('...bl_lwm...0003548-test_plaintext.zip'))
         >>> pprint(path_globs_to_tuple(bl_lwm, '*.txt'))
-        (PosixPath('...bl_lwm...0003079_18980121_sect0001.txt'),
-         PosixPath('...bl_lwm...0003548_19040707_art0037.txt'))
+        (...Path('...bl_lwm...0003079_18980121_sect0001.txt'),
+         ...Path('...bl_lwm...0003548_19040707_art0037.txt'))
 
         ```
 
@@ -1185,9 +1185,9 @@ def truncate_path_str(
         'Standing...in...the...shadows...of...love.'
         >>> truncate_path_str(love_shadows, folder_filler_str="*")
         'Standing...*...*...*...*...love.'
-        >>> truncate_path_str(Path('/') / love_shadows, folder_filler_str="*")
+        >>> truncate_path_str(Path(sep) / love_shadows, folder_filler_str="*")
         '...Standing...*...*...*...*...love.'
-        >>> truncate_path_str(Path('/') / love_shadows,
+        >>> truncate_path_str(Path(sep) / love_shadows,
         ...                   folder_filler_str="*", tail_paths=3)
         '...Standing...*...*...shadows...of...love.'
 
@@ -1196,12 +1196,12 @@ def truncate_path_str(
     if len(str(path)) > max_length:
         path_parts: tuple[str] = Path(path).parts
         first_folder_name_index: int = 1 if Path(path).is_absolute() else 0
-        paths_str: str = "/".join(
+        paths_str: str = sep.join(
             part
             if i == 0 or i >= len(path_parts) - first_folder_name_index - tail_paths
             else folder_filler_str
             for i, part in enumerate(path_parts[first_folder_name_index:])
         )
-        return "/" + paths_str if first_folder_name_index == 1 else paths_str
+        return sep + paths_str if first_folder_name_index == 1 else paths_str
     else:
         return str(path)

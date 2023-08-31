@@ -441,7 +441,8 @@ class PlainTextFixture:
             >>> plaintext_bl_lwm._uncompressed_source_file_dict[
             ...     filter_sect1_txt[0]
             ...     ]
-            PosixPath('...bl_lwm...0003079-test_plaintext.zip')
+            <BLANKLINE>
+            ...Path('...bl_lwm...0003079-test_plaintext.zip')
             >>> plaintext_bl_lwm.delete_decompressed()
             Deleting all files in:...'...bl_lwm...tracted'
 
@@ -526,6 +527,9 @@ class PlainTextFixture:
 
         Example:
             ```pycon
+            >>> import sys, pytest
+            >>> if sys.platform.startswith('win'):
+            ...     pytest.skip('current decompression does not work on Windows')
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
             <BLANKLINE>
             ...Extract path:...bl_lwm...extracted...
