@@ -23,7 +23,7 @@ def test_plaintext_cli(bl_lwm, first_lwm_plaintext_json_dict):
         ],
     )
     assert result.exit_code == 0
-    for message in ("Extract path:", "bl_lwm/extracted"):
+    for message in ("Extract path:", "bl_lwm", "extracted"):
         assert message in result.stdout
     exported_json: list[FixtureDict] = json.loads(
         (bl_lwm / "test-cli-plaintext-fixture" / "plaintext_fixture-1.json").read_text()

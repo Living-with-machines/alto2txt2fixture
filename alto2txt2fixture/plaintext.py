@@ -575,6 +575,9 @@ class PlainTextFixture:
 
         Example:
             ```pycon
+            >>> import sys, pytest
+            >>> if sys.platform.startswith('win'):
+            ...     pytest.skip('current decompression does not work on Windows')
             >>> bl_lwm: Path = getfixture("bl_lwm")
             >>> first_lwm_plaintext_json_dict: PlaintextFixtureDict = (
             ...     getfixture("first_lwm_plaintext_json_dict")

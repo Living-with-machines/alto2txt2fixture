@@ -6,6 +6,7 @@ from collections import OrderedDict
 from os import PathLike, chdir, getcwd, sep
 from pathlib import Path
 from shutil import disk_usage, get_unpack_formats, make_archive
+from sys import platform
 from typing import (
     Any,
     Final,
@@ -1163,6 +1164,9 @@ def truncate_path_str(
     max_length: int = MAX_TRUNCATE_PATH_STR_LEN,
     folder_filler_str: str = INTERMEDIATE_PATH_TRUNCATION_STR,
     tail_paths: int = 1,
+    path_sep: str = sep,
+    _posix_path_start_index: int = 1,
+    _win_path_start_index: int = 2,
 ) -> str:
     """If `len(text) > max_length` return `text` followed by `trail_str`.
 
@@ -1185,9 +1189,10 @@ def truncate_path_str(
         'Standing...in...the...shadows...of...love.'
         >>> truncate_path_str(love_shadows, folder_filler_str="*")
         'Standing...*...*...*...*...love.'
-        >>> truncate_path_str(Path(sep) / love_shadows, folder_filler_str="*")
+        >>> root_love_shadows: Path = Path(sep) / love_shadows
+        >>> truncate_path_str(root_love_shadows, folder_filler_str="*")
         '...Standing...*...*...*...*...love.'
-        >>> truncate_path_str(Path(sep) / love_shadows,
+        >>> truncate_path_str(root_love_shadows,
         ...                   folder_filler_str="*", tail_paths=3)
         '...Standing...*...*...shadows...of...love.'
 
@@ -1195,13 +1200,24 @@ def truncate_path_str(
     """
     if len(str(path)) > max_length:
         path_parts: tuple[str] = Path(path).parts
-        first_folder_name_index: int = 1 if Path(path).is_absolute() else 0
-        paths_str: str = sep.join(
+        path_start_index = (
+            _win_path_start_index
+            if platform.startswith("win")
+            else _posix_path_start_index
+        )
+        first_folder_name_index: int = (
+            path_start_index if Path(path).is_absolute() else 0
+        )
+        paths_str: str = path_sep.join(
             part
             if i == 0 or i >= len(path_parts) - first_folder_name_index - tail_paths
             else folder_filler_str
             for i, part in enumerate(path_parts[first_folder_name_index:])
         )
-        return sep + paths_str if first_folder_name_index == 1 else paths_str
+        return (
+            path_sep + paths_str
+            if first_folder_name_index == path_start_index
+            else paths_str
+        )
     else:
         return str(path)
