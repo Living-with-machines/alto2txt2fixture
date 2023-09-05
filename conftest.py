@@ -1,4 +1,6 @@
+import sys
 from pathlib import Path, PureWindowsPath
+from pprint import pprint
 from shutil import copytree, rmtree
 from typing import Final, Generator
 
@@ -130,6 +132,20 @@ def win_root_shadow_path() -> PureWindowsPath:
 def correct_win_path_trunc_str() -> str:
     """Correct truncated `str` for `win_root_shadow_path`."""
     return "S:\\Standing\\*\\*\\*\\*\\love."
+
+
+@pytest.fixture()
+def is_platform_win() -> bool:
+    """Check if `sys.platform` is windows."""
+    return sys.platform.startswith("win")
+
+
+@pytest.fixture(autouse=True)
+def doctest_auto_fixtures(doctest_namespace: dict, is_platform_win: bool) -> None:
+    """Elements to add to default `doctest` namespace."""
+    doctest_namespace["is_platform_win"] = is_platform_win
+    doctest_namespace["pprint"] = pprint
+    doctest_namespace["pytest"] = pytest
 
 
 def pytest_sessionfinish(session, exitstatus):

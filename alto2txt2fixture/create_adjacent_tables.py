@@ -72,7 +72,6 @@ def get_outpaths_dict(names: Sequence[str], module_name: str) -> TableOutputConf
 
     Example:
         ```pycon
-        >>> from pprint import pprint
         >>> pprint(get_outpaths_dict(MITCHELLS_TABELS, "mitchells"))
         {'Entry': {'csv': 'mitchells.Entry.csv', 'json': 'mitchells.Entry.json'},
          'Issue': {'csv': 'mitchells.Issue.csv', 'json': 'mitchells.Issue.json'},
@@ -237,8 +236,9 @@ def download_data(
 
     Example:
         ```pycon
-        >>> tmp: Path = getfixture('tmpdir')
-        >>> set_path: Path = tmp.chdir()
+        >>> from os import chdir
+        >>> tmp_path: Path = getfixture('tmp_path')
+        >>> set_path: Path = chdir(tmp_path)
         >>> download_data(exclude=["mitchells", "Newspaper-1", "linking"])
         Excluding mitchells...
         Excluding Newspaper-1...

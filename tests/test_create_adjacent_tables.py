@@ -24,11 +24,11 @@ def dict_admin_counties() -> dict[str, list[str]]:
 
 
 @pytest.fixture()
-def test_admin_counties_config(tmpdir) -> RemoteDataFilesType:
+def test_admin_counties_config(tmp_path) -> RemoteDataFilesType:
     return {
         "dict_admin_counties": {
             "remote": "https://zooniversedata.blob.core.windows.net/downloads/Gazetteer-files/dict_admin_counties.json",
-            "local": tmpdir / "dict_admin_counties.json",
+            "local": tmp_path / "dict_admin_counties.json",
         }
     }
 

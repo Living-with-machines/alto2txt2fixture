@@ -483,7 +483,6 @@ def filter_json_fields(
 
     Example:
         ```pycon
-        >>> from pprint import pprint
         >>> entry_fixture: dict = [
         ...     {"pk": 4889, "model": "mitchells.entry",
         ...      "fields": {"title": "BIRMINGHAM POST .",
@@ -989,7 +988,6 @@ def path_globs_to_tuple(
     Example:
         ```pycon
         >>> bl_lwm = getfixture("bl_lwm")
-        >>> from pprint import pprint
         >>> pprint(path_globs_to_tuple(bl_lwm, '*text.zip'))
         (...Path('...bl_lwm...0003079-test_plaintext.zip'),
          ...Path('...bl_lwm...0003548-test_plaintext.zip'))
@@ -1097,17 +1095,17 @@ def compress_fixture(
 
     Example:
         ```pycon
-        >>> tmpdir: Path = getfixture("tmpdir")
+        >>> tmp_path: Path = getfixture("tmp_path")
         >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_json_export')
         <BLANKLINE>
         ...Compressed configs...%...[...]
         >>> compress_fixture(
         ...     path=plaintext_bl_lwm._exported_json_paths[0],
-        ...     output_path=tmpdir)
+        ...     output_path=tmp_path)
         Compressing...plain...-1.json to 'zip'
         >>> from zipfile import ZipFile, ZipInfo
         >>> zipfile_info_list: list[ZipInfo] = ZipFile(
-        ...     tmpdir/'plaintext_fixture-1.json.zip'
+        ...     tmp_path / 'plaintext_fixture-1.json.zip'
         ... ).infolist()
         >>> len(zipfile_info_list)
         1
@@ -1196,6 +1194,8 @@ def truncate_path_str(
         <BLANKLINE>
         ...Adding 1...
         '...Standing...*...*...*...*...love.'
+        >>> if is_platform_win:
+        ...     pytest.skip('see current issues with Windows root paths')
         >>> truncate_path_str(root_love_shadows,
         ...                   folder_filler_str="*", tail_parts=3)
         <BLANKLINE>
