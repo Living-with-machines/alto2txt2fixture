@@ -14,6 +14,7 @@ pytz = "^2022.7.1"
 rich = "^12.6.0"
 types-pytz = "^2023.3.0.0"
 python-slugify = "^8.0.1"
+typer = {extras = ["all"], version = "^0.9.0"}
 
 [tool.poetry.group.dev.dependencies]
 pytest-sugar = "^0.9.7"
@@ -45,7 +46,8 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 a2t2f-news = "alto2txt2fixture.__main__:run"
-a2tsf-adj = "alto2txt2fixture.create_adjacent_tables:run"
+a2t2f-adj = "alto2txt2fixture.create_adjacent_tables:run"
+a2t2f-plaintext = "alto2txt2fixture.cli:cli"
 
 [tool.pytest.ini_options]
 xfail_strict = true
@@ -54,16 +56,22 @@ addopts = """
 --cov-report=term:skip-covered
 --pdbcls=IPython.terminal.debugger:TerminalPdb
 --doctest-modules
+--doctest-continue-on-failure
 --durations=3
 """
 markers = [
   "slow: slow (deselect with '-m \"not slow\"')",
   "download: requires downloading (deselect with '-m \"not download\"')",
 ]
+doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS"]
+testpaths = [
+  "tests",
+  "alto2txt2fixture"
+]
 
 [tool.mypy]
 python_version = "3.11"
-# check_untyped_defs = True
+# check_untyped_defs = true
 ignore_missing_imports = true
 warn_unused_ignores = true
 warn_redundant_casts = true

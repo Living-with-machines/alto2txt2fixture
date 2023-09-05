@@ -12,9 +12,15 @@ nav = mkdocs_gen_files.Nav()
 PACKAGE_PATH: str = "."
 DOCS_PATH_NAME: str = "docs"
 TESTS_PATH_NAME: str = "tests"
+TESTS_CONF_FILE: str = "conftest.py"
+
 
 for path in sorted(Path(PACKAGE_PATH).rglob("*.py")):
-    if DOCS_PATH_NAME in str(path) or TESTS_PATH_NAME in str(path):
+    if (
+        DOCS_PATH_NAME in str(path)
+        or TESTS_PATH_NAME in str(path)
+        or TESTS_CONF_FILE in str(path)
+    ):
         continue
     module_path = path.relative_to(PACKAGE_PATH).with_suffix("")
     doc_path = path.relative_to(PACKAGE_PATH).with_suffix(".md")

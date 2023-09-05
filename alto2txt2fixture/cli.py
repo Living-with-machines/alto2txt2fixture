@@ -1,13 +1,38 @@
 import os
+from pathlib import Path
 
-from rich.console import Console
+import typer
 from rich.table import Table
+from typing_extensions import Annotated
 
+from .plaintext import (
+    DEFAULT_EXTRACTED_SUBDIR,
+    DEFAULT_PLAINTEXT_FIXTURE_OUTPUT,
+    PlainTextFixture,
+)
 from .settings import DATA_PROVIDER_INDEX, SETUP_TITLE, settings
 from .types import dotdict
-from .utils import check_newspaper_collection_configuration, gen_fixture_tables
+from .utils import check_newspaper_collection_configuration, console, gen_fixture_tables
 
-console = Console()
+cli = typer.Typer(pretty_exceptions_show_locals=False)
+
+
+@cli.command()
+def plaintext(
+    path: Annotated[Path, typer.Argument()],
+    save_path: Annotated[Path, typer.Option()] = Path(DEFAULT_PLAINTEXT_FIXTURE_OUTPUT),
+    data_provider_code: Annotated[str, typer.Option()] = "",
+    extract_path: Annotated[Path, typer.Argument()] = Path(DEFAULT_EXTRACTED_SUBDIR),
+) -> None:
+    """Create a PlainTextFixture and save to `save_path`."""
+    plaintext_fixture = PlainTextFixture(
+        path=path,
+        data_provider_code=data_provider_code,
+        extract_subdir=extract_path,
+        export_directory=save_path,
+    )
+    plaintext_fixture.extract_compressed()
+    plaintext_fixture.export_to_json_fixtures()
 
 
 def show_setup(clear: bool = True, title: str = SETUP_TITLE, **kwargs) -> None:
@@ -56,9 +81,8 @@ def show_fixture_tables(
         >>> [column.header for column in fixture_tables[0].columns]
         ['pk', 'name', 'code', 'legacy_code', 'collection', 'source_note']
         >>> fixture_tables = show_fixture_tables(settings)
-        ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
         <BLANKLINE>
-        ...dataprovider...Heritage...│ bl-hmd...│ hmd...
+        ...dataprovider...Heritage...│ bl_hmd...│ hmd...
 
         ```
 

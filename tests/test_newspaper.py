@@ -15,7 +15,7 @@ def test_newspaper_show_tables(
 ) -> None:
     """Test using `test_config` to only print out run config."""
     collections_config_snippet: str = "COLLECTIONS │ ['hmd', 'lwm', 'jisc', 'bna'] │"
-    fixture_config_snipit: str = "bl-hmd │ hmd"
+    fixture_config_snipit: str = "bl_hmd │ hmd"
     with pytest.raises(SystemExit) as e_info:
         run([test_config_param])
     assert e_info.traceback[1].path.name == "__main__.py"
@@ -44,7 +44,6 @@ def test_newspaper_help(help_param: str, capsys: pytest.LogCaptureFixture) -> No
 )
 def test_run_without_local_or_blobfuse(
     local_args: list | None,
-    uncached_folder: None,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.LogCaptureFixture,
 ) -> None:

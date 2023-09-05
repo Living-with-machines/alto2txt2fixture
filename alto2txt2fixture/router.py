@@ -295,8 +295,8 @@ class Newspaper(Cache):
 
             if not len(self._publication_code) == 7:
                 raise RuntimeError(
-                    f"Publication code is of wrong length: \
-                    {len(self._publication_code)} ({self._publication_code})."
+                    f"Publication code is of wrong length: "
+                    f"{len(self._publication_code)} ({self._publication_code})."
                 )
 
         return self._publication_code
@@ -708,7 +708,7 @@ class DataProvider(Cache):
         >>> hmd.pk
         2
         >>> pprint(hmd.as_dict())
-        {'code': 'bl-hmd',
+        {'code': 'bl_hmd',
          'collection': 'newspapers',
          'legacy_code': 'hmd',
          'name': 'Heritage Made Digital',
