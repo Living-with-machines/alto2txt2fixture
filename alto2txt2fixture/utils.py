@@ -1123,7 +1123,7 @@ def compress_fixture(
 def paths_with_newlines(
     paths: Iterable[PathLike], truncate: bool = False, **kwargs
 ) -> str:
-    """Return a `str` of `paths` separated by \n.
+    """Return a `str` of `paths` separated by a `\\n`.
 
     Example:
         ```pycon
@@ -1179,6 +1179,11 @@ def truncate_path_str(
         `text` truncated to `max_length` (if longer than `max_length`),
             with with `folder_filler_str` for intermediate folder names
 
+    Note:
+        For errors running on windows see:
+        [#56](https://github.com/Living-with-machines/alto2txt2fixture/issues/56)
+
+
     Example:
         ```pycon
         >>> love_shadows: Path = (
@@ -1195,7 +1200,7 @@ def truncate_path_str(
         ...Adding 1...
         '...Standing...*...*...*...*...love.'
         >>> if is_platform_win:
-        ...     pytest.skip('see current issues with Windows root paths')
+        ...     pytest.skip('fails on certain Windows root paths: issue #56')
         >>> truncate_path_str(root_love_shadows,
         ...                   folder_filler_str="*", tail_parts=3)
         <BLANKLINE>
