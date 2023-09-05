@@ -525,10 +525,14 @@ class PlainTextFixture:
     def plaintext_paths_to_dicts(self) -> Generator[PlaintextFixtureDict, None, None]:
         """Generate fixture dicts from `self.plaintext_paths`.
 
+        Note:
+            For errors running on windows see:
+            [#55](https://github.com/Living-with-machines/alto2txt2fixture/issues/55)
+
         Example:
             ```pycon
             >>> if is_platform_win:
-            ...     pytest.skip('current decompression does not work on Windows')
+            ...     pytest.skip('decompression fails on Windows: issue #55')
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
             <BLANKLINE>
             ...Extract path:...bl_lwm...extracted...
@@ -566,6 +570,10 @@ class PlainTextFixture:
     ) -> None:
         """Iterate over `self.plaintext_paths` exporting to `json` `django` fixtures.
 
+        Note:
+            For errors running on windows see:
+            [#55](https://github.com/Living-with-machines/alto2txt2fixture/issues/55)
+
         Args:
             output_path:
                 Folder to save all `json` fixtures in.
@@ -575,7 +583,7 @@ class PlainTextFixture:
         Example:
             ```pycon
             >>> if is_platform_win:
-            ...     pytest.skip('current decompression does not work on Windows')
+            ...     pytest.skip('decompression fails on Windows: issue #55')
             >>> bl_lwm: Path = getfixture("bl_lwm")
             >>> first_lwm_plaintext_json_dict: PlaintextFixtureDict = (
             ...     getfixture("first_lwm_plaintext_json_dict")
