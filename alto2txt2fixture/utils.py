@@ -1123,7 +1123,7 @@ def compress_fixture(
 def paths_with_newlines(
     paths: Iterable[PathLike], truncate: bool = False, **kwargs
 ) -> str:
-    """Return a `str` of `paths` separated by \n.
+    """Return a `str` of `paths` separated by a `\\n`.
 
     Example:
         ```pycon

@@ -49,7 +49,7 @@ SAS_ENV_VARIABLE = "FULLTEXT_SAS_TOKEN"
 
 
 class FulltextPathDict(TypedDict):
-    """A `dict` for storing fixture paths and primary key.
+    """A `dict` of `lwmdb.fulltext.models.Fulltext` fixture structure.
 
     Attributes:
         path:
@@ -69,7 +69,7 @@ class FulltextPathDict(TypedDict):
 @dataclass
 class PlainTextFixture:
 
-    """Convert `plaintext` results from `alto2txt` into `json` fixtures.
+    """Manage exporting `plaintext` `alto2txt` results for `lwmdb.fulltext.models.Fulltext`.
 
     Attributes:
         path:
@@ -642,7 +642,7 @@ class PlainTextFixture:
             <BLANKLINE>
             ...Extract path empty:...'...bl_lwm...extracted'...
 
-            ````
+            ```
         """
         if self.extract_path.exists():
             console.print(f"Deleting all files in: '{self.extract_path}'")
