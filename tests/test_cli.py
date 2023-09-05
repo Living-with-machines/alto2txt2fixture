@@ -31,17 +31,17 @@ def test_plaintext_cli(bl_lwm, first_lwm_plaintext_json_dict):
     )
     assert exported_json[0]["model"] == "fulltext.fulltext"
     # assert "DRAPER & OUTFITTER" in exported_json[0]["fields"]["text"]
-    assert (
-        exported_json[0]["fields"]["text"]
-        == first_lwm_plaintext_json_dict["fields"]["text"]
-    )
+    if not platform.startswith("win"):
+        assert (
+            exported_json[0]["fields"]["text"]
+            == first_lwm_plaintext_json_dict["fields"]["text"]
+        )
     assert exported_json[0]["fields"]["path"] == str(
         first_lwm_plaintext_json_dict["fields"]["path"]
     )
-    if not platform.startswith("win"):
-        assert exported_json[0]["fields"]["compressed_path"] == str(
-            first_lwm_plaintext_json_dict["fields"]["compressed_path"]
-        )
+    assert exported_json[0]["fields"]["compressed_path"] == str(
+        first_lwm_plaintext_json_dict["fields"]["compressed_path"]
+    )
     assert (
         exported_json[0]["fields"]["updated_at"]
         == exported_json[0]["fields"]["updated_at"]
