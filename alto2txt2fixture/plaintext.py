@@ -235,13 +235,13 @@ class PlainTextFixture:
 
         """
         compressed_file_names: str = (
-            self._compressed_file_names(truncate=True, tail_paths=2)
+            self._compressed_file_names(truncate=True, tail_parts=2)
         ) or self.empty_info_default_str
         uncompressed_file_names: str = (
-            self._provided_uncompressed_file_names(truncate=True, tail_paths=2)
+            self._provided_uncompressed_file_names(truncate=True, tail_parts=2)
         ) or self.empty_info_default_str
         extract_path: str = (
-            f"'{truncate_path_str(self.extract_path, tail_paths=2)}'"
+            f"'{truncate_path_str(self.extract_path, tail_parts=2)}'"
             or self.empty_info_default_str
         )
         table: Table = Table(title=str(self), show_header=False)
@@ -258,21 +258,21 @@ class PlainTextFixture:
         console.print(self.info_table)
 
     def _compressed_file_names(
-        self, truncate: bool = False, tail_paths: int = 1
+        self, truncate: bool = False, tail_parts: int = 1
     ) -> str:
         """`self.compressed_files` `paths` separated by `\n`."""
         return paths_with_newlines(
-            self.compressed_files, truncate=truncate, tail_paths=tail_paths
+            self.compressed_files, truncate=truncate, tail_parts=tail_parts
         )
 
     def _provided_uncompressed_file_names(
-        self, truncate: bool = False, tail_paths: int = 1
+        self, truncate: bool = False, tail_parts: int = 1
     ) -> str:
         """`self.plaintext_provided_uncompressed` `paths` separated by `\n`."""
         return paths_with_newlines(
             self.plaintext_provided_uncompressed,
             truncate=truncate,
-            tail_paths=tail_paths,
+            tail_parts=tail_parts,
         )
 
     @property
@@ -681,7 +681,8 @@ class PlainTextFixture:
             >>> len(plaintext_lwm)
             2
             >>> plaintext_lwm._check_and_set_files_attr(force=True)
-            DEBUG...Force change to...<PlainText...`files`...zip...
+            <BLANKLINE>
+            ...DEBUG...Force change to...<PlainText...`files`...zip...
             >>> plaintext_lwm.files
             (...('...bl_lwm...0003079-test_plaintext.zip'),)
             >>> len(plaintext_lwm)

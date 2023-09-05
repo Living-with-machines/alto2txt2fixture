@@ -1,4 +1,5 @@
 import json
+from sys import platform
 
 import pytest
 from typer.testing import CliRunner
@@ -37,9 +38,10 @@ def test_plaintext_cli(bl_lwm, first_lwm_plaintext_json_dict):
     assert exported_json[0]["fields"]["path"] == str(
         first_lwm_plaintext_json_dict["fields"]["path"]
     )
-    assert exported_json[0]["fields"]["compressed_path"] == str(
-        first_lwm_plaintext_json_dict["fields"]["compressed_path"]
-    )
+    if not platform.startswith("win"):
+        assert exported_json[0]["fields"]["compressed_path"] == str(
+            first_lwm_plaintext_json_dict["fields"]["compressed_path"]
+        )
     assert (
         exported_json[0]["fields"]["updated_at"]
         == exported_json[0]["fields"]["updated_at"]

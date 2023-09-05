@@ -4,9 +4,9 @@ import json
 import logging
 from collections import OrderedDict
 from os import PathLike, chdir, getcwd, sep
-from pathlib import Path
+from os.path import normpath
+from pathlib import Path, PureWindowsPath
 from shutil import disk_usage, get_unpack_formats, make_archive
-from sys import platform
 from typing import (
     Any,
     Final,
@@ -16,6 +16,7 @@ from typing import (
     Literal,
     NamedTuple,
     Sequence,
+    Type,
     TypeAlias,
     overload,
 )
@@ -900,9 +901,6 @@ def fixtures_dict2csv(
         df: DataFrame = DataFrame.from_records(lst)
         df.to_csv(Path(f"{output_path}/{prefix}-{counter}.csv"), index=index)
 
-    return
-    save_fixture(records, prefix=f"test-{table_name}", output_path=path)
-
 
 def export_fixtures(
     fixture_tables: dict[str, Sequence[FixtureDict]],
@@ -1084,27 +1082,18 @@ def compress_fixture(
         path:
             `Path` to file to compress
 
-        fixture_glob:
-            A `glob` string for matching fxitures to compress within `path`
-
         output_path:
             Compressed file name (without extension specified from `format`).
 
         format:
-           A `str` of one of the registered compression formats.
-           `Python` provides `zip`, `tar`, `gztar`, `bztar`, and `xztar`
+            A `str` of one of the registered compression formats.
+            `Python` provides `zip`, `tar`, `gztar`, `bztar`, and `xztar`
 
         suffix:
             `str` to add to comprssed filename saved.
             For example: if `path = plaintext_fixture-1.json` and
             `suffix=_compressed`, then the saved file might be called
             `plaintext_fixture_compressed-1.json.zip`
-
-        fixture_extension:
-            What `str` to glob files within `path` for compression.
-
-        delete_source:
-            Whether to delete the `path` file after compression.
 
     Example:
         ```pycon
@@ -1148,6 +1137,8 @@ def paths_with_newlines(
         ...     paths_with_newlines(plaintext_bl_lwm.compressed_files,
         ...                         truncate=True)
         ... )
+        <BLANKLINE>
+        ...Adding 1...
         '...0003079-test_plaintext.zip'
         '...0003548-test_plaintext.zip'
 
@@ -1163,21 +1154,32 @@ def truncate_path_str(
     path: PathLike,
     max_length: int = MAX_TRUNCATE_PATH_STR_LEN,
     folder_filler_str: str = INTERMEDIATE_PATH_TRUNCATION_STR,
-    tail_paths: int = 1,
+    head_parts: int = 1,
+    tail_parts: int = 1,
     path_sep: str = sep,
-    _posix_path_start_index: int = 1,
-    _win_path_start_index: int = 2,
+    _force_type: Type[Path] | Type[PureWindowsPath] = Path,
 ) -> str:
     """If `len(text) > max_length` return `text` followed by `trail_str`.
 
     Args:
-        text: `str` to truncate
-        max_length: maximum length of `text` to allow, anything belond truncated
-        folder_filler_str: what to fill intermediate path names with
+        path:
+            `PathLike` object to truncate
+        max_length:
+            maximum length of `path` to allow, anything belond truncated
+        folder_filler_str:
+            what to fill intermediate path names with
+        head_parts:
+            how many parts of `path` from the root to keep.
+            These must be `int` >= 0
+        tail_parts:
+            how many parts from the `path` tail the root to keep.
+            These must be `int` >= 0
+        path_sep:
+            what `str` to replace `path` parts with if over `max_length`
 
     Returns:
         `text` truncated to `max_length` (if longer than `max_length`),
-        with with `folder_filler_str` for intermediate folder names
+            with with `folder_filler_str` for intermediate folder names
 
     Example:
         ```pycon
@@ -1191,33 +1193,51 @@ def truncate_path_str(
         'Standing...*...*...*...*...love.'
         >>> root_love_shadows: Path = Path(sep) / love_shadows
         >>> truncate_path_str(root_love_shadows, folder_filler_str="*")
+        <BLANKLINE>
+        ...Adding 1...
         '...Standing...*...*...*...*...love.'
         >>> truncate_path_str(root_love_shadows,
-        ...                   folder_filler_str="*", tail_paths=3)
-        '...Standing...*...*...shadows...of...love.'
+        ...                   folder_filler_str="*", tail_parts=3)
+        <BLANKLINE>
+        ...Adding 1...
+        '...Standing...*...*...shadows...of...love.'...
 
         ```
     """
+    path = _force_type(normpath(path))
     if len(str(path)) > max_length:
-        path_parts: tuple[str] = Path(path).parts
-        path_start_index = (
-            _win_path_start_index
-            if platform.startswith("win")
-            else _posix_path_start_index
+        try:
+            assert not (head_parts < 0 or tail_parts < 0)
+        except AssertionError:
+            logger.error(
+                f"Both index params for `truncate_path_str` must be >=0: "
+                f"(head_parts={head_parts}, tail_parts={tail_parts})"
+            )
+            return str(path)
+        if path.drive or path.is_absolute():
+            logger.debug(
+                f"Adding 1 to `head_parts`: {head_parts} " f"to truncate: '{path}'"
+            )
+            head_parts += 1
+        original_path_parts: tuple[str] = path.parts
+        try:
+            assert head_parts + tail_parts < len(str(original_path_parts))
+        except AssertionError:
+            logger.error(
+                f"Returning untruncated. Params "
+                f"(head_parts={head_parts}, tail_parts={tail_parts}) "
+                f"not valid to truncate: '{path}'"
+            )
+            return str(path)
+        tail_index: int = len(original_path_parts) - tail_parts
+        replaced_path_parts: tuple[str] = tuple(
+            part if (i < head_parts or i >= tail_index) else folder_filler_str
+            for i, part in enumerate(original_path_parts)
         )
-        first_folder_name_index: int = (
-            path_start_index if Path(path).is_absolute() else 0
+        replaced_start_str: str = "".join(replaced_path_parts[:head_parts])
+        replaced_end_str: str = path_sep.join(
+            path for path in replaced_path_parts[head_parts:]
         )
-        paths_str: str = path_sep.join(
-            part
-            if i == 0 or i >= len(path_parts) - first_folder_name_index - tail_paths
-            else folder_filler_str
-            for i, part in enumerate(path_parts[first_folder_name_index:])
-        )
-        return (
-            path_sep + paths_str
-            if first_folder_name_index == path_start_index
-            else paths_str
-        )
+        return path_sep.join((replaced_start_str, replaced_end_str))
     else:
         return str(path)

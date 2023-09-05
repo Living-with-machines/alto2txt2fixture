@@ -1,4 +1,4 @@
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from shutil import copytree, rmtree
 from typing import Final, Generator
 
@@ -119,6 +119,19 @@ def first_lwm_plaintext_json_dict(bl_lwm) -> PlaintextFixtureDict:
             errors=None,
         ),
     )
+
+
+@pytest.fixture
+def win_root_shadow_path() -> PureWindowsPath:
+    return PureWindowsPath(
+        Path("S:") / "Standing" / "in" / "the" / "shadows" / "of" / "love."
+    )
+
+
+@pytest.fixture
+def correct_win_path_trunc_str() -> str:
+    """Correct truncated `str` for `win_root_shadow_path`."""
+    return "S:Standing\\*\\*\\*\\*\\love."
 
 
 def pytest_sessionfinish(session, exitstatus):
