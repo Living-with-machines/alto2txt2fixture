@@ -1214,12 +1214,20 @@ def truncate_path_str(
                 f"(head_parts={head_parts}, tail_parts={tail_parts})"
             )
             return str(path)
-        if path.drive or path.is_absolute():
-            logger.debug(
-                f"Adding 1 to `head_parts`: {head_parts} " f"to truncate: '{path}'"
-            )
-            head_parts += 1
         original_path_parts: tuple[str] = path.parts
+        head_index_fix: int = 0
+        if path.is_absolute() or path.drive:
+            head_index_fix += 1
+            for part in original_path_parts[head_parts + head_index_fix :]:
+                if not part:
+                    head_index_fix += 1
+                else:
+                    break
+            logger.debug(
+                f"Adding {head_index_fix} to `head_parts`: {head_parts} "
+                f"to truncate: '{path}'"
+            )
+            head_parts += head_index_fix
         try:
             assert head_parts + tail_parts < len(str(original_path_parts))
         except AssertionError:
