@@ -57,13 +57,14 @@ addopts = """
 --pdbcls=IPython.terminal.debugger:TerminalPdb
 --doctest-modules
 --doctest-continue-on-failure
+--doctest-report ndiff
 --durations=3
 """
 markers = [
   "slow: slow (deselect with '-m \"not slow\"')",
   "download: requires downloading (deselect with '-m \"not download\"')",
 ]
-doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS"]
+doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS",]
 testpaths = [
   "tests",
   "alto2txt2fixture"

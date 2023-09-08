@@ -1,4 +1,5 @@
 import json
+from os.path import sep
 from sys import platform
 
 import pytest
@@ -46,3 +47,17 @@ def test_plaintext_cli(bl_lwm, first_lwm_plaintext_json_dict):
         exported_json[0]["fields"]["updated_at"]
         == exported_json[0]["fields"]["updated_at"]
     )
+
+
+def test_plaintext_cli_empty_path(bl_lwm):
+    """Test running `plaintext` file export via `cli`."""
+    result = runner.invoke(
+        cli,
+        [
+            str(bl_lwm / ".."),
+        ],
+        input="y\n..\nn\n",
+    )
+    assert result.exit_code == 0
+    assert "'..'" in result.stdout
+    assert f"'..{sep}extracted'" in result.stdout or ""
