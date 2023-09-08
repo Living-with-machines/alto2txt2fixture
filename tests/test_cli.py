@@ -1,4 +1,5 @@
 import json
+from os.path import sep
 from sys import platform
 
 import pytest
@@ -59,4 +60,4 @@ def test_plaintext_cli_empty_path(bl_lwm):
     )
     assert result.exit_code == 0
     assert "'..'" in result.stdout
-    assert "'../extracted'" in result.stdout
+    assert f"'..{sep}extracted'" in result.stdout or ""
