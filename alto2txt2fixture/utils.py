@@ -66,6 +66,9 @@ JSON_FILE_GLOB_STRING: str = f"**/*{JSON_FILE_EXTENSION}"
 MAX_TRUNCATE_PATH_STR_LEN: Final[int] = 30
 INTERMEDIATE_PATH_TRUNCATION_STR: Final[str] = "."
 
+TRUNC_HEADS_PATH_DEFAULT: int = 1
+TRUNC_TAILS_PATH_DEFAULT: int = 1
+
 
 @overload
 def get_now(as_str: Literal[True]) -> str:
@@ -1152,8 +1155,8 @@ def truncate_path_str(
     path: PathLike,
     max_length: int = MAX_TRUNCATE_PATH_STR_LEN,
     folder_filler_str: str = INTERMEDIATE_PATH_TRUNCATION_STR,
-    head_parts: int = 1,
-    tail_parts: int = 1,
+    head_parts: int = TRUNC_HEADS_PATH_DEFAULT,
+    tail_parts: int = TRUNC_TAILS_PATH_DEFAULT,
     path_sep: str = sep,
     _force_type: Type[Path] | Type[PureWindowsPath] = Path,
 ) -> str:

@@ -17,6 +17,8 @@ from .types import (
     PlaintextFixtureFieldsDict,
 )
 from .utils import (
+    TRUNC_HEADS_PATH_DEFAULT,
+    TRUNC_TAILS_PATH_DEFAULT,
     ZIP_FILE_EXTENSION,
     DiskUsageTuple,
     console,
@@ -44,6 +46,7 @@ DEFAULT_MAX_PLAINTEXT_PER_FIXTURE_FILE: Final[int] = 2000
 DEFAULT_PLAINTEXT_FILE_NAME_PREFIX: Final[str] = "plaintext_fixture"
 DEFAULT_PLAINTEXT_FIXTURE_OUTPUT: Final[PathLike] = Path("output") / "plaintext"
 DEFAULT_INITIAL_PK: int = 1
+TRUNC_TAILS_SUBPATH_DEFAULT: int = 1
 
 SAS_ENV_VARIABLE = "FULLTEXT_SAS_TOKEN"
 
@@ -145,7 +148,7 @@ class PlainTextFixture:
         <PlainTextFixture(path='...bl_lwm')>
         >>> plaintext_bl_lwm.info()
         <BLANKLINE>
-               ...PlainTextFixture for 2 'bl_lwm' files...
+        ...PlainTextFixture for 2 'bl_lwm' files...
         ┌─────────────────────┬────────────────────────────────...┐
         │ Path                │ '...bl_lwm'                    ...│
         │ Compressed Files    │ '...bl_lwm...0003079-test_plain...│
@@ -186,6 +189,9 @@ class PlainTextFixture:
     saved_fixture_prefix: str = DEFAULT_PLAINTEXT_FILE_NAME_PREFIX
     export_directory: PathLike = DEFAULT_PLAINTEXT_FIXTURE_OUTPUT
     empty_info_default_str: str = "None"
+    _trunc_head_paths: int = TRUNC_HEADS_PATH_DEFAULT
+    _trunc_tails_paths: int = TRUNC_TAILS_PATH_DEFAULT
+    _trunc_tails_sub_paths: int = TRUNC_TAILS_SUBPATH_DEFAULT
 
     def __post_init__(self) -> None:
         """Manage populating additional attributes if necessary."""
@@ -219,6 +225,35 @@ class PlainTextFixture:
         return f"'{self.data_provider_code}' " if self.data_provider_code else None
 
     @property
+    def trunc_compressed_file_names_str(self) -> str:
+        """Return truncated `self.compressed_files` file names or empty `str`."""
+        return (
+            self._compressed_file_names(
+                truncate=True,
+                tail_parts=self._trunc_tails_paths + self._trunc_tails_sub_paths,
+            )
+        ) or self.empty_info_default_str
+
+    @property
+    def trunc_uncompressed_file_names_str(self) -> str:
+        """Return truncated `self.plaintext_provided_uncompressed` file names or empty `str`."""
+        return (
+            self._provided_uncompressed_file_names(
+                truncate=True,
+                tail_parts=self._trunc_tails_paths + self._trunc_tails_sub_paths,
+            )
+        ) or self.empty_info_default_str
+
+    @property
+    def trunc_extract_path_str(self) -> str:
+        """Return truncated `self.extract_path` or empty `str`."""
+        path_str: str = truncate_path_str(
+            self.extract_path,
+            tail_parts=self._trunc_tails_paths + self._trunc_tails_sub_paths,
+        )
+        return f"'{path_str}'" or self.empty_info_default_str
+
+    @property
     def info_table(self) -> str:
         """Generate a `rich.ltable.Table` of config information.
 
@@ -234,21 +269,11 @@ class PlainTextFixture:
             ```
 
         """
-        compressed_file_names: str = (
-            self._compressed_file_names(truncate=True, tail_parts=2)
-        ) or self.empty_info_default_str
-        uncompressed_file_names: str = (
-            self._provided_uncompressed_file_names(truncate=True, tail_parts=2)
-        ) or self.empty_info_default_str
-        extract_path: str = (
-            f"'{truncate_path_str(self.extract_path, tail_parts=2)}'"
-            or self.empty_info_default_str
-        )
         table: Table = Table(title=str(self), show_header=False)
         table.add_row("Path", f"'{truncate_path_str(self.path)}'")
-        table.add_row("Compressed Files", compressed_file_names)
-        table.add_row("Extract Path", extract_path)
-        table.add_row("Uncompressed Files", uncompressed_file_names)
+        table.add_row("Compressed Files", self.trunc_compressed_file_names_str)
+        table.add_row("Extract Path", self.trunc_extract_path_str)
+        table.add_row("Uncompressed Files", self.trunc_uncompressed_file_names_str)
         table.add_row("Data Provider", f"'{str(self.data_provider_name)}'")
         table.add_row("Initial Primary Key", str(self.initial_pk))
         return table

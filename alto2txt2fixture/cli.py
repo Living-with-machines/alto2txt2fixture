@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import typer
+from rich.prompt import Confirm, Prompt
 from rich.table import Table
 from typing_extensions import Annotated
 
@@ -31,6 +32,21 @@ def plaintext(
         extract_subdir=extract_path,
         export_directory=save_path,
     )
+    plaintext_fixture.info()
+    while (
+        not plaintext_fixture.compressed_files
+        and not plaintext_fixture.plaintext_provided_uncompressed
+    ):
+        try_another_compressed_txt_source: bool = Confirm.ask(
+            f"No .txt files available from extract path: {plaintext_fixture.trunc_extract_path_str}\n"
+            "Would you like to extract fixtures from a different path?"
+        )
+        if try_another_compressed_txt_source:
+            new_extract_path: str = Prompt.ask("Please enter a new extract path")
+            plaintext_fixture.path = Path(new_extract_path)
+        else:
+            return
+        plaintext_fixture.info()
     plaintext_fixture.extract_compressed()
     plaintext_fixture.export_to_json_fixtures()
 
