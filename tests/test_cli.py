@@ -22,6 +22,8 @@ def test_plaintext_cli(bl_lwm, first_lwm_plaintext_json_dict):
             bl_lwm / "test-cli-plaintext-fixture",
             "--data-provider-code",
             "bl_lwm",
+            "--initial-pk",
+            5,
         ],
     )
     assert result.exit_code == 0
@@ -31,6 +33,7 @@ def test_plaintext_cli(bl_lwm, first_lwm_plaintext_json_dict):
         (bl_lwm / "test-cli-plaintext-fixture" / "plaintext_fixture-1.json").read_text()
     )
     assert exported_json[0]["model"] == "fulltext.fulltext"
+    assert exported_json[0]["pk"] == 5
     # assert "DRAPER & OUTFITTER" in exported_json[0]["fields"]["text"]
     if not platform.startswith("win"):
         assert (

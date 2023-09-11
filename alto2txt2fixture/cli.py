@@ -8,6 +8,7 @@ from typing_extensions import Annotated
 
 from .plaintext import (
     DEFAULT_EXTRACTED_SUBDIR,
+    DEFAULT_INITIAL_PK,
     DEFAULT_PLAINTEXT_FIXTURE_OUTPUT,
     PlainTextFixture,
 )
@@ -20,10 +21,19 @@ cli = typer.Typer(pretty_exceptions_show_locals=False)
 
 @cli.command()
 def plaintext(
-    path: Annotated[Path, typer.Argument()],
-    save_path: Annotated[Path, typer.Option()] = Path(DEFAULT_PLAINTEXT_FIXTURE_OUTPUT),
-    data_provider_code: Annotated[str, typer.Option()] = "",
-    extract_path: Annotated[Path, typer.Argument()] = Path(DEFAULT_EXTRACTED_SUBDIR),
+    path: Annotated[Path, typer.Argument(help="Path to raw plaintext files")],
+    save_path: Annotated[
+        Path, typer.Option(help="Path to save json export files")
+    ] = Path(DEFAULT_PLAINTEXT_FIXTURE_OUTPUT),
+    data_provider_code: Annotated[
+        str, typer.Option(help="Data provider code use existing config")
+    ] = "",
+    extract_path: Annotated[
+        Path, typer.Option(help="Folder to extract compressed raw plaintext to")
+    ] = Path(DEFAULT_EXTRACTED_SUBDIR),
+    initial_pk: Annotated[
+        int, typer.Option(help="First primary key to increment json export from")
+    ] = DEFAULT_INITIAL_PK,
 ) -> None:
     """Create a PlainTextFixture and save to `save_path`."""
     plaintext_fixture = PlainTextFixture(
@@ -31,6 +41,7 @@ def plaintext(
         data_provider_code=data_provider_code,
         extract_subdir=extract_path,
         export_directory=save_path,
+        initial_pk=initial_pk,
     )
     plaintext_fixture.info()
     while (
