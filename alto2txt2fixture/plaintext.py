@@ -42,7 +42,7 @@ FULLTEXT_DEFAULT_PLAINTEXT_ZIP_GLOB_REGEX: Final[
 ] = f"*{FULLTEXT_FILE_NAME_SUFFIX}.{ZIP_FILE_EXTENSION}"
 TXT_FIXTURE_FILE_EXTENSION: Final[str] = "txt"
 TXT_FIXTURE_FILE_GLOB_REGEX: Final[str] = f"**/*.{TXT_FIXTURE_FILE_EXTENSION}"
-DEFAULT_MAX_PLAINTEXT_PER_FIXTURE_FILE: Final[int] = 2000
+DEFAULT_MAX_PLAINTEXT_PER_FIXTURE_FILE: Final[int] = 100
 DEFAULT_PLAINTEXT_FILE_NAME_PREFIX: Final[str] = "plaintext_fixture"
 DEFAULT_PLAINTEXT_FIXTURE_OUTPUT: Final[PathLike] = Path("output") / "plaintext"
 DEFAULT_INITIAL_PK: int = 1
@@ -157,6 +157,7 @@ class PlainTextFixture:
         │ Uncompressed Files  │ None                           ...│
         │ Data Provider       │ 'Living with Machines'         ...│
         │ Initial Primary Key │ 1                              ...│
+        │ Max Rows Per JSON   │ 100                            ...│
         └─────────────────────┴────────────────────────────────...┘
         >>> plaintext_bl_lwm.free_hd_space_in_GB > 1
         True
@@ -276,6 +277,7 @@ class PlainTextFixture:
         table.add_row("Uncompressed Files", self.trunc_uncompressed_file_names_str)
         table.add_row("Data Provider", f"'{str(self.data_provider_name)}'")
         table.add_row("Initial Primary Key", str(self.initial_pk))
+        table.add_row("Max Rows Per JSON", str(self.max_plaintext_per_fixture_file))
         return table
 
     def info(self) -> None:
@@ -655,6 +657,7 @@ class PlainTextFixture:
             prefix=prefix,
             output_path=output_path,
             add_created=True,
+            max_elements_per_file=self.max_plaintext_per_fixture_file,
         )
         self._exported_json_paths = tuple(
             Path(path) for path in sorted(Path(output_path).glob(f"**/{prefix}*.json"))

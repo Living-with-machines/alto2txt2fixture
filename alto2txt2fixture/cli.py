@@ -9,6 +9,7 @@ from typing_extensions import Annotated
 from .plaintext import (
     DEFAULT_EXTRACTED_SUBDIR,
     DEFAULT_INITIAL_PK,
+    DEFAULT_MAX_PLAINTEXT_PER_FIXTURE_FILE,
     DEFAULT_PLAINTEXT_FIXTURE_OUTPUT,
     PlainTextFixture,
 )
@@ -34,6 +35,9 @@ def plaintext(
     initial_pk: Annotated[
         int, typer.Option(help="First primary key to increment json export from")
     ] = DEFAULT_INITIAL_PK,
+    records_per_json: Annotated[
+        int, typer.Option(help="Max records per json fixture")
+    ] = DEFAULT_MAX_PLAINTEXT_PER_FIXTURE_FILE,
 ) -> None:
     """Create a PlainTextFixture and save to `save_path`."""
     plaintext_fixture = PlainTextFixture(
@@ -42,6 +46,7 @@ def plaintext(
         extract_subdir=extract_path,
         export_directory=save_path,
         initial_pk=initial_pk,
+        max_plaintext_per_fixture_file=records_per_json,
     )
     plaintext_fixture.info()
     while (
