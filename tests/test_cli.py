@@ -30,7 +30,9 @@ def test_plaintext_cli(bl_lwm, first_lwm_plaintext_json_dict):
     for message in ("Extract path:", "bl_lwm", "extracted"):
         assert message in result.stdout
     exported_json: list[FixtureDict] = json.loads(
-        (bl_lwm / "test-cli-plaintext-fixture" / "plaintext_fixture-1.json").read_text()
+        (
+            bl_lwm / "test-cli-plaintext-fixture" / "plaintext_fixture-000001.json"
+        ).read_text()
     )
     assert exported_json[0]["model"] == "fulltext.fulltext"
     assert exported_json[0]["pk"] == 5

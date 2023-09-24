@@ -15,7 +15,12 @@ from .plaintext import (
 )
 from .settings import DATA_PROVIDER_INDEX, SETUP_TITLE, settings
 from .types import dotdict
-from .utils import check_newspaper_collection_configuration, console, gen_fixture_tables
+from .utils import (
+    FILE_NAME_0_PADDING_DEFAULT,
+    check_newspaper_collection_configuration,
+    console,
+    gen_fixture_tables,
+)
 
 cli = typer.Typer(pretty_exceptions_show_locals=False)
 
@@ -38,6 +43,9 @@ def plaintext(
     records_per_json: Annotated[
         int, typer.Option(help="Max records per json fixture")
     ] = DEFAULT_MAX_PLAINTEXT_PER_FIXTURE_FILE,
+    digit_padding: Annotated[
+        int, typer.Option(help="Padding '0's for indexing json fixture filenames")
+    ] = FILE_NAME_0_PADDING_DEFAULT,
 ) -> None:
     """Create a PlainTextFixture and save to `save_path`."""
     plaintext_fixture = PlainTextFixture(
@@ -47,6 +55,7 @@ def plaintext(
         export_directory=save_path,
         initial_pk=initial_pk,
         max_plaintext_per_fixture_file=records_per_json,
+        json_0_file_name_padding=digit_padding,
     )
     plaintext_fixture.info()
     while (
@@ -54,8 +63,9 @@ def plaintext(
         and not plaintext_fixture.plaintext_provided_uncompressed
     ):
         try_another_compressed_txt_source: bool = Confirm.ask(
-            f"No .txt files available from extract path: {plaintext_fixture.trunc_extract_path_str}\n"
-            "Would you like to extract fixtures from a different path?"
+            f"No .txt files available from extract path: "
+            f"{plaintext_fixture.trunc_extract_path_str}\n"
+            f"Would you like to extract fixtures from a different path?"
         )
         if try_another_compressed_txt_source:
             new_extract_path: str = Prompt.ask("Please enter a new extract path")

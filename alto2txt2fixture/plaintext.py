@@ -17,6 +17,7 @@ from .types import (
     PlaintextFixtureFieldsDict,
 )
 from .utils import (
+    FILE_NAME_0_PADDING_DEFAULT,
     TRUNC_HEADS_PATH_DEFAULT,
     TRUNC_TAILS_PATH_DEFAULT,
     ZIP_FILE_EXTENSION,
@@ -128,6 +129,9 @@ class PlainTextFixture:
             Default begins at 1, can be set to another number if needed to
             add to add more to pre-existing set of records up to a given `pk`
 
+        json_0_file_name_padding:
+            Number of `0`s to prefix file name numbering.
+
         _disk_usage:
             Available harddrive space. Designed to help mitigate decompressing too
             many files for available disk space.
@@ -158,6 +162,7 @@ class PlainTextFixture:
         │ Data Provider       │ 'Living with Machines'         ...│
         │ Initial Primary Key │ 1                              ...│
         │ Max Rows Per JSON   │ 100                            ...│
+        │ JSON File Name 0s   │ 6                              ...│
         └─────────────────────┴────────────────────────────────...┘
         >>> plaintext_bl_lwm.free_hd_space_in_GB > 1
         True
@@ -190,6 +195,7 @@ class PlainTextFixture:
     saved_fixture_prefix: str = DEFAULT_PLAINTEXT_FILE_NAME_PREFIX
     export_directory: PathLike = DEFAULT_PLAINTEXT_FIXTURE_OUTPUT
     empty_info_default_str: str = "None"
+    json_0_file_name_padding: int = FILE_NAME_0_PADDING_DEFAULT
     _trunc_head_paths: int = TRUNC_HEADS_PATH_DEFAULT
     _trunc_tails_paths: int = TRUNC_TAILS_PATH_DEFAULT
     _trunc_tails_sub_paths: int = TRUNC_TAILS_SUBPATH_DEFAULT
@@ -256,7 +262,7 @@ class PlainTextFixture:
 
     @property
     def info_table(self) -> str:
-        """Generate a `rich.ltable.Table` of config information.
+        """Generate a `rich.table.Table` of config information.
 
         Example:
             ```pycon
@@ -278,6 +284,7 @@ class PlainTextFixture:
         table.add_row("Data Provider", f"'{str(self.data_provider_name)}'")
         table.add_row("Initial Primary Key", str(self.initial_pk))
         table.add_row("Max Rows Per JSON", str(self.max_plaintext_per_fixture_file))
+        table.add_row("JSON File Name 0s", str(self.json_0_file_name_padding))
         return table
 
     def info(self) -> None:
@@ -401,7 +408,7 @@ class PlainTextFixture:
 
     @property
     def compressed_files(self) -> tuple[PathLike, ...]:
-        """Return a tuple of all `self.files` with known archive filenames."""
+        """Return a tuple of all `self.files` with known archive file names."""
         return (
             tuple(sorted(valid_compression_files(files=self.files)))
             if self.files
@@ -593,7 +600,10 @@ class PlainTextFixture:
             )
 
     def export_to_json_fixtures(
-        self, output_path: PathLike | None = None, prefix: str | None = None
+        self,
+        output_path: PathLike | None = None,
+        prefix: str | None = None,
+        json_0_file_name_padding: int | None = None,
     ) -> None:
         """Iterate over `self.plaintext_paths` exporting to `json` `django` fixtures.
 
@@ -606,6 +616,8 @@ class PlainTextFixture:
                 Folder to save all `json` fixtures in.
             prefix:
                 Any `str` prefix for saved fixture files.
+            json_0_file_name_padding:
+                Number of `0`s to prefix file name numbering.
 
         Example:
             ```pycon
@@ -624,7 +636,7 @@ class PlainTextFixture:
             >>> len(plaintext_bl_lwm._exported_json_paths)
             1
             >>> plaintext_bl_lwm._exported_json_paths
-            (...Path(...plaintext_fixture-1.json...),)
+            (...Path(...plaintext_fixture-000001.json...),)
             >>> import json
             >>> exported_json = json.loads(
             ...     plaintext_bl_lwm._exported_json_paths[0].read_text()
@@ -652,12 +664,18 @@ class PlainTextFixture:
         """
         output_path = self.export_directory if not output_path else output_path
         prefix = self.saved_fixture_prefix if not prefix else prefix
+        json_0_file_name_padding = (
+            self.json_0_file_name_padding
+            if not json_0_file_name_padding
+            else json_0_file_name_padding
+        )
         save_fixture(
             self.plaintext_paths_to_dicts(),
             prefix=prefix,
             output_path=output_path,
             add_created=True,
             max_elements_per_file=self.max_plaintext_per_fixture_file,
+            file_name_0_padding=json_0_file_name_padding,
         )
         self._exported_json_paths = tuple(
             Path(path) for path in sorted(Path(output_path).glob(f"**/{prefix}*.json"))
