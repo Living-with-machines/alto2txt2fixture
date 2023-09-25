@@ -1278,11 +1278,47 @@ def truncate_path_str(
         return str(path)
 
 
+def int_from_str(
+    s: str,
+    index: int = -1,
+    regex: str = PADDING_0_REGEX_DEFAULT,
+) -> tuple[str, int]:
+    """Return matched (or None) `regex` from `s` by index `index`.
+
+    Params:
+        s:
+            `str` to match and via `regex`.
+
+        index:
+            Which index of number in `s` to pad with 0s.
+            Like numbering a `list`, 0 indicates the first match
+            and -1 indicates the last match.
+
+        regex:
+            Regular expression for matching numbers in `s` to pad.
+
+    Example:
+        ```pycon
+        >>> int_from_str('a/path/to/fixture-03-05.txt')
+        ('05', 5)
+        >>> int_from_str('a/path/to/fixture-03-05.txt', index=0)
+        ('03', 3)
+
+        ```
+    """
+    matches: list[str] = [match for match in findall(regex, s) if match]
+    match_str: str = matches[index]
+    return match_str, int(match_str)
+
+
 def rename_by_0_padding(
     file_path: PathLike,
-    match_index: int = -1,
+    match_str: str | None = None,
+    match_int: int | None = None,
     padding: int = FILE_NAME_0_PADDING_DEFAULT,
-    regex: str = PADDING_0_REGEX_DEFAULT,
+    replace_count: int = 1,
+    exclude_parents: bool = True,
+    reverse_int_match: bool = False,
 ) -> Path:
     """Return `file_path` with `0` `padding` `Path` change.
 
@@ -1290,37 +1326,139 @@ def rename_by_0_padding(
         file_path:
             `PathLike` to rename.
 
+        match_str:
+            `str` to match and replace with padded `match_int`
+
+        match_int:
+            `int` to pad and replace `match_str`
+
         padding:
-            How many digits (0s) to pad filename integer with.
+            How many digits (0s) to pad `match_int` with.
 
-        match_index:
-            Which index of number in `file_path` to pad with 0s.
-            Like numbering a `list`, 0 indicates the first match
-            and -1 indicates the last match.
+        exclude_parents:
+            Only rename parts of `Path(file_path).name`; else
+            replace across `Path(file_path).parents` as well.
 
-        regex:
-            Regular expression for matching numbers in `file_path` to pad.
+        reverse_int_match:
+            Whether to match from the end of the `file_path`.
+
 
     Example:
         ```pycon
-        >>> rename_by_0_padding('a/path/to/fixture-03-05.txt')
+        >>> rename_by_0_padding('a/path/to/3/fixture-03-05.txt',
+        ...                     match_str='05', match_int=5)
         <BLANKLINE>
-        ...Path('a/path/to/fixture-03-000005.txt')...
-        >>> rename_by_0_padding('a/path/to/fixture-03-05.txt',
-        ...                     match_index=0)
+        ...Path('a/path/to/3/fixture-03-000005.txt')...
+        >>> rename_by_0_padding('a/path/to/3/fixture-03-05.txt',
+        ...                     match_str='03')
         <BLANKLINE>
-        ...Path('a/path/to/fixture-000003-05.txt')...
-        >>> rename_by_0_padding('a/path/to/fixture-03-05.txt',
-        ...                     padding=0)
+        ...Path('a/path/to/3/fixture-000003-05.txt')...
+        >>> rename_by_0_padding('a/path/to/3/fixture-03-05.txt',
+        ...                     match_str='05', padding=0)
         <BLANKLINE>
-        ...Path('a/path/to/fixture-03-5.txt')...
+        ...Path('a/path/to/3/fixture-03-5.txt')...
+        >>> rename_by_0_padding('a/path/to/3/fixture-03-05.txt',
+        ...                     match_int=3)
+        <BLANKLINE>
+        ...Path('a/path/to/3/fixture-0000003-05.txt')...
+        >>> rename_by_0_padding('a/path/to/3/f-03-05-0003.txt',
+        ...                     match_int=3, padding=2,
+        ...                     exclude_parents=False)
+        <BLANKLINE>
+        ...Path('a/path/to/03/f-03-05-0003.txt')...
+        >>> rename_by_0_padding('a/path/to/3/f-03-05-0003.txt',
+        ...                     match_int=3, padding=2,
+        ...                     exclude_parents=False,
+        ...                     replace_count=3, )
+        <BLANKLINE>
+        ...Path('a/path/to/03/f-003-05-00003.txt')...
 
         ```
     """
-    file_name: str = Path(file_path).name
-    matches: list[str] = [s for s in findall(regex, file_name) if s]
-    match_str: str = matches[match_index]
-    new_file_name: str = file_name.replace(
-        match_str, str(int(match_str)).zfill(padding)
+    if not match_int and not match_str:
+        raise ValueError(f"At least `match_int` or `match_str` required; both None.")
+    elif match_str and not match_int:
+        match_int = int(match_str)
+    elif match_int and not match_str:
+        assert str(match_int) in str(file_path)
+        match_str = int_from_str(
+            str(file_path),
+            index=-1 if reverse_int_match else 0,
+        )[0]
+    assert match_str is not None and match_int is not None
+    if exclude_parents:
+        return Path(file_path).parent / Path(file_path).name.replace(
+            match_str, str(match_int).zfill(padding), replace_count
+        )
+    else:
+        return Path(
+            str(file_path).replace(
+                match_str, str(match_int).zfill(padding), replace_count
+            )
+        )
+
+
+def glob_path_rename_by_0_padding(
+    path: PathLike,
+    glob_regex_str: str = "*",
+    index: int = -1,
+    padding: int | None = 0,
+    match_int_regex: str = PADDING_0_REGEX_DEFAULT,
+) -> dict[PathLike, PathLike]:
+    """Return an `OrderedDict` of replacement 0-padded file names from `path`.
+
+    Params:
+        path:
+            `PathLike` to source files to rename.
+
+        glob_regex_str:
+            `str` to match files to rename within `path`.
+
+        index:
+            Which index of number in `s` to pad with 0s.
+            Like numbering a `list`, 0 indicates the first match
+            and -1 indicates the last match.
+
+        padding:
+            How many digits (0s) to pad `match_int` with.
+
+        match_int_regex:
+            Regular expression for matching numbers in `s` to pad.
+            Only rename parts of `Path(file_path).name`; else
+            replace across `Path(file_path).parents` as well.
+
+    Example:
+        ```pycon
+        >>> tmp_path: Path = getfixture('tmp_path')
+        >>> for i in range(4):
+        ...     (tmp_path / f'test_file-{i}.txt').touch(exist_ok=True)
+        >>> pprint(sorted(tmp_path.iterdir()))
+        [...Path('...test_file-0.txt'),
+         ...Path('...test_file-1.txt'),
+         ...Path('...test_file-2.txt'),
+         ...Path('...test_file-3.txt')]
+        >>> pprint(glob_path_rename_by_0_padding(tmp_path))
+        {...Path('...test_file-0.txt'): ...Path('...test_file-00.txt'),
+         ...Path('...test_file-1.txt'): ...Path('...test_file-01.txt'),
+         ...Path('...test_file-2.txt'): ...Path('...test_file-02.txt'),
+         ...Path('...test_file-3.txt'): ...Path('...test_file-03.txt')}
+
+        ```
+
+    """
+    paths_tuple: tuple[PathLike, ...] = path_globs_to_tuple(path, glob_regex_str)
+    paths_to_index: tuple[tuple[PathLike, int], ...] = tuple(
+        int_from_str(str(matched_path), index=index, regex=match_int_regex)
+        for matched_path in paths_tuple
     )
-    return Path(file_path).parent / new_file_name
+    max_index: int = max(index[1] for index in paths_to_index)
+    max_index_digits: int = len(str(max_index))
+    if not padding or padding < max_index_digits:
+        padding = max_index_digits + 1
+    new_names_dict: dict[PathLike, PathLike] = {}
+    for i, old_path in enumerate(paths_tuple):
+        match_str, match_int = paths_to_index[i]
+        new_names_dict[old_path] = rename_by_0_padding(
+            old_path, match_str=str(match_str), match_int=match_int, padding=padding
+        )
+    return new_names_dict
