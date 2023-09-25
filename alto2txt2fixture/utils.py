@@ -1241,7 +1241,7 @@ def truncate_path_str(
                 f"(head_parts={head_parts}, tail_parts={tail_parts})"
             )
             return str(path)
-        original_path_parts: tuple[str] = path.parts
+        original_path_parts: tuple[str, ...] = path.parts
         head_index_fix: int = 0
         if path.is_absolute() or path.drive:
             head_index_fix += 1
@@ -1265,7 +1265,7 @@ def truncate_path_str(
             )
             return str(path)
         tail_index: int = len(original_path_parts) - tail_parts
-        replaced_path_parts: tuple[str] = tuple(
+        replaced_path_parts: tuple[str, ...] = tuple(
             part if (i < head_parts or i >= tail_index) else folder_filler_str
             for i, part in enumerate(original_path_parts)
         )
@@ -1447,7 +1447,7 @@ def glob_path_rename_by_0_padding(
 
     """
     paths_tuple: tuple[PathLike, ...] = path_globs_to_tuple(path, glob_regex_str)
-    paths_to_index: tuple[tuple[PathLike, int], ...] = tuple(
+    paths_to_index: tuple[tuple[str, int], ...] = tuple(
         int_from_str(str(matched_path), index=index, regex=match_int_regex)
         for matched_path in paths_tuple
     )
