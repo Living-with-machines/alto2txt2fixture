@@ -6,6 +6,7 @@ from collections import OrderedDict
 from os import PathLike, chdir, getcwd, sep
 from os.path import normpath
 from pathlib import Path, PureWindowsPath
+from re import findall
 from shutil import disk_usage, get_unpack_formats, make_archive
 from typing import (
     Any,
@@ -69,6 +70,7 @@ INTERMEDIATE_PATH_TRUNCATION_STR: Final[str] = "."
 TRUNC_HEADS_PATH_DEFAULT: int = 1
 TRUNC_TAILS_PATH_DEFAULT: int = 1
 FILE_NAME_0_PADDING_DEFAULT: int = 6
+PADDING_0_REGEX_DEFAULT: str = r"\b\d*\b"
 
 
 @overload
@@ -1274,3 +1276,51 @@ def truncate_path_str(
         return path_sep.join((replaced_start_str, replaced_end_str))
     else:
         return str(path)
+
+
+def rename_by_0_padding(
+    file_path: PathLike,
+    match_index: int = -1,
+    padding: int = FILE_NAME_0_PADDING_DEFAULT,
+    regex: str = PADDING_0_REGEX_DEFAULT,
+) -> Path:
+    """Return `file_path` with `0` `padding` `Path` change.
+
+    Params:
+        file_path:
+            `PathLike` to rename.
+
+        padding:
+            How many digits (0s) to pad filename integer with.
+
+        match_index:
+            Which index of number in `file_path` to pad with 0s.
+            Like numbering a `list`, 0 indicates the first match
+            and -1 indicates the last match.
+
+        regex:
+            Regular expression for matching numbers in `file_path` to pad.
+
+    Example:
+        ```pycon
+        >>> rename_by_0_padding('a/path/to/fixture-03-05.txt')
+        <BLANKLINE>
+        ...Path('a/path/to/fixture-03-000005.txt')...
+        >>> rename_by_0_padding('a/path/to/fixture-03-05.txt',
+        ...                     match_index=0)
+        <BLANKLINE>
+        ...Path('a/path/to/fixture-000003-05.txt')...
+        >>> rename_by_0_padding('a/path/to/fixture-03-05.txt',
+        ...                     padding=0)
+        <BLANKLINE>
+        ...Path('a/path/to/fixture-03-5.txt')...
+
+        ```
+    """
+    file_name: str = Path(file_path).name
+    matches: list[str] = [s for s in findall(regex, file_name) if s]
+    match_str: str = matches[match_index]
+    new_file_name: str = file_name.replace(
+        match_str, str(int(match_str)).zfill(padding)
+    )
+    return Path(file_path).parent / new_file_name
