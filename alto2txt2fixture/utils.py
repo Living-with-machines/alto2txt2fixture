@@ -896,12 +896,13 @@ def fixtures_dict2csv(
     counter: int = 1
     lst: list = []
     file_name: str
+    df: DataFrame
     Path(output_path).mkdir(parents=True, exist_ok=True)
     for item in fixtures:
         lst.append(fixture_fields(item, as_dict=True))
         internal_counter += 1
         if internal_counter > max_elements_per_file:
-            df: DataFrame = DataFrame.from_records(lst)
+            df = DataFrame.from_records(lst)
 
             file_name = f"{prefix}-{str(counter).zfill(file_name_0_padding)}.csv"
             df.to_csv(Path(output_path) / file_name, index=index)
@@ -910,11 +911,11 @@ def fixtures_dict2csv(
             gc.collect()
 
             # Re-instantiate
-            lst: list = []
+            lst = []
             internal_counter = 1
             counter += 1
     else:
-        df: DataFrame = DataFrame.from_records(lst)
+        df = DataFrame.from_records(lst)
         file_name = f"{prefix}-{str(counter).zfill(file_name_0_padding)}.csv"
         df.to_csv(Path(output_path) / file_name, index=index)
 
@@ -1385,7 +1386,7 @@ def rename_by_0_padding(
             str(file_path),
             index=-1 if reverse_int_match else 0,
         )[0]
-    assert not (match_int is None and match_str is None)
+    assert match_int is not None and match_str is not None
     if exclude_parents:
         return Path(file_path).parent / Path(file_path).name.replace(
             match_str, str(match_int).zfill(padding), replace_count
