@@ -1493,14 +1493,15 @@ def copy_dict_paths(copy_path_dict: dict[PathLike, PathLike]) -> None:
         >>> output_path = tmp_path / 'save'
         >>> output_path.mkdir(exist_ok=True)
         >>> copy_dict_paths(
-        ...     glob_path_rename_by_0_padding(tmp_path, glob_regex_str="*.txt",
+        ...     glob_path_rename_by_0_padding(tmp_path,
+        ...                                   glob_regex_str="*.txt",
         ...                                   output_path=output_path))
-        Specified...'.../save'...for...saving...file...copies...
-        ...'...test_file-0.txt'...to...'...test_file-00.txt'...
-        ...'...test_file-1.txt'...to...'...test_file-01.txt'
-        ...'...test_file-2.txt'...to...'...test_file-02.txt'
-        ...'...test_file-3.txt'...to...'...test_file-03.txt'
-
+        <BLANKLINE>
+        ...Specified...'.../save'...for...saving...file...copies...
+        ...'...-0.txt'...to...'...-00.txt'...
+        ...'...-1.txt'...to...'...-01.txt'
+        ...'...-2.txt'...to...'...-02.txt'
+        ...'...-3.txt'...to...'...-03.txt'
         >>> pprint(sorted(tmp_path.iterdir()))
         [...Path('...save'),
          ...Path('...test_file-0.txt'),
