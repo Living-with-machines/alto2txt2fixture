@@ -14,7 +14,7 @@ runner = CliRunner()
 
 
 @pytest.mark.slow
-def test_plaintext_cli(bl_lwm, first_lwm_plaintext_json_dict):
+def test_plaintext_cli(bl_lwm, first_lwm_plaintext_json_dict) -> None:
     """Test running `plaintext` file export via `cli`."""
     result = runner.invoke(
         cli,
@@ -57,7 +57,7 @@ def test_plaintext_cli(bl_lwm, first_lwm_plaintext_json_dict):
     )
 
 
-def test_plaintext_cli_empty_path(bl_lwm):
+def test_plaintext_cli_empty_path(bl_lwm) -> None:
     """Test running `plaintext` file export via `cli`."""
     result = runner.invoke(
         cli,
@@ -76,7 +76,7 @@ def test_plaintext_cli_empty_path(bl_lwm):
     "run_type, input",
     (("--dry-run", "n\n"), ("--dry-run", "y\n"), ("--no-dry-run", "")),
 )
-def test_reindex_cli(tmp_path: Path, run_type: str, input: str):
+def test_reindex_cli(tmp_path: Path, run_type: str, input: str) -> None:
     """Test running `reindex` via `cli`."""
     output_path: Path = tmp_path / "padded-file-names"
     test_paths: tuple[Path, ...] = tuple(
