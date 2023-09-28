@@ -1385,7 +1385,7 @@ def rename_by_0_padding(
             str(file_path),
             index=-1 if reverse_int_match else 0,
         )[0]
-    assert not isinstance(match_int, None) and not isinstance(match_str, None)
+    assert not (match_int is None and match_str is None)
     if exclude_parents:
         return Path(file_path).parent / Path(file_path).name.replace(
             match_str, str(match_int).zfill(padding), replace_count
