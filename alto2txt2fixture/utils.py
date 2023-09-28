@@ -7,7 +7,7 @@ from os import PathLike, chdir, getcwd, sep
 from os.path import normpath
 from pathlib import Path, PureWindowsPath
 from re import findall
-from shutil import disk_usage, get_unpack_formats, make_archive
+from shutil import copyfile, disk_usage, get_unpack_formats, make_archive
 from typing import (
     Any,
     Final,
@@ -1375,17 +1375,17 @@ def rename_by_0_padding(
 
         ```
     """
-    if not match_int and not match_str:
+    if match_int is None and match_str in (None, ""):
         raise ValueError(f"At least `match_int` or `match_str` required; both None.")
     elif match_str and not match_int:
         match_int = int(match_str)
-    elif match_int and not match_str:
+    elif match_int is not None and not match_str:
         assert str(match_int) in str(file_path)
         match_str = int_from_str(
             str(file_path),
             index=-1 if reverse_int_match else 0,
         )[0]
-    assert match_str is not None and match_int is not None
+    assert match_int is not None and match_str not in (None, "")
     if exclude_parents:
         return Path(file_path).parent / Path(file_path).name.replace(
             match_str, str(match_int).zfill(padding), replace_count
@@ -1400,10 +1400,11 @@ def rename_by_0_padding(
 
 def glob_path_rename_by_0_padding(
     path: PathLike,
+    output_path: PathLike | None = None,
     glob_regex_str: str = "*",
-    index: int = -1,
     padding: int | None = 0,
     match_int_regex: str = PADDING_0_REGEX_DEFAULT,
+    index: int = -1,
 ) -> dict[PathLike, PathLike]:
     """Return an `OrderedDict` of replacement 0-padded file names from `path`.
 
@@ -1411,13 +1412,11 @@ def glob_path_rename_by_0_padding(
         path:
             `PathLike` to source files to rename.
 
+        output_path:
+            `PathLike` to save renamed files to.
+
         glob_regex_str:
             `str` to match files to rename within `path`.
-
-        index:
-            Which index of number in `s` to pad with 0s.
-            Like numbering a `list`, 0 indicates the first match
-            and -1 indicates the last match.
 
         padding:
             How many digits (0s) to pad `match_int` with.
@@ -1426,6 +1425,11 @@ def glob_path_rename_by_0_padding(
             Regular expression for matching numbers in `s` to pad.
             Only rename parts of `Path(file_path).name`; else
             replace across `Path(file_path).parents` as well.
+
+        index:
+            Which index of number in `s` to pad with 0s.
+            Like numbering a `list`, 0 indicates the first match
+            and -1 indicates the last match.
 
     Example:
         ```pycon
@@ -1456,9 +1460,61 @@ def glob_path_rename_by_0_padding(
     if not padding or padding < max_index_digits:
         padding = max_index_digits + 1
     new_names_dict: dict[PathLike, PathLike] = {}
+    if output_path:
+        if not Path(output_path).is_absolute():
+            output_path = Path(path) / output_path
+        console.log(f"Specified '{output_path}' for saving file copies")
     for i, old_path in enumerate(paths_tuple):
         match_str, match_int = paths_to_index[i]
         new_names_dict[old_path] = rename_by_0_padding(
             old_path, match_str=str(match_str), match_int=match_int, padding=padding
         )
+        if output_path:
+            new_names_dict[old_path] = (
+                Path(output_path) / Path(new_names_dict[old_path]).name
+            )
     return new_names_dict
+
+
+def copy_dict_paths(copy_path_dict: dict[PathLike, PathLike]) -> None:
+    """Copy files from `copy_path_dict` `keys` to `values`.
+
+    Example:
+        ```pycon
+        >>> tmp_path: Path = getfixture('tmp_path')
+        >>> for i in range(4):
+        ...     (tmp_path / f'test_file-{i}.txt').touch(exist_ok=True)
+        >>> pprint(sorted(tmp_path.iterdir()))
+        [...Path('...test_file-0.txt'),
+         ...Path('...test_file-1.txt'),
+         ...Path('...test_file-2.txt'),
+         ...Path('...test_file-3.txt')]
+        >>> output_path = tmp_path / 'save'
+        >>> output_path.mkdir(exist_ok=True)
+        >>> copy_dict_paths(
+        ...     glob_path_rename_by_0_padding(tmp_path, glob_regex_str="*.txt",
+        ...                                   output_path=output_path))
+        Specified...'.../save'...for...saving...file...copies...
+        ...'...test_file-0.txt'...to...'...test_file-00.txt'...
+        ...'...test_file-1.txt'...to...'...test_file-01.txt'
+        ...'...test_file-2.txt'...to...'...test_file-02.txt'
+        ...'...test_file-3.txt'...to...'...test_file-03.txt'
+
+        >>> pprint(sorted(tmp_path.iterdir()))
+        [...Path('...save'),
+         ...Path('...test_file-0.txt'),
+         ...Path('...test_file-1.txt'),
+         ...Path('...test_file-2.txt'),
+         ...Path('...test_file-3.txt')]
+        >>> pprint(sorted((tmp_path / 'save').iterdir()))
+         [...Path('...test_file-00.txt'),
+          ...Path('...test_file-01.txt'),
+          ...Path('...test_file-02.txt'),
+          ...Path('...test_file-03.txt')]
+
+        ```
+    """
+    for current_path, copy_path in copy_path_dict.items():
+        console.print(f"Copying '{current_path}' to '{copy_path}'")
+        Path(copy_path).parent.mkdir(exist_ok=True)
+        copyfile(current_path, copy_path)
