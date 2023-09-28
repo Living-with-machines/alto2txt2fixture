@@ -15,7 +15,14 @@ from .plaintext import (
 )
 from .settings import DATA_PROVIDER_INDEX, SETUP_TITLE, settings
 from .types import dotdict
-from .utils import check_newspaper_collection_configuration, console, gen_fixture_tables
+from .utils import (
+    FILE_NAME_0_PADDING_DEFAULT,
+    check_newspaper_collection_configuration,
+    console,
+    copy_dict_paths,
+    gen_fixture_tables,
+    glob_path_rename_by_0_padding,
+)
 
 cli = typer.Typer(pretty_exceptions_show_locals=False)
 
@@ -38,6 +45,9 @@ def plaintext(
     records_per_json: Annotated[
         int, typer.Option(help="Max records per json fixture")
     ] = DEFAULT_MAX_PLAINTEXT_PER_FIXTURE_FILE,
+    digit_padding: Annotated[
+        int, typer.Option(help="Padding '0's for indexing json fixture filenames")
+    ] = FILE_NAME_0_PADDING_DEFAULT,
 ) -> None:
     """Create a PlainTextFixture and save to `save_path`."""
     plaintext_fixture = PlainTextFixture(
@@ -47,6 +57,7 @@ def plaintext(
         export_directory=save_path,
         initial_pk=initial_pk,
         max_plaintext_per_fixture_file=records_per_json,
+        json_0_file_name_padding=digit_padding,
     )
     plaintext_fixture.info()
     while (
@@ -54,8 +65,9 @@ def plaintext(
         and not plaintext_fixture.plaintext_provided_uncompressed
     ):
         try_another_compressed_txt_source: bool = Confirm.ask(
-            f"No .txt files available from extract path: {plaintext_fixture.trunc_extract_path_str}\n"
-            "Would you like to extract fixtures from a different path?"
+            f"No .txt files available from extract path: "
+            f"{plaintext_fixture.trunc_extract_path_str}\n"
+            f"Would you like to extract fixtures from a different path?"
         )
         if try_another_compressed_txt_source:
             new_extract_path: str = Prompt.ask("Please enter a new extract path")
@@ -65,6 +77,49 @@ def plaintext(
         plaintext_fixture.info()
     plaintext_fixture.extract_compressed()
     plaintext_fixture.export_to_json_fixtures()
+
+
+@cli.command()
+def reindex(
+    path: Annotated[Path, typer.Argument(help="Path to files to rename")],
+    folder: Annotated[Path, typer.Option(help="Path to save renamed files")] = Path(),
+    regex: Annotated[str, typer.Option(help="Regex to filter files to rename")] = "*",
+    padding: Annotated[
+        int, typer.Option(help="How many digits to pad by (guessed if blank)")
+    ] = FILE_NAME_0_PADDING_DEFAULT,
+    dry_run: Annotated[
+        bool, typer.Option(help="Show example paths without copy")
+    ] = True,
+) -> None:
+    """Rename files for ordering."""
+    rename_paths_dict: dict[os.PathLike, os.PathLike] = glob_path_rename_by_0_padding(
+        path=path,
+        output_path=folder,
+        glob_regex_str=regex,
+        padding=padding,
+    )
+
+    paths_table: Table = Table(title=f"Copy and rename folders")
+    paths_table.add_column("From Folder", justify="right", style="cyan")
+    paths_table.add_column("New Folder", style="magenta")
+    paths_table.add_row(str(path), str(folder))
+    console.print(paths_table)
+
+    file_names_table: Table = Table(title="Old and New File Names")
+    file_names_table.add_column("Current File Name", justify="right", style="cyan")
+    file_names_table.add_column("New File Name", style="magenta")
+    for old_path, new_path in rename_paths_dict.items():
+        file_names_table.add_row(Path(old_path).name, Path(new_path).name)
+    console.print(file_names_table)
+
+    make_copy: bool = False or not dry_run
+    if dry_run:
+        make_copy = Confirm.ask(
+            f"Would you like to copy these {len(rename_paths_dict)} "
+            f"files from Current:\n'{path}'\nto New:\n'{folder}\n'"
+        )
+    if make_copy:
+        copy_dict_paths(rename_paths_dict)
 
 
 def show_setup(clear: bool = True, title: str = SETUP_TITLE, **kwargs) -> None:
