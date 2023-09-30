@@ -1,5 +1,7 @@
 import os
+from logging import WARNING
 from pathlib import Path
+from typing import Any, Callable, Final, get_args, get_type_hints
 
 import typer
 from rich.prompt import Confirm, Prompt
@@ -16,15 +18,21 @@ from .plaintext import (
 from .settings import DATA_PROVIDER_INDEX, SETUP_TITLE, settings
 from .types import dotdict
 from .utils import (
+    ARCHIVE_FORMAT_ENUM,
     FILE_NAME_0_PADDING_DEFAULT,
     check_newspaper_collection_configuration,
+    compress_fixture,
     console,
     copy_dict_paths,
+    free_hd_space_in_GB,
     gen_fixture_tables,
     glob_path_rename_by_0_padding,
+    logger,
 )
 
 cli = typer.Typer(pretty_exceptions_show_locals=False)
+
+COMPRESSION_TYPE_DEFAULT: Final[str] = "zip"
 
 
 @cli.command()
@@ -67,7 +75,8 @@ def plaintext(
         try_another_compressed_txt_source: bool = Confirm.ask(
             f"No .txt files available from extract path: "
             f"{plaintext_fixture.trunc_extract_path_str}\n"
-            f"Would you like to extract fixtures from a different path?"
+            f"Would you like to extract fixtures from a different path?",
+            default="n",
         )
         if try_another_compressed_txt_source:
             new_extract_path: str = Prompt.ask("Please enter a new extract path")
@@ -80,46 +89,121 @@ def plaintext(
 
 
 @cli.command()
-def reindex(
-    path: Annotated[Path, typer.Argument(help="Path to files to rename")],
-    folder: Annotated[Path, typer.Option(help="Path to save renamed files")] = Path(),
-    regex: Annotated[str, typer.Option(help="Regex to filter files to rename")] = "*",
+def rename(
+    path: Annotated[Path, typer.Argument(help="Path to files to manage")],
+    folder: Annotated[
+        Path, typer.Option(help="Path under `path` for new files")
+    ] = Path(),
+    regex: Annotated[str, typer.Option(help="Regex to filter files")] = "*.txt",
     padding: Annotated[
-        int, typer.Option(help="How many digits to pad by (guessed if blank)")
+        int, typer.Option(help="Digits to pad file name")
     ] = FILE_NAME_0_PADDING_DEFAULT,
-    dry_run: Annotated[
-        bool, typer.Option(help="Show example paths without copy")
-    ] = True,
+    prefix: Annotated[str, typer.Option(help="Prefix for new file names")] = "",
+    dry_run: Annotated[bool, typer.Option(help="Show changes without applying")] = True,
+    compress: Annotated[bool, typer.Option(help="Whether to compress files")] = False,
+    compress_format: Annotated[
+        ARCHIVE_FORMAT_ENUM,
+        typer.Option(case_sensitive=False, help="Compression format"),
+    ] = ARCHIVE_FORMAT_ENUM.ZIP,
+    compress_suffix: Annotated[
+        str, typer.Option(help="Compressed file name suffix")
+    ] = "",
+    compress_subfolder: Annotated[
+        Path, typer.Option(help="Optional folder to differ from renaming")
+    ] = Path("compressed"),
+    delete_uncompressed: Annotated[
+        bool, typer.Option(help="Delete unneeded files after compression")
+    ] = False,
+    log_level: Annotated[
+        int, typer.Option(help="Set logging level for debugging")
+    ] = WARNING,
+    force: Annotated[
+        bool, typer.Option("--force", help="Force run without prompt")
+    ] = False,
 ) -> None:
-    """Rename files for ordering."""
-    rename_paths_dict: dict[os.PathLike, os.PathLike] = glob_path_rename_by_0_padding(
-        path=path,
-        output_path=folder,
-        glob_regex_str=regex,
-        padding=padding,
+    """Manage file names and compression."""
+    logger.level = log_level
+    folder_path: Path = Path(path) / folder
+    compress_path: Path = Path(folder_path) / compress_subfolder
+    try:
+        paths_dict: dict[os.PathLike, os.PathLike] = glob_path_rename_by_0_padding(
+            path=path,
+            output_path=folder,
+            glob_regex_str=regex,
+            padding=padding,
+        )
+        assert paths_dict
+    except (ValueError, AssertionError, IndexError) as err:
+        console.print(f"Error: '{err}'\nTried reading from path: '{path}'")
+        raise typer.Abort()
+    files_count: int = len(paths_dict)
+
+    if not compress and not force:
+        compress = Confirm.ask(
+            f"Compress all ({files_count}) output file(s)?",
+            default="n",
+        )
+    if compress and not force:
+        compress_format = Prompt.ask(
+            "Compression format",
+            choices=list(str(format) for format in ARCHIVE_FORMAT_ENUM),
+            default=compress_format,
+        )
+    extra_info_dict: dict[str, int | os.PathLike] = {
+        "rename_path": folder_path,
+        "compress_path": compress_path,
+        "HD Space (GB)": int(free_hd_space_in_GB()),
+    }
+    config_table: Table = func_table(
+        rename,
+        values=locals(),
+        extra_dict=extra_info_dict,
     )
+    console.print(config_table)
 
-    paths_table: Table = Table(title=f"Copy and rename folders")
-    paths_table.add_column("From Folder", justify="right", style="cyan")
-    paths_table.add_column("New Folder", style="magenta")
-    paths_table.add_row(str(path), str(folder))
-    console.print(paths_table)
-
-    file_names_table: Table = Table(title="Old and New File Names")
+    file_names_table: Table = Table(title="Current to New File Names", width=None)
     file_names_table.add_column("Current File Name", justify="right", style="cyan")
     file_names_table.add_column("New File Name", style="magenta")
-    for old_path, new_path in rename_paths_dict.items():
-        file_names_table.add_row(Path(old_path).name, Path(new_path).name)
+
+    def final_file_name(name: os.PathLike) -> str:
+        return (
+            prefix + str(Path(name).name) + (f".{compress_format}" if compress else "")
+        )
+
+    for old_path, new_path in paths_dict.items():
+        file_names_table.add_row(Path(old_path).name, final_file_name(new_path))
     console.print(file_names_table)
 
     make_copy: bool = False or not dry_run
     if dry_run:
-        make_copy = Confirm.ask(
-            f"Would you like to copy these {len(rename_paths_dict)} "
-            f"files from Current:\n'{path}'\nto New:\n'{folder}\n'"
-        )
+        if not force:
+            make_copy = Confirm.ask(
+                f"Copy {'and compress ' if compress else ''}"
+                f"{files_count} files "
+                f"from:\n\t'{path}'\nto:\n\t'{folder_path}'\n"
+            )
+            if not delete_uncompressed:
+                delete_uncompressed = Confirm.ask(
+                    f"Delete all uncompressed, renamed files "
+                    f"in:\n'{folder_path}'\n"
+                    f"after compression to '{compress_format}' format in:"
+                    f"\n'{compress_path}'\n",
+                    default="n",
+                )
     if make_copy:
-        copy_dict_paths(rename_paths_dict)
+        copy_dict_paths(paths_dict)
+    if compress:
+        for old_path, new_path in paths_dict.items():
+            console.print(Path())
+            compress_fixture(
+                old_path,
+                output_path=compress_path,
+                suffix=compress_suffix,
+                format=compress_format,
+            )
+            if delete_uncompressed and make_copy:
+                console.print(f"Deleting {new_path}")
+                Path(new_path).unlink()
 
 
 def show_setup(clear: bool = True, title: str = SETUP_TITLE, **kwargs) -> None:
@@ -194,3 +278,68 @@ def show_fixture_tables(
         return console_tables
     else:
         return []
+
+
+def func_table(
+    func: Callable, values: dict, title: str = "", extra_dict: dict[str, Any] = {}
+) -> Table:
+    """Geneate `rich` `Table` from `func` signature and `help` attr.
+
+    Args:
+        func:
+            Function whose `args` and `type` hints will be converted
+            to a table.
+
+        values:
+            `dict` of variables covered in `func` signature.
+            `local()` often suffices.
+
+        title:
+            `str` for table title.
+
+        extra_dict:
+            A `dict` of additional rows to add to the table. For each
+            `key`, `value` pair: if the `value` is a `tuple`, it will
+            be expanded to match the `Type`, `Value`, and `Notes`
+            columns; else the `Type` will be inferred and `Notes`
+            left blank.
+
+    Example:
+        ```pycon
+        >>> def test_func(
+        ...     var_a: Annotated[str, typer.Option(help="Example")] = "Default"
+        ... ) -> None:
+        ...     test_func_table: Table = func_table(test_func, values=vars())
+        ...     console.print(test_func_table)
+        >>> test_func()
+                   test_func config
+        ┏━━━━━━━━━━┳━━━━━━┳━━━━━━━━━┳━━━━━━━━━┓
+        ┃ Variable ┃ Type ┃ Value   ┃ Notes   ┃
+        ┡━━━━━━━━━━╇━━━━━━╇━━━━━━━━━╇━━━━━━━━━┩
+        │    var_a │ str  │ Default │ Example │
+        └──────────┴──────┴─────────┴─────────┘
+
+        ```
+    """
+    title = title if title else f"{func.__name__} config"
+    func_signature: dict = get_type_hints(func, include_extras=True)
+    table: Table = Table(title=title)
+    table.add_column("Variable", justify="right", style="cyan")
+    table.add_column("Type", style="yellow")
+    table.add_column("Value", style="magenta")
+    table.add_column("Notes")
+    for var, info in func_signature.items():
+        try:
+            var_type, annotation = get_args(info)
+            value: Any = values[var]
+            if value in ("", ""):
+                value = "''"
+            table.add_row(str(var), var_type.__name__, str(value), annotation.help)
+        except ValueError:
+            continue
+    for key, val in extra_dict.items():
+        if isinstance(val, tuple):
+            table.add_row(key, *val)
+        else:
+            table.add_row(key, type(val).__name__, str(val))
+    return table

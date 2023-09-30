@@ -74,20 +74,24 @@ def test_plaintext_cli_empty_path(bl_lwm) -> None:
 
 @pytest.mark.parametrize(
     "run_type, input",
-    (("--dry-run", "n\n"), ("--dry-run", "y\n"), ("--no-dry-run", "")),
+    (
+        ("--dry-run", "n\nn\nn\nn\n"),
+        ("--dry-run", "n\ny\nn\n"),
+        ("--no-dry-run", "n\n"),
+    ),
 )
-def test_reindex_cli(tmp_path: Path, run_type: str, input: str) -> None:
-    """Test running `reindex` via `cli`."""
+def test_rename_cli(
+    tmp_json_fixtures: tuple[Path, ...],
+    tmp_path: Path,
+    run_type: str,
+    input: str,
+) -> None:
+    """Test running `rename` via `cli`."""
     output_path: Path = tmp_path / "padded-file-names"
-    test_paths: tuple[Path, ...] = tuple(
-        tmp_path / f"test_fixture-{i}.txt" for i in range(5)
-    )
-    for path in test_paths:
-        path.touch()
     result = runner.invoke(
         cli,
         [
-            "reindex",
+            "rename",
             str(tmp_path),
             "--folder",
             str(output_path),
@@ -100,13 +104,13 @@ def test_reindex_cli(tmp_path: Path, run_type: str, input: str) -> None:
     assert result.exit_code == 0
     assert "Current" in result.stdout
     assert "New" in result.stdout
-    for path in test_paths:
+    for path in tmp_json_fixtures:
         assert str(path.name) in result.stdout
-    if run_type == "--dry-run" and "n" in input:
+    if run_type == "--dry-run" and "n" not in input:
         assert not output_path.is_dir()
     if run_type == "--no-dry-run" or "y" in input:
         assert output_path.is_dir()
-        for i, path in enumerate(test_paths):
+        for i, path in enumerate(tmp_json_fixtures):
             original_file_name: Path = Path(Path(path).name)
             assert (
                 output_path / rename_by_0_padding(original_file_name, match_int=i)

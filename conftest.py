@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path, PureWindowsPath
 from pprint import pprint
@@ -138,6 +139,19 @@ def correct_win_path_trunc_str() -> str:
 def is_platform_win() -> bool:
     """Check if `sys.platform` is windows."""
     return sys.platform.startswith("win")
+
+
+@pytest.fixture()
+def tmp_json_fixtures(tmp_path: Path) -> Generator[tuple[Path, ...], None, None]:
+    """Return a `tuple` of test `json` fixture paths."""
+    test_paths: tuple[Path, ...] = tuple(
+        tmp_path / f"test_fixture-{i}.txt" for i in range(5)
+    )
+    for i, path in enumerate(test_paths):
+        path.write_text(json.dumps({"id": i}))
+    yield test_paths
+    for path in test_paths:
+        path.unlink()
 
 
 @pytest.fixture(autouse=True)
