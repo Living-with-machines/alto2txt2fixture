@@ -18,8 +18,9 @@ from .plaintext import (
 from .settings import DATA_PROVIDER_INDEX, SETUP_TITLE, settings
 from .types import dotdict
 from .utils import (
-    ARCHIVE_FORMAT_ENUM,
     FILE_NAME_0_PADDING_DEFAULT,
+    ZIP_FILE_EXTENSION,
+    ArchiveFormatEnum,
     check_newspaper_collection_configuration,
     compress_fixture,
     console,
@@ -32,7 +33,9 @@ from .utils import (
 
 cli = typer.Typer(pretty_exceptions_show_locals=False)
 
-COMPRESSION_TYPE_DEFAULT: Final[str] = "zip"
+COMPRESSION_TYPE_DEFAULT: Final[str] = ZIP_FILE_EXTENSION
+COMPRESSED_PATH_DEFAULT: Final[Path] = Path("compressed")
+FILE_RENAME_TABLE_TITLE_DEFAULT: Final[str] = "Current to New File Names"
 
 
 @cli.command()
@@ -102,15 +105,15 @@ def rename(
     dry_run: Annotated[bool, typer.Option(help="Show changes without applying")] = True,
     compress: Annotated[bool, typer.Option(help="Whether to compress files")] = False,
     compress_format: Annotated[
-        ARCHIVE_FORMAT_ENUM,
+        ArchiveFormatEnum,
         typer.Option(case_sensitive=False, help="Compression format"),
-    ] = ARCHIVE_FORMAT_ENUM.ZIP,
+    ] = ArchiveFormatEnum.ZIP,
     compress_suffix: Annotated[
         str, typer.Option(help="Compressed file name suffix")
     ] = "",
     compress_subfolder: Annotated[
         Path, typer.Option(help="Optional folder to differ from renaming")
-    ] = Path("compressed"),
+    ] = COMPRESSED_PATH_DEFAULT,
     delete_uncompressed: Annotated[
         bool, typer.Option(help="Delete unneeded files after compression")
     ] = False,
@@ -123,8 +126,10 @@ def rename(
 ) -> None:
     """Manage file names and compression."""
     logger.level = log_level
+    reindex: bool = False or not dry_run
     folder_path: Path = Path(path) / folder
     compress_path: Path = Path(folder_path) / compress_subfolder
+
     try:
         paths_dict: dict[os.PathLike, os.PathLike] = glob_path_rename_by_0_padding(
             path=path,
@@ -146,7 +151,7 @@ def rename(
     if compress and not force:
         compress_format = Prompt.ask(
             "Compression format",
-            choices=list(str(format) for format in ARCHIVE_FORMAT_ENUM),
+            choices=list(str(format) for format in ArchiveFormatEnum),
             default=compress_format,
         )
     extra_info_dict: dict[str, int | os.PathLike] = {
@@ -161,23 +166,18 @@ def rename(
     )
     console.print(config_table)
 
-    file_names_table: Table = Table(title="Current to New File Names", width=None)
-    file_names_table.add_column("Current File Name", justify="right", style="cyan")
-    file_names_table.add_column("New File Name", style="magenta")
-
-    def final_file_name(name: os.PathLike) -> str:
-        return (
-            prefix + str(Path(name).name) + (f".{compress_format}" if compress else "")
-        )
-
-    for old_path, new_path in paths_dict.items():
-        file_names_table.add_row(Path(old_path).name, final_file_name(new_path))
+    file_names_table: Table = file_rename_taple(
+        paths_dict,
+        compress_format=compress_format,
+        title=FILE_RENAME_TABLE_TITLE_DEFAULT,
+        prefix=prefix,
+        reindex=reindex,
+    )
     console.print(file_names_table)
 
-    make_copy: bool = False or not dry_run
     if dry_run:
         if not force:
-            make_copy = Confirm.ask(
+            reindex = Confirm.ask(
                 f"Copy {'and compress ' if compress else ''}"
                 f"{files_count} files "
                 f"from:\n\t'{path}'\nto:\n\t'{folder_path}'\n"
@@ -190,18 +190,18 @@ def rename(
                     f"\n'{compress_path}'\n",
                     default="n",
                 )
-    if make_copy:
+    if reindex:
         copy_dict_paths(paths_dict)
     if compress:
         for old_path, new_path in paths_dict.items():
-            console.print(Path())
+            file_path: Path = Path(new_path) if reindex else Path(old_path)
             compress_fixture(
-                old_path,
+                file_path,
                 output_path=compress_path,
                 suffix=compress_suffix,
                 format=compress_format,
             )
-            if delete_uncompressed and make_copy:
+            if delete_uncompressed and reindex:
                 console.print(f"Deleting {new_path}")
                 Path(new_path).unlink()
 
@@ -342,4 +342,43 @@ def func_table(
             table.add_row(key, *val)
         else:
             table.add_row(key, type(val).__name__, str(val))
+    return table
+
+
+def file_rename_taple(
+    paths_dict: dict[os.PathLike, os.PathLike],
+    compress_format: ArchiveFormatEnum = ArchiveFormatEnum.ZIP,
+    title: str = FILE_RENAME_TABLE_TITLE_DEFAULT,
+    prefix: str = "",
+    reindex: bool = True,
+) -> Table:
+    """Create a `rich.Table` of rename configuration.
+
+    Args:
+        paths_dict: dict[os.PathLike, os.PathLike],
+            Original and Reindexed `paths` `dict`
+        compress_format:
+            Which `ArchiveFormatEnum` for compression
+        title:
+            Title of returned `Table`
+        prefix:
+            `str` to add in front of every new path
+        reindex:
+            Whether an `int` in each path will be reindexed.
+
+    """
+    table: Table = Table(title=title)
+    table.add_column("Current File Name", justify="right", style="cyan")
+    table.add_column("New File Name", style="magenta")
+
+    def final_file_name(name: os.PathLike) -> str:
+        return (
+            prefix
+            + str(Path(name).name)
+            + (f".{compress_format}" if compress_format else "")
+        )
+
+    for old_path, new_path in paths_dict.items():
+        name: str = final_file_name(new_path if reindex else old_path)
+        table.add_row(Path(old_path).name, name)
     return table

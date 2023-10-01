@@ -1,12 +1,12 @@
 import json
 from os.path import sep
 from pathlib import Path
-from sys import platform
+from sys import platform, stdout
 
 import pytest
 from typer.testing import CliRunner
 
-from alto2txt2fixture.cli import cli
+from alto2txt2fixture.cli import COMPRESSED_PATH_DEFAULT, cli, rename
 from alto2txt2fixture.types import FixtureDict
 from alto2txt2fixture.utils import rename_by_0_padding
 
@@ -115,3 +115,19 @@ def test_rename_cli(
             assert (
                 output_path / rename_by_0_padding(original_file_name, match_int=i)
             ).is_file()
+
+
+def test_rename_compress(
+    tmp_json_fixtures: tuple[Path, ...],
+    tmp_path: Path,
+    capsys,
+) -> None:
+    """Test running `rename` with `zip` compression and `force=True`."""
+    for path in tmp_json_fixtures:
+        assert path.is_file()
+    rename(tmp_path, compress=True, force=True)
+    stdout: list[str] = capsys.readouterr().out
+    for path in tmp_json_fixtures:
+        zip_path: Path = path.parent / COMPRESSED_PATH_DEFAULT / (path.name + ".zip")
+        assert zip_path.is_file()
+        assert zip_path.name in stdout

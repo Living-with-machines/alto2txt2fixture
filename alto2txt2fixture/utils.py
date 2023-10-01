@@ -72,11 +72,11 @@ BYTES_PER_GIGABYTE: Final[int] = 1024 * 1024 * 1024
 NewspaperElements: Final[TypeAlias] = Literal["newspaper", "issue", "item"]
 
 ARCHIVE_FORMATS: Final[dict[str, str]] = {k: v for k, v in get_archive_formats()}
-ARCHIVE_FORMAT_ENUM: Final = StrEnum(
+ArchiveFormatEnum: Final = StrEnum(
     "ArchiveFormatEnum", tuple(f.upper() for f in ARCHIVE_FORMATS)
 )
 
-ZIP_FILE_EXTENSION: Final[str] = ARCHIVE_FORMAT_ENUM.ZIP
+ZIP_FILE_EXTENSION: Final[str] = ArchiveFormatEnum.ZIP
 
 JSON_FILE_EXTENSION: str = "json"
 JSON_FILE_GLOB_STRING: str = f"**/*{JSON_FILE_EXTENSION}"
@@ -1131,7 +1131,7 @@ def compress_fixture(
             `str` to add to comprssed file name saved.
             For example: if `path = plaintext_fixture-1.json` and
             `suffix=_compressed`, then the saved file might be called
-            `plaintext_fixture_compressed-1.json.zip`
+            `plaintext_fixture-1_compressed.json.zip`
 
     Example:
         ```pycon
@@ -1142,7 +1142,9 @@ def compress_fixture(
         >>> compress_fixture(
         ...     path=plaintext_bl_lwm._exported_json_paths[0],
         ...     output_path=tmp_path)
-        Compressing...plain...-000001.json to 'zip'
+        <BLANKLINE>
+        ...Compressing...plain...-000001.json to 'zip'...
+        ...in:...'...com...'...
         >>> from zipfile import ZipFile, ZipInfo
         >>> zipfile_info_list: list[ZipInfo] = ZipFile(
         ...     tmp_path / 'plaintext_fixture-000001.json.zip'
@@ -1160,8 +1162,9 @@ def compress_fixture(
             f"options are:'\n{pformat(ARCHIVE_FORMATS)}"
         )
     chdir(str(Path(path).parent))
-    save_path: Path = Path(output_path) / f"{path}{suffix}"
-    console.print(f"Compressing {path} to '{format}'")
+    save_file_name: Path = Path(Path(path).stem + suffix + "".join(Path(path).suffixes))
+    save_path: Path = Path(output_path) / save_file_name
+    logger.info(f"Compressing {path} to '{format}' in: '{save_path.parent}'")
     make_archive(str(save_path), format=format, base_dir=path)
 
 

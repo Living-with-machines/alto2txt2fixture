@@ -1,5 +1,6 @@
 import json
 import sys
+from os import PathLike
 from pathlib import Path, PureWindowsPath
 from pprint import pprint
 from shutil import copytree, rmtree
@@ -8,7 +9,7 @@ from typing import Final, Generator
 import pytest
 from coverage_badge.__main__ import main as gen_cov_badge
 
-from alto2txt2fixture.create_adjacent_tables import run
+from alto2txt2fixture.create_adjacent_tables import OUTPUT, run
 from alto2txt2fixture.plaintext import (
     DEFAULT_INITIAL_PK,
     FULLTEXT_DJANGO_MODEL,
@@ -53,18 +54,23 @@ LWM_PLAINTEXT_FIXTURE: Final[Path] = (
 #     monkeypatch.chdir(MODULE_PATH)
 
 
+@pytest.fixture(scope="session")
+def adj_test_path(tmp_path_factory) -> Path:
+    """Temp path for `adjacent_data_run_results` files."""
+    return tmp_path_factory.mktemp(OUTPUT.name)
+
+
 @pytest.mark.downloaded
 @pytest.fixture(scope="session")
-def adjacent_data_run_results(tmp_path_factory) -> Generator[Path, None, None]:
+def adjacent_data_run_results(adj_test_path: Path) -> Generator[PathLike, None, None]:
     """Test `create_adjacent_tables.run`, using `cached` data if available.
 
     This fixture provides the results of `create_adjacent_tables.run` for tests
     to compare with. Include it as a parameter for tests that need those
     files downloaded locally to run.
     """
-    temp_adjacent_run_path = tmp_path_factory.mktemp("OUTPUT")
-    run(output_path=temp_adjacent_run_path)
-    yield temp_adjacent_run_path
+    run(output_path=adj_test_path)
+    yield adj_test_path
 
 
 @pytest.mark.downloaded

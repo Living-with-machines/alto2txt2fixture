@@ -261,7 +261,7 @@ class PlainTextFixture:
         return f"'{path_str}'" or self.empty_info_default_str
 
     @property
-    def info_table(self) -> str:
+    def info_table(self) -> Table:
         """Generate a `rich.table.Table` of config information.
 
         Example:
@@ -333,7 +333,7 @@ class PlainTextFixture:
             ...     path=".")
             <BLANKLINE>
             ...`.data_provider` and `.data_provider_code`...
-            ...are 'None'...in...<PlainTextFixture(path='.')>...
+            ...are...'None'...in...<PlainTextFixture(path='.')>...
             >>> plaintext_fixture.data_provider_name
 
             ```
