@@ -1143,7 +1143,7 @@ def compress_fixture(
         ...     path=plaintext_bl_lwm._exported_json_paths[0],
         ...     output_path=tmp_path)
         <BLANKLINE>
-        ...Compressing...plain...-...00001.json to 'zip'...
+        ...Compressing...'...plain...-...01.json'...to 'zip'...
         ...in:...'...com...'...
         >>> from zipfile import ZipFile, ZipInfo
         >>> zipfile_info_list: list[ZipInfo] = ZipFile(
@@ -1164,7 +1164,7 @@ def compress_fixture(
     chdir(str(Path(path).parent))
     save_file_name: Path = Path(Path(path).stem + suffix + "".join(Path(path).suffixes))
     save_path: Path = Path(output_path) / save_file_name
-    logger.info(f"Compressing {path} to '{format}' in: '{save_path.parent}'")
+    logger.info(f"Compressing '{path}' to '{format}' in: '{save_path.parent}'")
     make_archive(str(save_path), format=format, base_dir=path)
 
 
@@ -1534,10 +1534,10 @@ def copy_dict_paths(copy_path_dict: dict[PathLike, PathLike]) -> None:
         ...                                   output_path=output_path))
         <BLANKLINE>
         ...Specified...'...save'...for...saving...file...copies...
-        ...'...-0...txt'...to...'...-00...txt'...
-        ...'...-1...txt'...to...'...-01...txt'
-        ...'...-2...txt'...to...'...-02...txt'
-        ...'...-3...txt'...to...'...-03...txt'
+        ...'...-0...txt'...to...'...-00...txt...'...
+        ...'...-1...txt'...to...'...-01...txt...'
+        ...'...-2...txt'...to...'...-02...txt...'
+        ...'...-3...txt'...to...'...-03...txt...'
         >>> pprint(sorted(tmp_path.iterdir()))
         [...Path('...save'),
          ...Path('...test_file-0.txt'),

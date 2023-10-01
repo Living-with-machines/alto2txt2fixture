@@ -311,6 +311,8 @@ def func_table(
         ... ) -> None:
         ...     test_func_table: Table = func_table(test_func, values=vars())
         ...     console.print(test_func_table)
+        >>> if is_platform_win:
+        ...     pytest.skip('fails on certain Windows root paths: issue #56')
         >>> test_func()
                    test_func config
         ┏━━━━━━━━━━┳━━━━━━┳━━━━━━━━━┳━━━━━━━━━┓
