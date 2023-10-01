@@ -1184,7 +1184,7 @@ def paths_with_newlines(
         ...                         truncate=True)
         ... )
         <BLANKLINE>
-        ...Adding 1...
+        ...
         '...0003079-test_plaintext.zip'
         '...0003548-test_plaintext.zip'
 
@@ -1245,14 +1245,14 @@ def truncate_path_str(
         >>> root_love_shadows: Path = Path(sep) / love_shadows
         >>> truncate_path_str(root_love_shadows, folder_filler_str="*")
         <BLANKLINE>
-        ...Adding 1...
+        ...
         '...Standing...*...*...*...*...love.'
         >>> if is_platform_win:
         ...     pytest.skip('fails on certain Windows root paths: issue #56')
         >>> truncate_path_str(root_love_shadows,
         ...                   folder_filler_str="*", tail_parts=3)
         <BLANKLINE>
-        ...Adding 1...
+        ...
         '...Standing...*...*...shadows...of...love.'...
 
         ```
@@ -1534,10 +1534,10 @@ def copy_dict_paths(copy_path_dict: dict[PathLike, PathLike]) -> None:
         ...                                   output_path=output_path))
         <BLANKLINE>
         ...Specified...'...save'...for...saving...file...copies...
-        ...'...-0.txt'...to...'...-00...txt'...
-        ...'...-1.txt'...to...'...-01...txt'
-        ...'...-2.txt'...to...'...-02...txt'
-        ...'...-3.txt'...to...'...-03...txt'
+        ...'...-0...txt'...to...'...-00...txt'...
+        ...'...-1...txt'...to...'...-01...txt'
+        ...'...-2...txt'...to...'...-02...txt'
+        ...'...-3...txt'...to...'...-03...txt'
         >>> pprint(sorted(tmp_path.iterdir()))
         [...Path('...save'),
          ...Path('...test_file-0.txt'),

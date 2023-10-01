@@ -148,6 +148,12 @@ def is_platform_win() -> bool:
 
 
 @pytest.fixture()
+def is_platform_darwin() -> bool:
+    """Check if `sys.platform` is windows."""
+    return sys.platform.startswith("darwin")
+
+
+@pytest.fixture()
 def tmp_json_fixtures(tmp_path: Path) -> Generator[tuple[Path, ...], None, None]:
     """Return a `tuple` of test `json` fixture paths."""
     test_paths: tuple[Path, ...] = tuple(
@@ -161,9 +167,12 @@ def tmp_json_fixtures(tmp_path: Path) -> Generator[tuple[Path, ...], None, None]
 
 
 @pytest.fixture(autouse=True)
-def doctest_auto_fixtures(doctest_namespace: dict, is_platform_win: bool) -> None:
+def doctest_auto_fixtures(
+    doctest_namespace: dict, is_platform_win: bool, is_platform_darwin: bool
+) -> None:
     """Elements to add to default `doctest` namespace."""
     doctest_namespace["is_platform_win"] = is_platform_win
+    doctest_namespace["is_platform_darwin"] = is_platform_darwin
     doctest_namespace["pprint"] = pprint
     doctest_namespace["pytest"] = pytest
 

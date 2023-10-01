@@ -756,6 +756,7 @@ class PlainTextFixture:
 
         Example:
             ```pycon
+            >>> logger.setLevel(DEBUG)
             >>> plaintext_fixture = PlainTextFixture(path=".")
             <BLANKLINE>
             ...`.data_provider` and `.data_provider_code`...'None' in...
