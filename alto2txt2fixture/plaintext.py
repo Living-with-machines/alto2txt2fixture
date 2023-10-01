@@ -143,6 +143,7 @@ class PlainTextFixture:
     Example:
         ```pycon
         >>> path = getfixture('bl_lwm')
+        >>> logger.setLevel(INFO)
         >>> plaintext_bl_lwm = PlainTextFixture(
         ...     data_provider_code='bl_lwm',
         ...     path=path,
