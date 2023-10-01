@@ -1,4 +1,7 @@
+import json
 import sys
+from logging import DEBUG, INFO, WARNING
+from os import PathLike
 from pathlib import Path, PureWindowsPath
 from pprint import pprint
 from shutil import copytree, rmtree
@@ -7,7 +10,7 @@ from typing import Final, Generator
 import pytest
 from coverage_badge.__main__ import main as gen_cov_badge
 
-from alto2txt2fixture.create_adjacent_tables import run
+from alto2txt2fixture.create_adjacent_tables import OUTPUT, run
 from alto2txt2fixture.plaintext import (
     DEFAULT_INITIAL_PK,
     FULLTEXT_DJANGO_MODEL,
@@ -52,18 +55,23 @@ LWM_PLAINTEXT_FIXTURE: Final[Path] = (
 #     monkeypatch.chdir(MODULE_PATH)
 
 
+@pytest.fixture(scope="session")
+def adj_test_path(tmp_path_factory) -> Path:
+    """Temp path for `adjacent_data_run_results` files."""
+    return tmp_path_factory.mktemp(OUTPUT.name)
+
+
 @pytest.mark.downloaded
 @pytest.fixture(scope="session")
-def adjacent_data_run_results(tmp_path_factory) -> Generator[Path, None, None]:
+def adjacent_data_run_results(adj_test_path: Path) -> Generator[PathLike, None, None]:
     """Test `create_adjacent_tables.run`, using `cached` data if available.
 
     This fixture provides the results of `create_adjacent_tables.run` for tests
     to compare with. Include it as a parameter for tests that need those
     files downloaded locally to run.
     """
-    temp_adjacent_run_path = tmp_path_factory.mktemp("OUTPUT")
-    run(output_path=temp_adjacent_run_path)
-    yield temp_adjacent_run_path
+    run(output_path=adj_test_path)
+    yield adj_test_path
 
 
 @pytest.mark.downloaded
@@ -140,12 +148,37 @@ def is_platform_win() -> bool:
     return sys.platform.startswith("win")
 
 
+@pytest.fixture()
+def is_platform_darwin() -> bool:
+    """Check if `sys.platform` is windows."""
+    return sys.platform.startswith("darwin")
+
+
+@pytest.fixture()
+def tmp_json_fixtures(tmp_path: Path) -> Generator[tuple[Path, ...], None, None]:
+    """Return a `tuple` of test `json` fixture paths."""
+    test_paths: tuple[Path, ...] = tuple(
+        tmp_path / f"test_fixture-{i}.txt" for i in range(5)
+    )
+    for i, path in enumerate(test_paths):
+        path.write_text(json.dumps({"id": i}))
+    yield test_paths
+    for path in test_paths:
+        path.unlink()
+
+
 @pytest.fixture(autouse=True)
-def doctest_auto_fixtures(doctest_namespace: dict, is_platform_win: bool) -> None:
+def doctest_auto_fixtures(
+    doctest_namespace: dict, is_platform_win: bool, is_platform_darwin: bool
+) -> None:
     """Elements to add to default `doctest` namespace."""
     doctest_namespace["is_platform_win"] = is_platform_win
+    doctest_namespace["is_platform_darwin"] = is_platform_darwin
     doctest_namespace["pprint"] = pprint
     doctest_namespace["pytest"] = pytest
+    doctest_namespace["DEBUG"] = DEBUG
+    doctest_namespace["INFO"] = INFO
+    doctest_namespace["WARNING"] = WARNING
 
 
 def pytest_sessionfinish(session, exitstatus):

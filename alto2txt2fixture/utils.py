@@ -3,11 +3,19 @@ import gc
 import json
 import logging
 from collections import OrderedDict
+from enum import StrEnum
 from os import PathLike, chdir, getcwd, sep
 from os.path import normpath
 from pathlib import Path, PureWindowsPath
+from pprint import pformat
 from re import findall
-from shutil import copyfile, disk_usage, get_unpack_formats, make_archive
+from shutil import (
+    copyfile,
+    disk_usage,
+    get_archive_formats,
+    get_unpack_formats,
+    make_archive,
+)
 from typing import (
     Any,
     Final,
@@ -41,13 +49,16 @@ from .types import FixtureDict
 
 FORMAT: str = "%(message)s"
 
+console: Console = Console()
+
 logging.basicConfig(
-    level="NOTSET", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+    level="NOTSET",
+    format=FORMAT,
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True, console=console)],
 )
 
 logger = logging.getLogger("rich")
-
-console = Console()
 
 VALID_COMPRESSION_FORMATS: Final[tuple[str, ...]] = tuple(
     [
@@ -59,9 +70,15 @@ VALID_COMPRESSION_FORMATS: Final[tuple[str, ...]] = tuple(
 BYTES_PER_GIGABYTE: Final[int] = 1024 * 1024 * 1024
 
 NewspaperElements: Final[TypeAlias] = Literal["newspaper", "issue", "item"]
-JSON_FILE_EXTENSION: str = "json"
-ZIP_FILE_EXTENSION: Final[str] = "zip"
 
+ARCHIVE_FORMATS: Final[dict[str, str]] = {k: v for k, v in get_archive_formats()}
+ArchiveFormatEnum: Final = StrEnum(
+    "ArchiveFormatEnum", tuple(f.upper() for f in ARCHIVE_FORMATS)
+)
+
+ZIP_FILE_EXTENSION: Final[str] = ArchiveFormatEnum.ZIP
+
+JSON_FILE_EXTENSION: str = "json"
 JSON_FILE_GLOB_STRING: str = f"**/*{JSON_FILE_EXTENSION}"
 
 MAX_TRUNCATE_PATH_STR_LEN: Final[int] = 30
@@ -1114,7 +1131,7 @@ def compress_fixture(
             `str` to add to comprssed file name saved.
             For example: if `path = plaintext_fixture-1.json` and
             `suffix=_compressed`, then the saved file might be called
-            `plaintext_fixture_compressed-1.json.zip`
+            `plaintext_fixture-1_compressed.json.zip`
 
     Example:
         ```pycon
@@ -1125,7 +1142,9 @@ def compress_fixture(
         >>> compress_fixture(
         ...     path=plaintext_bl_lwm._exported_json_paths[0],
         ...     output_path=tmp_path)
-        Compressing...plain...-000001.json to 'zip'
+        <BLANKLINE>
+        ...Compressing...'...plain...-...01.json...'...to 'zip'...
+        ...in:...'...com...'...
         >>> from zipfile import ZipFile, ZipInfo
         >>> zipfile_info_list: list[ZipInfo] = ZipFile(
         ...     tmp_path / 'plaintext_fixture-000001.json.zip'
@@ -1137,9 +1156,15 @@ def compress_fixture(
 
         ```
     """
+    if format not in ARCHIVE_FORMATS:
+        raise ValueError(
+            f"format '{format}' not valid, "
+            f"options are:'\n{pformat(ARCHIVE_FORMATS)}"
+        )
     chdir(str(Path(path).parent))
-    save_path: Path = Path(output_path) / f"{path}{suffix}"
-    console.print(f"Compressing {path} to '{format}'")
+    save_file_name: Path = Path(Path(path).stem + suffix + "".join(Path(path).suffixes))
+    save_path: Path = Path(output_path) / save_file_name
+    logger.info(f"Compressing '{path}' to '{format}' in: '{save_path.parent}'")
     make_archive(str(save_path), format=format, base_dir=path)
 
 
@@ -1159,7 +1184,7 @@ def paths_with_newlines(
         ...                         truncate=True)
         ... )
         <BLANKLINE>
-        ...Adding 1...
+        ...
         '...0003079-test_plaintext.zip'
         '...0003548-test_plaintext.zip'
 
@@ -1220,14 +1245,14 @@ def truncate_path_str(
         >>> root_love_shadows: Path = Path(sep) / love_shadows
         >>> truncate_path_str(root_love_shadows, folder_filler_str="*")
         <BLANKLINE>
-        ...Adding 1...
+        ...
         '...Standing...*...*...*...*...love.'
         >>> if is_platform_win:
         ...     pytest.skip('fails on certain Windows root paths: issue #56')
         >>> truncate_path_str(root_love_shadows,
         ...                   folder_filler_str="*", tail_parts=3)
         <BLANKLINE>
-        ...Adding 1...
+        ...
         '...Standing...*...*...shadows...of...love.'...
 
         ```
@@ -1451,7 +1476,18 @@ def glob_path_rename_by_0_padding(
         ```
 
     """
+    try:
+        assert Path(path).exists()
+    except AssertionError:
+        raise ValueError(f'path does not exist: "{Path(path)}"')
     paths_tuple: tuple[PathLike, ...] = path_globs_to_tuple(path, glob_regex_str)
+    try:
+        assert paths_tuple
+    except AssertionError:
+        raise FileNotFoundError(
+            f"No files found matching 'glob_regex_str': "
+            f"'{glob_regex_str}' in: '{path}'"
+        )
     paths_to_index: tuple[tuple[str, int], ...] = tuple(
         int_from_str(str(matched_path), index=index, regex=match_int_regex)
         for matched_path in paths_tuple
@@ -1464,7 +1500,7 @@ def glob_path_rename_by_0_padding(
     if output_path:
         if not Path(output_path).is_absolute():
             output_path = Path(path) / output_path
-        console.log(f"Specified '{output_path}' for saving file copies")
+        logger.debug(f"Specified '{output_path}' for saving file copies")
     for i, old_path in enumerate(paths_tuple):
         match_str, match_int = paths_to_index[i]
         new_names_dict[old_path] = rename_by_0_padding(
@@ -1498,10 +1534,10 @@ def copy_dict_paths(copy_path_dict: dict[PathLike, PathLike]) -> None:
         ...                                   output_path=output_path))
         <BLANKLINE>
         ...Specified...'...save'...for...saving...file...copies...
-        ...'...-0.txt'...to...'...-00.txt'...
-        ...'...-1.txt'...to...'...-01.txt'
-        ...'...-2.txt'...to...'...-02.txt'
-        ...'...-3.txt'...to...'...-03.txt'
+        ...'...-0...txt'...to...'...-00...txt...'...
+        ...'...-1...txt'...to...'...-01...txt...'
+        ...'...-2...txt'...to...'...-02...txt...'
+        ...'...-3...txt'...to...'...-03...txt...'
         >>> pprint(sorted(tmp_path.iterdir()))
         [...Path('...save'),
          ...Path('...test_file-0.txt'),
@@ -1517,6 +1553,6 @@ def copy_dict_paths(copy_path_dict: dict[PathLike, PathLike]) -> None:
         ```
     """
     for current_path, copy_path in copy_path_dict.items():
-        console.print(f"Copying '{current_path}' to '{copy_path}'")
+        logger.info(f"Copying '{current_path}' to '{copy_path}'")
         Path(copy_path).parent.mkdir(exist_ok=True)
         copyfile(current_path, copy_path)

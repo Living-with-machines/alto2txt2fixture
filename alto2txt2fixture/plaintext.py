@@ -143,6 +143,7 @@ class PlainTextFixture:
     Example:
         ```pycon
         >>> path = getfixture('bl_lwm')
+        >>> logger.setLevel(INFO)
         >>> plaintext_bl_lwm = PlainTextFixture(
         ...     data_provider_code='bl_lwm',
         ...     path=path,
@@ -261,7 +262,7 @@ class PlainTextFixture:
         return f"'{path_str}'" or self.empty_info_default_str
 
     @property
-    def info_table(self) -> str:
+    def info_table(self) -> Table:
         """Generate a `rich.table.Table` of config information.
 
         Example:
@@ -333,7 +334,7 @@ class PlainTextFixture:
             ...     path=".")
             <BLANKLINE>
             ...`.data_provider` and `.data_provider_code`...
-            ...are 'None'...in...<PlainTextFixture(path='.')>...
+            ...are...'None'...in...<PlainTextFixture(path='.')>...
             >>> plaintext_fixture.data_provider_name
 
             ```
@@ -756,6 +757,7 @@ class PlainTextFixture:
 
         Example:
             ```pycon
+            >>> logger.setLevel(DEBUG)
             >>> plaintext_fixture = PlainTextFixture(path=".")
             <BLANKLINE>
             ...`.data_provider` and `.data_provider_code`...'None' in...
