@@ -1,5 +1,6 @@
 import json
 import sys
+from logging import DEBUG, INFO, WARNING
 from os import PathLike
 from pathlib import Path, PureWindowsPath
 from pprint import pprint
@@ -175,6 +176,9 @@ def doctest_auto_fixtures(
     doctest_namespace["is_platform_darwin"] = is_platform_darwin
     doctest_namespace["pprint"] = pprint
     doctest_namespace["pytest"] = pytest
+    doctest_namespace["DEBUG"] = DEBUG
+    doctest_namespace["INFO"] = INFO
+    doctest_namespace["WARNING"] = WARNING
 
 
 def pytest_sessionfinish(session, exitstatus):
