@@ -18,8 +18,9 @@ from .plaintext import (
 from .settings import DATA_PROVIDER_INDEX, SETUP_TITLE, settings
 from .types import dotdict
 from .utils import (
+    COMPRESSED_PATH_DEFAULT,
+    COMPRESSION_TYPE_DEFAULT,
     FILE_NAME_0_PADDING_DEFAULT,
-    ZIP_FILE_EXTENSION,
     ArchiveFormatEnum,
     check_newspaper_collection_configuration,
     compress_fixture,
@@ -33,8 +34,6 @@ from .utils import (
 
 cli = typer.Typer(pretty_exceptions_show_locals=False)
 
-COMPRESSION_TYPE_DEFAULT: Final[str] = ZIP_FILE_EXTENSION
-COMPRESSED_PATH_DEFAULT: Final[Path] = Path("compressed")
 FILE_RENAME_TABLE_TITLE_DEFAULT: Final[str] = "Current to New File Names"
 
 
@@ -59,6 +58,14 @@ def plaintext(
     digit_padding: Annotated[
         int, typer.Option(help="Padding '0's for indexing json fixture filenames")
     ] = FILE_NAME_0_PADDING_DEFAULT,
+    compress: Annotated[bool, typer.Option(help="Compress json fixtures")] = False,
+    compress_path: Annotated[
+        Path, typer.Option(help="Folder to compress json fixtueres to")
+    ] = Path(COMPRESSED_PATH_DEFAULT),
+    compress_format: Annotated[
+        ArchiveFormatEnum,
+        typer.Option(case_sensitive=False, help="Compression format"),
+    ] = COMPRESSION_TYPE_DEFAULT,
 ) -> None:
     """Create a PlainTextFixture and save to `save_path`."""
     plaintext_fixture = PlainTextFixture(
@@ -69,6 +76,8 @@ def plaintext(
         initial_pk=initial_pk,
         max_plaintext_per_fixture_file=records_per_json,
         json_0_file_name_padding=digit_padding,
+        json_export_compression_format=compress_format,
+        json_export_compression_subdir=compress_path,
     )
     plaintext_fixture.info()
     while (
@@ -89,6 +98,8 @@ def plaintext(
         plaintext_fixture.info()
     plaintext_fixture.extract_compressed()
     plaintext_fixture.export_to_json_fixtures()
+    if compress:
+        plaintext_fixture.compress_json_exports()
 
 
 @cli.command()
@@ -97,6 +108,9 @@ def rename(
     folder: Annotated[
         Path, typer.Option(help="Path under `path` for new files")
     ] = Path(),
+    renumber: Annotated[
+        bool, typer.Option(help="Show changes without applying")
+    ] = False,
     regex: Annotated[str, typer.Option(help="Regex to filter files")] = "*.txt",
     padding: Annotated[
         int, typer.Option(help="Digits to pad file name")
@@ -107,11 +121,11 @@ def rename(
     compress_format: Annotated[
         ArchiveFormatEnum,
         typer.Option(case_sensitive=False, help="Compression format"),
-    ] = ArchiveFormatEnum.ZIP,
+    ] = COMPRESSION_TYPE_DEFAULT,
     compress_suffix: Annotated[
         str, typer.Option(help="Compressed file name suffix")
     ] = "",
-    compress_subfolder: Annotated[
+    compress_folder: Annotated[
         Path, typer.Option(help="Optional folder to differ from renaming")
     ] = COMPRESSED_PATH_DEFAULT,
     delete_uncompressed: Annotated[
@@ -126,9 +140,8 @@ def rename(
 ) -> None:
     """Manage file names and compression."""
     logger.level = log_level
-    reindex: bool = False or not dry_run
     folder_path: Path = Path(path) / folder
-    compress_path: Path = Path(folder_path) / compress_subfolder
+    compress_path: Path = Path(path) / compress_folder
 
     try:
         paths_dict: dict[os.PathLike, os.PathLike] = glob_path_rename_by_0_padding(
@@ -166,18 +179,18 @@ def rename(
     )
     console.print(config_table)
 
-    file_names_table: Table = file_rename_taple(
+    file_names_table: Table = file_rename_table(
         paths_dict,
         compress_format=compress_format,
         title=FILE_RENAME_TABLE_TITLE_DEFAULT,
         prefix=prefix,
-        reindex=reindex,
+        renumber=renumber,
     )
     console.print(file_names_table)
 
     if dry_run:
         if not force:
-            reindex = Confirm.ask(
+            renumber = Confirm.ask(
                 f"Copy {'and compress ' if compress else ''}"
                 f"{files_count} files "
                 f"from:\n\t'{path}'\nto:\n\t'{folder_path}'\n"
@@ -190,18 +203,18 @@ def rename(
                     f"\n'{compress_path}'\n",
                     default="n",
                 )
-    if reindex:
+    if renumber:
         copy_dict_paths(paths_dict)
     if compress:
         for old_path, new_path in paths_dict.items():
-            file_path: Path = Path(new_path) if reindex else Path(old_path)
+            file_path: Path = Path(new_path) if renumber else Path(old_path)
             compress_fixture(
                 file_path,
                 output_path=compress_path,
                 suffix=compress_suffix,
                 format=compress_format,
             )
-            if delete_uncompressed and reindex:
+            if delete_uncompressed and renumber:
                 console.print(f"Deleting {new_path}")
                 Path(new_path).unlink()
 
@@ -347,26 +360,26 @@ def func_table(
     return table
 
 
-def file_rename_taple(
+def file_rename_table(
     paths_dict: dict[os.PathLike, os.PathLike],
-    compress_format: ArchiveFormatEnum = ArchiveFormatEnum.ZIP,
+    compress_format: ArchiveFormatEnum = COMPRESSION_TYPE_DEFAULT,
     title: str = FILE_RENAME_TABLE_TITLE_DEFAULT,
     prefix: str = "",
-    reindex: bool = True,
+    renumber: bool = True,
 ) -> Table:
     """Create a `rich.Table` of rename configuration.
 
     Args:
         paths_dict: dict[os.PathLike, os.PathLike],
-            Original and Reindexed `paths` `dict`
+            Original and renumbered `paths` `dict`
         compress_format:
             Which `ArchiveFormatEnum` for compression
         title:
             Title of returned `Table`
         prefix:
             `str` to add in front of every new path
-        reindex:
-            Whether an `int` in each path will be reindexed.
+        renumber:
+            Whether an `int` in each path will be renumbered.
 
     """
     table: Table = Table(title=title)
@@ -381,6 +394,6 @@ def file_rename_taple(
         )
 
     for old_path, new_path in paths_dict.items():
-        name: str = final_file_name(new_path if reindex else old_path)
+        name: str = final_file_name(new_path if renumber else old_path)
         table.add_row(Path(old_path).name, name)
     return table

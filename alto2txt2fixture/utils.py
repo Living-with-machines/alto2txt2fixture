@@ -76,7 +76,10 @@ ArchiveFormatEnum: Final = StrEnum(
     "ArchiveFormatEnum", tuple(f.upper() for f in ARCHIVE_FORMATS)
 )
 
-ZIP_FILE_EXTENSION: Final[str] = ArchiveFormatEnum.ZIP
+ZIP_FILE_EXTENSION: Final[ArchiveFormatEnum] = ArchiveFormatEnum.ZIP
+
+COMPRESSION_TYPE_DEFAULT: Final[ArchiveFormatEnum] = ZIP_FILE_EXTENSION
+COMPRESSED_PATH_DEFAULT: Final[Path] = Path("compressed")
 
 JSON_FILE_EXTENSION: str = "json"
 JSON_FILE_GLOB_STRING: str = f"**/*{JSON_FILE_EXTENSION}"
@@ -1013,7 +1016,7 @@ def export_fixtures(
 def path_globs_to_tuple(
     path: PathLike, glob_regex_str: str = "*"
 ) -> tuple[PathLike, ...]:
-    """Return `glob` from `path` using `glob_regex_str` as a tuple.
+    """Return a sorted `tuple` of `Path`s in `path` using `glob_regex_str`.
 
     Args:
         path:
@@ -1112,8 +1115,11 @@ def compress_fixture(
     path: PathLike,
     output_path: PathLike | str = settings.OUTPUT,
     suffix: str = "",
-    format: str = ZIP_FILE_EXTENSION,
-) -> None:
+    format: str | ArchiveFormatEnum = ZIP_FILE_EXTENSION,
+    # base_dir: PathLike | None = None,
+    force_overwrite: bool = False,
+    dry_run: bool = False,
+) -> Path:
     """Compress exported `fixtures` files using `make_archive`.
 
     Args:
@@ -1124,8 +1130,9 @@ def compress_fixture(
             Compressed file name (without extension specified from `format`).
 
         format:
-            A `str` of one of the registered compression formats.
-            `Python` provides `zip`, `tar`, `gztar`, `bztar`, and `xztar`
+            A `str` of one of the registered compression formats. By default
+            `Python` provides `zip`, `tar`, `gztar`, `bztar`, and `xztar`.
+            See `ArchiveFormatEnum` variable for options checked.
 
         suffix:
             `str` to add to comprssed file name saved.
@@ -1135,16 +1142,26 @@ def compress_fixture(
 
     Example:
         ```pycon
-        >>> tmp_path: Path = getfixture("tmp_path")
         >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_json_export')
         <BLANKLINE>
-        ...Compressed configs...%...[...]
-        >>> compress_fixture(
-        ...     path=plaintext_bl_lwm._exported_json_paths[0],
-        ...     output_path=tmp_path)
+        ...
+        >>> tmp_path = getfixture('tmp_path')
+        >>> json_path: Path = next(plaintext_bl_lwm.exported_json_paths)
+        >>> assert 'pytest-of' in str(json_path)
+        >>> compressed_path: Path = compress_fixture(path=json_path,
+        ...                                          output_path=tmp_path,
+        ...                                          dry_run=True)
         <BLANKLINE>
-        ...Compressing...'...plain...-...01.json...'...to 'zip'...
-        ...in:...'...com...'...
+        ...creating...'...plain...-...01.json.zip...'...addin...
+        ...'plain...01.json'...to...it...
+        >>> compressed_path.exists()
+        False
+        >>> compressed_path: Path = compress_fixture(path=json_path,
+        ...                                          output_path=tmp_path,
+        ...                                          dry_run=False)
+        <BLANKLINE>
+        ...creating...'...plain...-...01.json.zip...'...addin...
+        ...'plain...01.json'...to...it...
         >>> from zipfile import ZipFile, ZipInfo
         >>> zipfile_info_list: list[ZipInfo] = ZipFile(
         ...     tmp_path / 'plaintext_fixture-000001.json.zip'
@@ -1156,16 +1173,63 @@ def compress_fixture(
 
         ```
     """
-    if format not in ARCHIVE_FORMATS:
-        raise ValueError(
-            f"format '{format}' not valid, "
-            f"options are:'\n{pformat(ARCHIVE_FORMATS)}"
-        )
+    path = Path(path)
+    current_dir: Path = Path()
+    root_dir: str | None = None
+    base_dir: str | None = None
+    if not path.exists():
+        raise ValueError(f"Cannot compress not existent 'path': {path}")
+    if isinstance(format, str):
+        try:
+            format = ArchiveFormatEnum(format)
+        except ValueError:
+            raise ValueError(
+                f"format '{format}' not valid, "
+                f"options are:'\n{pformat(ARCHIVE_FORMATS)}"
+            )
+
     chdir(str(Path(path).parent))
+
+    if path.is_file():
+        root_dir = str(Path(path).parent)
+        base_dir = path.name
+        # chdir(str(Path(path).parent))
+    elif path.is_dir():
+        # chdir(str(path))
+        root_dir = path.name
+
+    else:
+        raise ValueError(f"Path type {type(path)} is not supported.")
+
     save_file_name: Path = Path(Path(path).stem + suffix + "".join(Path(path).suffixes))
     save_path: Path = Path(output_path) / save_file_name
+    # root_dir: Path = save_path.parent
+    if Path(str(save_path) + f".{format}").exists():
+        error_message: str = f"Path to save to already exists: '{save_path}'"
+        if force_overwrite:
+            logger.warn(error_message)
+            logger.warn(f"Overwriting '{save_path}'")
+        else:
+            raise ValueError(error_message)
     logger.info(f"Compressing '{path}' to '{format}' in: '{save_path.parent}'")
-    make_archive(str(save_path), format=format, base_dir=path)
+    # if Path(path).is_file():
+    #     logger.info(f"'path' to {format} is a file. Setting 'base_dir' to: '{path}'")
+    #     base_dir = path
+
+    archive_path: Path = Path(
+        make_archive(
+            base_name=str(save_path),
+            format=str(format),
+            root_dir=root_dir,
+            base_dir=base_dir,
+            # root_dir=str(Path()),
+            # base_dir=path,
+            dry_run=dry_run,
+            logger=logger,
+        )
+    )
+    chdir(current_dir)
+    return archive_path
 
 
 def paths_with_newlines(

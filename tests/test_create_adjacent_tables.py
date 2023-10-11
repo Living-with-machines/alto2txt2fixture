@@ -9,7 +9,6 @@ from alto2txt2fixture.create_adjacent_tables import (
     GAZETTEER_OUT_FILENAMES,
     ISSUE,
     MITCHELLS_OUT_FILENAMES,
-    OUTPUT,
     RemoteDataFilesType,
     TableOutputConfigType,
     csv2json_list,
@@ -56,8 +55,8 @@ def test_local_result_paths(adjacent_data_run_results) -> None:
         MITCHELLS_OUT_FILENAMES | GAZETTEER_OUT_FILENAMES
     )
     for paths_dict in all_outfiles.values():
-        assert Path(OUTPUT / paths_dict["csv"]).is_file()
-        assert Path(OUTPUT / paths_dict["json"]).is_file()
+        assert Path(adjacent_data_run_results / paths_dict["csv"]).is_file()
+        assert Path(adjacent_data_run_results / paths_dict["json"]).is_file()
 
 
 @pytest.mark.download
@@ -65,7 +64,7 @@ def test_csv2json_list(adjacent_data_run_results) -> None:
     """Test converting a `csv` file to `json` `Django` `fixture`."""
     test_mitchells_write_folder: Path = Path("test_mitchells")
     mitchells_issue_csv_path: Path = (
-        Path(OUTPUT) / MITCHELLS_OUT_FILENAMES[ISSUE]["csv"]
+        adjacent_data_run_results / MITCHELLS_OUT_FILENAMES[ISSUE]["csv"]
     )
     mitchells_issue_df: DataFrame = read_csv(mitchells_issue_csv_path)
     mitchells_out: list = csv2json_list(

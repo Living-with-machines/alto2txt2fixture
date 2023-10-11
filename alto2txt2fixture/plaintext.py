@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from logging import getLogger
 from os import PathLike
 from pathlib import Path
+from pprint import pformat
 from shutil import disk_usage, rmtree, unpack_archive
 from typing import Final, Generator, TypedDict
 from zipfile import ZipFile, ZipInfo
@@ -17,11 +18,15 @@ from .types import (
     PlaintextFixtureFieldsDict,
 )
 from .utils import (
+    COMPRESSED_PATH_DEFAULT,
+    COMPRESSION_TYPE_DEFAULT,
     FILE_NAME_0_PADDING_DEFAULT,
     TRUNC_HEADS_PATH_DEFAULT,
     TRUNC_TAILS_PATH_DEFAULT,
     ZIP_FILE_EXTENSION,
+    ArchiveFormatEnum,
     DiskUsageTuple,
+    compress_fixture,
     console,
     free_hd_space_in_GB,
     path_globs_to_tuple,
@@ -197,6 +202,8 @@ class PlainTextFixture:
     export_directory: PathLike = DEFAULT_PLAINTEXT_FIXTURE_OUTPUT
     empty_info_default_str: str = "None"
     json_0_file_name_padding: int = FILE_NAME_0_PADDING_DEFAULT
+    json_export_compression_subdir: PathLike = COMPRESSED_PATH_DEFAULT
+    json_export_compression_format: ArchiveFormatEnum = COMPRESSION_TYPE_DEFAULT
     _trunc_head_paths: int = TRUNC_HEADS_PATH_DEFAULT
     _trunc_tails_paths: int = TRUNC_TAILS_PATH_DEFAULT
     _trunc_tails_sub_paths: int = TRUNC_TAILS_SUBPATH_DEFAULT
@@ -678,9 +685,152 @@ class PlainTextFixture:
             max_elements_per_file=self.max_plaintext_per_fixture_file,
             file_name_0_padding=json_0_file_name_padding,
         )
-        self._exported_json_paths = tuple(
-            Path(path) for path in sorted(Path(output_path).glob(f"**/{prefix}*.json"))
+        self.set_exported_json_paths(
+            export_directory=output_path, saved_fixture_prefix=prefix
         )
+
+    @property
+    def exported_json_paths(self) -> Generator[Path, None, None]:
+        """If `self._exported_json_paths` return `Generator` of those paths.
+
+        Yields:
+            Each path from `self._exported_json_paths`
+
+        Example:
+            ```pycon
+            >>> if is_platform_win:
+            ...     pytest.skip('decompression fails on Windows: issue #55')
+            >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_json_export')
+            <BLANKLINE>
+            ...
+            >>> tuple(plaintext_bl_lwm.exported_json_paths)
+            (...Path('...plaintext_fixture-000001.json'),)
+
+            ```
+        """
+        if not hasattr(self, "_exported_json_paths"):
+            raise ValueError(
+                f"No '_exported_json_paths', "
+                f"run after 'self.export_to_json_fixtures()' for {self}"
+            )
+        for path in self._exported_json_paths:
+            yield path
+
+    def set_exported_json_paths(
+        self,
+        export_directory: PathLike | None,
+        saved_fixture_prefix: str | None,
+        overwrite: bool = False,
+    ) -> None:
+        """Set `self._exported_json_paths` for use with `self.exported_json_paths`.
+
+        Note:
+            If provided `export_directory` and `saved_fixture_prefix` will
+            overwite those attributes on `self.`
+
+        Params:
+            export_directory:
+                `Path` to check for saved `json` files.
+            saved_fixture_prefix:
+                `str` to prefix each exported `json` file with.
+            overwrite:
+                Force replace `self._exported_json_paths` if already set.
+
+        Example:
+            ```pycon
+            >>> if is_platform_win:
+            ...     pytest.skip('decompression fails on Windows: issue #55')
+            >>> tmp_path = getfixture('tmp_path')
+            >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_json_export')
+            <BLANKLINE>
+            ...
+            >>> tuple(plaintext_bl_lwm.exported_json_paths)
+            (...Path('...plaintext_fixture-000001.json'),)
+            >>> plaintext_bl_lwm.set_exported_json_paths(tmp_path, 'check-prefix')
+            Traceback (most recent call last):
+                ...
+            ValueError: Cannot overwrite 'self._exported_json_paths' without
+            'overwrite' = True. Current 'self._exported_json_paths':
+            (...Path('...plaintext_fixture-000001.json'),)
+            >>> plaintext_bl_lwm.set_exported_json_paths(tmp_path,
+            ...     'check-prefix', overwrite=True)
+            <BLANKLINE>
+            ...Force change '._exported_json_paths' in...<PlainTextFixture...
+            >>> plaintext_bl_lwm.export_directory == tmp_path
+            True
+            >>> plaintext_bl_lwm.saved_fixture_prefix
+            'check-prefix'
+
+            ```
+        """
+        if hasattr(self, "_exported_json_paths"):
+            if overwrite:
+                logger.info(f"Force change '._exported_json_paths' in {repr(self)}")
+            else:
+                raise ValueError(
+                    f"Cannot overwrite 'self._exported_json_paths' without "
+                    f"'overwrite' = True. Current 'self._exported_json_paths':\n "
+                    f"{pformat(self._exported_json_paths)}"
+                )
+        self.export_directory = (
+            export_directory if export_directory else self.export_directory
+        )
+        self.saved_fixture_prefix = (
+            saved_fixture_prefix if saved_fixture_prefix else self.saved_fixture_prefix
+        )
+        self._exported_json_paths = path_globs_to_tuple(
+            self.export_directory, f"**/{self.saved_fixture_prefix}*.json"
+        )
+
+    def compress_json_exports(
+        self,
+        output_path: PathLike | None = None,
+        format: ArchiveFormatEnum | None = None,
+    ) -> tuple[Path, ...]:
+        """Compress `self._exported_json_paths` to `format`.
+
+        Args:
+            output_path:
+                `Path` to save compressed `json` files to. Uses
+                `self.json_export_compression_subdir` if `None` is passed.
+            format:
+                What compression format to use from `ArchiveFormatEnum`. Uses
+                `self.json_export_compression_format` if `None` is passed.
+
+        Note:
+            Neither `output_path` nor `format` overwrite the related attributes
+            of `self`.
+
+        Returns: The the `output_path` passed to save compressed `json`.
+
+        Example:
+            ```pycon
+            >>> if is_platform_win:
+            ...     pytest.skip('decompression fails on Windows: issue #55')
+            >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_json_export')
+            <BLANKLINE>
+            ...
+            >>> compressed_paths: Path = plaintext_bl_lwm.compress_json_exports(
+            ...     format='tar')
+            <BLANKLINE>
+            ...Compressing...'...01.json' to...'tar'...in:...
+            >>> compressed_paths
+            (...Path('.../plaintext_fixture-000001.json.tar'),)
+
+            ```
+        """
+        output_path = (
+            Path(self.json_export_compression_subdir)
+            if not output_path
+            else Path(output_path)
+        )
+        format = self.json_export_compression_format if not format else format
+        compressed_paths: list[Path] = []
+        for json_path in self.exported_json_paths:
+            compressed_paths.append(
+                compress_fixture(json_path, output_path=output_path, format=format)
+            )
+        return tuple(compressed_paths)
 
     # def delete_compressed(self, index: int | str | None = None) -> None:
     def delete_decompressed(self, ignore_errors: bool = True) -> None:
