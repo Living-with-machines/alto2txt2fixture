@@ -97,6 +97,7 @@ def test_rename_cli(
             str(output_path),
             "--regex",
             "*.txt",
+            "--renumber",
             run_type,
         ],
         input=input,
@@ -126,7 +127,20 @@ def test_rename_compress(
     for path in tmp_json_fixtures:
         assert path.is_file()
     rename(tmp_path, compress=True, force=True)
-    stdout: list[str] = capsys.readouterr().out
+    stdout: str = capsys.readouterr().out
+    info_txts: tuple[str, ...] = (
+        "compress_format",
+        "zip",
+        "compress_suffix",
+        "''",
+        "compress_folder",
+        "compressed",
+    )
+    for text in info_txts:
+        assert text in stdout
+    for path in tmp_json_fixtures:
+        assert path.name in stdout
+        assert path.name + ".zip" in stdout
     for path in tmp_json_fixtures:
         zip_path: Path = path.parent / COMPRESSED_PATH_DEFAULT / (path.name + ".zip")
         assert zip_path.is_file()

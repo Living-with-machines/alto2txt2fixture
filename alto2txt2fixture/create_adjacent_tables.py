@@ -3,7 +3,7 @@ from copy import deepcopy
 from os import PathLike
 from pathlib import Path
 from shutil import rmtree
-from typing import Final, NotRequired, Sequence, TypedDict
+from typing import Any, Final, NotRequired, Sequence, TypedDict
 from urllib.request import urlopen
 
 import numpy as np
@@ -153,30 +153,34 @@ def csv2json_list(
     saved: list[Path] | None = None,
     indent: int = JSON_INDENT,
 ) -> list:
-    """Save `csv_path` as a `json` file and return as a `list`."""
-    json_data = []
-    # See this suggestion for `nan` values: https://stackoverflow.com/a/62691803/678486
-    df = (
+    """Save `csv_path` as a `json` file and return as a `list`.
+
+    Note:
+        Managing `Pandas` `DataFrame` `nan` values via suggestion:
+        https://stackoverflow.com/a/62691803/678486
+
+    """
+    json_data: list[dict[str, Any]] = []
+    df: pd.DataFame = (
         pd.read_csv(csv_path, index_col=0).fillna(np.nan).replace([np.nan], [None])
-    )  # fillna(None)
+    )
 
     if "political_leanings" in df.columns:
         df["political_leanings"] = df["political_leanings"].apply(json.loads)
     if "prices" in df.columns:
         df["prices"] = df["prices"].apply(json.loads)
 
-    model = Path(csv_path).stem.lower()
+    model: str = Path(csv_path).stem.lower()
 
     for pk, row in df.iterrows():
-        fields = row.to_dict()
+        fields: dict[str, Any] = row.to_dict()
         json_data.append({"pk": pk, "model": model, "fields": fields})
 
-    (Path(output_path) / csv_path).parent.mkdir(parents=True, exist_ok=True)
-    Path(output_path / f"{Path(csv_path).stem}.json").write_text(
-        json.dumps(json_data, indent=indent)
-    )
-    if not saved is None:
-        saved.append(output_path / f"{Path(csv_path).stem}.json")
+    json_path: Path = Path(output_path) / f"{Path(csv_path).stem}.json"
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    json_path.write_text(json.dumps(json_data, indent=indent))
+    if saved and isinstance(saved, list):
+        saved.append(json_path)
     return json_data
 
 
