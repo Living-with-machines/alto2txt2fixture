@@ -109,6 +109,7 @@ def test_compress_fixtures(
     bl_lwm_plaintext_json_export: PlainTextFixture,
     compress_files_count: int,
     compress_type: str,
+    is_platform_win: bool,
     caplog,
 ) -> None:
     """Test compressing one or more files."""
@@ -176,6 +177,8 @@ def test_compress_fixtures(
         zipfile_info_list: list[ZipInfo] = ZipFile(compressed_path).infolist()
         assert len(zipfile_info_list) == compress_files_count
         json_file_index: int = 0 if compress_files_count == 1 else -1
-        assert (
-            Path(zipfile_info_list[json_file_index].filename).name == uncompressed_json
-        )
+        if not is_platform_win:  # compression ordering differes
+            assert (
+                Path(zipfile_info_list[json_file_index].filename).name
+                == uncompressed_json
+            )
