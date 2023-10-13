@@ -49,6 +49,12 @@ def plaintext(
     extract_path: Annotated[
         Path, typer.Option(help="Folder to extract compressed raw plaintext to")
     ] = Path(DEFAULT_EXTRACTED_SUBDIR),
+    clear_extract_path: Annotated[
+        bool, typer.Option(help="Delete any existing files in extract_path")
+    ] = False,
+    skip_extract: Annotated[
+        bool, typer.Option(help="Skip extracting files if extract_path is not empty")
+    ] = False,
     initial_pk: Annotated[
         int, typer.Option(help="First primary key to increment json export from")
     ] = DEFAULT_INITIAL_PK,
@@ -96,10 +102,13 @@ def plaintext(
         else:
             return
         plaintext_fixture.info()
-    plaintext_fixture.extract_compressed()
+    plaintext_fixture.extract_compressed(
+        overwite_extracts=clear_extract_path,
+        use_saved_if_exists=skip_extract,
+    )
     plaintext_fixture.export_to_json_fixtures()
     if compress:
-        plaintext_fixture.compress_json_exports()
+        console.print(plaintext_fixture.compress_json_exports())
 
 
 @cli.command()

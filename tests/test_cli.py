@@ -1,12 +1,15 @@
 import json
+from os import PathLike, chdir
 from os.path import sep
 from pathlib import Path
 from sys import platform, stdout
+from typing import Callable
 
 import pytest
 from typer.testing import CliRunner
 
 from alto2txt2fixture.cli import COMPRESSED_PATH_DEFAULT, cli, rename
+from alto2txt2fixture.plaintext import PlaintextFixtureDict
 from alto2txt2fixture.types import FixtureDict
 from alto2txt2fixture.utils import rename_by_0_padding
 
@@ -14,15 +17,26 @@ runner = CliRunner()
 
 
 @pytest.mark.slow
-def test_plaintext_cli(bl_lwm, first_lwm_plaintext_json_dict) -> None:
+def test_plaintext_cli(
+    tmp_path: Path,
+    bl_lwm: Path,
+    lwm_plaintext_json_dict_factory: Callable[
+        [int, PathLike, PathLike, str], PlaintextFixtureDict
+    ],
+) -> None:
     """Test running `plaintext` file export via `cli`."""
+    chdir(bl_lwm.parent)
+    extract_folder: PathLike = "test-extract"
+    save_folder: PathLike = "test-cli-plaintext-fixture"
     result = runner.invoke(
         cli,
         [
             "plaintext",
-            str(bl_lwm),
+            bl_lwm.name,
+            "--extract-path",
+            extract_folder,
             "--save-path",
-            bl_lwm / "test-cli-plaintext-fixture",
+            save_folder,
             "--data-provider-code",
             "bl_lwm",
             "--initial-pk",
@@ -30,16 +44,15 @@ def test_plaintext_cli(bl_lwm, first_lwm_plaintext_json_dict) -> None:
         ],
     )
     assert result.exit_code == 0
-    for message in ("Extract path:", "bl_lwm", "extracted"):
+    for message in ("Extract path:", "bl_lwm", "Extracting:"):
         assert message in result.stdout
     exported_json: list[FixtureDict] = json.loads(
-        (
-            bl_lwm / "test-cli-plaintext-fixture" / "plaintext_fixture-000001.json"
-        ).read_text()
+        (Path(save_folder) / "plaintext_fixture-000001.json").read_text()
     )
     assert exported_json[0]["model"] == "fulltext.fulltext"
     assert exported_json[0]["pk"] == 5
     # assert "DRAPER & OUTFITTER" in exported_json[0]["fields"]["text"]
+    first_lwm_plaintext_json_dict = lwm_plaintext_json_dict_factory()
     if not platform.startswith("win"):
         assert (
             exported_json[0]["fields"]["text"]

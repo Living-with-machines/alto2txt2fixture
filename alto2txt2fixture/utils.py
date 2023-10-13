@@ -841,7 +841,7 @@ def save_fixture(
         if internal_counter > max_elements_per_file:
             file_name = f"{prefix}-{str(counter).zfill(file_name_0_padding)}.json"
             write_json(
-                p=Path(f"{output_path}/file_name"),
+                p=Path(f"{output_path}/{file_name}"),
                 o=lst,
                 add_created=add_created,
                 json_indent=json_indent,
@@ -1620,3 +1620,77 @@ def copy_dict_paths(copy_path_dict: dict[PathLike, PathLike]) -> None:
         logger.info(f"Copying '{current_path}' to '{copy_path}'")
         Path(copy_path).parent.mkdir(exist_ok=True)
         copyfile(current_path, copy_path)
+
+
+def dirs_in_path(path: PathLike) -> Generator[Path, None, None]:
+    """Yield all folder paths (not recursively) in `path`.
+
+    Args:
+        path: `Path` to count subfolders in.
+
+    Yields:
+        Each folder one walk length in `path`
+
+    Example:
+        ```pycon
+        >>> tmp_path = getfixture('tmp_path')
+        >>> len(tuple(dir.name for dir in dirs_in_path(tmp_path)))
+        0
+        >>> (tmp_path / 'a_file_not_dir').touch()
+        >>> len(tuple(dir.name for dir in dirs_in_path(tmp_path)))
+        0
+        >>> (tmp_path / 'test_dir').mkdir()
+        >>> tuple(dir.name for dir in dirs_in_path(tmp_path))
+        ('test_dir',)
+        >>> [(tmp_path / f'new_dir_{i}').mkdir() for i in range(3)]
+        [None, None, None]
+        >>> tuple(dir.name for dir in dirs_in_path(tmp_path))
+        ('new_dir_1', 'new_dir_0', 'test_dir', 'new_dir_2')
+        >>> (tmp_path / 'test_dir' / 'another_dir').mkdir()
+        >>> tuple(dir.name for dir in dirs_in_path(tmp_path))
+        ('new_dir_1', 'new_dir_0', 'test_dir', 'new_dir_2')
+
+        ```
+    """
+    for sub_path in Path(path).iterdir():
+        if sub_path.is_dir():
+            yield sub_path
+
+
+def files_in_path(path: PathLike) -> Generator[Path, None, None]:
+    """Yield all file paths (not recursively) in `path`.
+
+    Args:
+        path: `Path` to count files in.
+
+    Yields:
+        Each file one walk length in `path`
+
+    Example:
+        ```pycon
+        >>> tmp_path = getfixture('tmp_path')
+        >>> len(tuple(files_in_path(tmp_path)))
+        0
+        >>> (tmp_path / 'a_file_not_dir').touch()
+        >>> tuple(file.name for file in files_in_path(tmp_path))
+        ('a_file_not_dir',)
+        >>> (tmp_path / 'test_dir').mkdir()
+        >>> tuple(file.name for file in files_in_path(tmp_path))
+        ('a_file_not_dir',)
+        >>> [(tmp_path / f'new_dir_{i}').mkdir() for i in range(3)]
+        [None, None, None]
+        >>> tuple(file.name for file in files_in_path(tmp_path))
+        ('a_file_not_dir',)
+        >>> (tmp_path / 'test_dir' / 'another_dir').mkdir()
+        >>> (tmp_path / 'test_dir' / 'another_folder_file').touch()
+        >>> tuple(file.name for file in files_in_path(tmp_path))
+        ('a_file_not_dir',)
+        >>> (tmp_path / 'another_file_not_dir').touch()
+        >>> tuple(file.name for file in files_in_path(tmp_path))
+        ('a_file_not_dir', 'another_file_not_dir')
+
+        ```
+    """
+    for sub_path in Path(path).iterdir():
+        if sub_path.is_file():
+            yield sub_path

@@ -28,6 +28,8 @@ from .utils import (
     DiskUsageTuple,
     compress_fixture,
     console,
+    dirs_in_path,
+    files_in_path,
     free_hd_space_in_GB,
     path_globs_to_tuple,
     paths_with_newlines,
@@ -466,7 +468,9 @@ class PlainTextFixture:
             console.log(f"No `self.compressed_files` end with `.zip` for {repr(self)}.")
 
     # def extract_compressed(self, index: int | str | None = None) -> None:
-    def extract_compressed(self) -> None:
+    def extract_compressed(
+        self, overwite_extracts: bool = True, use_saved_if_exists: bool = False
+    ) -> None:
         """Extract `self.compressed_files` to `self.extracted_subdir_name`.
 
         Example:
@@ -491,17 +495,60 @@ class PlainTextFixture:
             ```
 
         """
-        self.extract_path.mkdir(parents=True, exist_ok=True)
+        if self.extract_path.exists():
+            logger.info(f"Extract path exists: '{self.extract_path}'")
+            if self.extract_path.is_file():
+                raise FileExistsError(
+                    f"Cannot extract to existing file: '{self.extract_path}'"
+                )
+            shallow_sub_dirs: tuple[Path, ...] = tuple(
+                self.yield_extract_path_root_dirs
+            )
+            shallow_sub_files: tuple[Path, ...] = tuple(
+                files_in_path(self.extract_path)
+            )
+            if shallow_sub_files or shallow_sub_dirs:
+                logger.info(
+                    f"{len(shallow_sub_dirs)} folders and "
+                    f"{len(shallow_sub_files)} files"
+                )
+                if overwite_extracts:
+                    self.delete_decompressed()
+                elif use_saved_if_exists:
+                    logger.info(f"Checking existing extracts: '{self.extract_path}'")
+                    for compressed_file in tqdm(
+                        self.compressed_files,
+                        total=len(self.compressed_files),
+                    ):
+                        self._add_path_to_uncompressed(compressed_file)
+                else:
+                    logger.warning(
+                        f"Cannot extract to folder with files: '{self.extract_path}'"
+                    )
+        else:
+            self._extract_all_from_extract_path()
+
+    def _add_path_to_uncompressed(self, compressed_file: PathLike) -> None:
+        """Add `self.extract_path` `Path`s to `self._uncompressed_source_file_dict`."""
+        for path in sorted(self.extract_path.glob(self.plaintext_glob_regex)):
+            if path not in self._uncompressed_source_file_dict:
+                self._uncompressed_source_file_dict[path] = compressed_file
+
+    def _extract_all_from_extract_path(self) -> None:
+        """Extract files from `self.extract_path`."""
         console.log(f"Extract path: '{self.extract_path}'")
+        self.extract_path.mkdir(parents=True, exist_ok=True)
         for compressed_file in tqdm(
             self.compressed_files,
             total=len(self.compressed_files),
         ):
             logger.info(f"Extracting: '{compressed_file}' ...")
             unpack_archive(compressed_file, self.extract_path)
-            for path in sorted(self.extract_path.glob(self.plaintext_glob_regex)):
-                if path not in self._uncompressed_source_file_dict:
-                    self._uncompressed_source_file_dict[path] = compressed_file
+            self._add_path_to_uncompressed(compressed_file)
+
+    @property
+    def yield_extract_path_root_dirs(self) -> Generator[Path, None, None]:
+        yield from dirs_in_path(self.extract_path)
 
     def plaintext_paths(
         self, reset_cache=False
@@ -564,7 +611,9 @@ class PlainTextFixture:
                         path=path, compressed_path=None, primary_key=pk
                     )
 
-    def plaintext_paths_to_dicts(self) -> Generator[PlaintextFixtureDict, None, None]:
+    def plaintext_paths_to_dicts(
+        self, convert_to_relative_paths: bool = True
+    ) -> Generator[PlaintextFixtureDict, None, None]:
         """Generate fixture dicts from `self.plaintext_paths`.
 
         Note:
@@ -595,10 +644,22 @@ class PlainTextFixture:
                 logger.warning(err)
                 text = ""
                 error_str = str(err)
+            path_for_json: str = (
+                str(Path(plaintext_path_dict["path"]).relative_to(self.extract_path))
+                if convert_to_relative_paths
+                else str(plaintext_path_dict["path"])
+            )
+            compressed_path_for_json: str = (
+                str(Path(plaintext_path_dict["compressed_path"]).relative_to(self.path))
+                if (
+                    convert_to_relative_paths and plaintext_path_dict["compressed_path"]
+                )
+                else str(plaintext_path_dict["compressed_path"])
+            )
             fields: PlaintextFixtureFieldsDict = PlaintextFixtureFieldsDict(
                 text=text,
-                path=str(plaintext_path_dict["path"]),
-                compressed_path=str(plaintext_path_dict["compressed_path"]),
+                path=path_for_json,
+                compressed_path=compressed_path_for_json,
                 errors=error_str,
             )
             yield PlaintextFixtureDict(
@@ -677,6 +738,7 @@ class PlainTextFixture:
             if not json_0_file_name_padding
             else json_0_file_name_padding
         )
+        # Consider iterating over self.plaintext_paths_to_dicts(),
         save_fixture(
             self.plaintext_paths_to_dicts(),
             prefix=prefix,
@@ -830,7 +892,43 @@ class PlainTextFixture:
             compressed_paths.append(
                 compress_fixture(json_path, output_path=output_path, format=format)
             )
-        return tuple(compressed_paths)
+        self._compressed_exported_json_paths: tuple[Path, ...] = tuple(compressed_paths)
+        return self._compressed_exported_json_paths
+
+    @property
+    def compressed_json_export_paths(self) -> Generator[Path, None, None]:
+        """Yield from `self._compressed_exported_json_paths` if it exists.
+
+        Yields:
+            Each path from `self._compressed_exported_json_paths` if set, else None.
+
+        Example:
+            ```pycon
+            >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_json_export')
+            <BLANKLINE>
+            ...
+            >>> plaintext_bl_lwm.compressed_json_export_paths
+            No compressed paths set. Try calling '.compress_json_exports()'...
+            None
+            >>> compressed_paths: Path = plaintext_bl_lwm.compress_json_exports(
+            ...     format='tar')
+            <BLANKLINE>
+            ...Compressing...'...01.json' to...'tar'...in:...
+            >>> tuple(self.compressed_json_export_paths) compressed_paths
+            (...Path('.../plaintext_fixture-000001.json.tar'),)
+            >>> compressed_path == tuple(self.compressed_json_export_paths)
+            True
+
+            ```
+        """
+        if hasattr(self, "_compressed_exported_json_paths"):
+            for path in self._compressed_exported_json_paths:
+                yield path
+        else:
+            logger.warning(
+                f"No compressed paths set. Try running "
+                f"'.compress_json_exports()' on {self}"
+            )
 
     # def delete_compressed(self, index: int | str | None = None) -> None:
     def delete_decompressed(self, ignore_errors: bool = True) -> None:

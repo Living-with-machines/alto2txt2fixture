@@ -1,11 +1,11 @@
 import json
 import sys
 from logging import DEBUG, INFO, WARNING
-from os import PathLike
+from os import PathLike, chdir
 from pathlib import Path, PureWindowsPath
 from pprint import pprint
 from shutil import copytree, rmtree
-from typing import Final, Generator
+from typing import Callable, Final, Generator
 
 import pytest
 from coverage_badge.__main__ import main as gen_cov_badge
@@ -28,6 +28,13 @@ LWM_PLAINTEXT_FIXTURE_FOLDER: Final[Path] = Path("bl_lwm")
 LWM_PLAINTEXT_FIXTURE: Final[Path] = (
     MODULE_PATH / "tests" / LWM_PLAINTEXT_FIXTURE_FOLDER
 )
+LWM_FIRST_PLAINTEXT_FIXTURE_ZIP_FILE_NAME: Final[PathLike] = Path(
+    "0003079-test_plaintext.zip"
+)
+LWM_FIRST_PLAINTEXT_FIXTURE_EXTRACTED_PATH: Final[PathLike] = Path(
+    "0003079/1898/0107/0003079_18980107_art0001.txt",
+)
+LWM_OUTPUT_FOLDER: Final[Path] = Path("lwm_test_output")
 # HMD_PLAINTEXT_FIXTURE: Path = (
 #     Path("tests") / "bl_hmd"
 # )  # "0002645_plaintext.zip"
@@ -91,8 +98,9 @@ def bl_lwm(tmp_path) -> Generator[Path, None, None]:
 
 @pytest.fixture
 def bl_lwm_plaintext(bl_lwm) -> Generator[PlainTextFixture, None, None]:
+    chdir(bl_lwm)
     bl_lwm_fixture: PlainTextFixture = PlainTextFixture(
-        path=bl_lwm, data_provider_code="bl_lwm"
+        path=Path(), data_provider_code="bl_lwm"
     )
     yield bl_lwm_fixture
     bl_lwm_fixture.delete_decompressed()
@@ -111,24 +119,38 @@ def bl_lwm_plaintext_json_export(
     bl_lwm_plaintext_extracted,
     tmp_path,
 ) -> Generator[PlainTextFixture, None, None]:
-    bl_lwm_plaintext_extracted.export_to_json_fixtures(output_path=tmp_path)
+    chdir(tmp_path)
+    bl_lwm_plaintext_extracted.export_to_json_fixtures(output_path=LWM_OUTPUT_FOLDER)
     yield bl_lwm_plaintext_extracted
 
 
 @pytest.fixture
-def first_lwm_plaintext_json_dict(bl_lwm) -> PlaintextFixtureDict:
-    return PlaintextFixtureDict(
-        pk=DEFAULT_INITIAL_PK,
-        model=FULLTEXT_DJANGO_MODEL,
-        fields=PlaintextFixtureFieldsDict(
-            text="billel\n\nB. RANNS,\n\nDRAPER & OUTFITTER,\nSTATION ROAD,"
-            "\nCHAPELTOWN,\nu NNW SWIM I • LUSA LIMIT\nOF MI\n\n' "
-            "NE'TEST Gi\n\n110111 TEM SIMON.\n",
-            path=bl_lwm / "extracted/0003079/1898/0107/0003079_18980107_art0001.txt",
-            compressed_path=bl_lwm / "0003079-test_plaintext.zip",
-            errors=None,
-        ),
-    )
+def lwm_plaintext_json_dict_factory() -> (
+    Callable[[int, PathLike, PathLike, str], PlaintextFixtureDict]
+):
+    def make_plaintext_fixture_dict(
+        pk: int = DEFAULT_INITIAL_PK,
+        # extract_path: PathLike = COMPRESSED_PATH_DEFAULT,
+        fixture_path: PathLike = LWM_FIRST_PLAINTEXT_FIXTURE_EXTRACTED_PATH,
+        fixture_compressed_path: PathLike = LWM_FIRST_PLAINTEXT_FIXTURE_ZIP_FILE_NAME,
+        errors: str | None = None,
+    ) -> PlaintextFixtureDict:
+        # if extract_path:
+        #     fixture_path = Path(extract_path) / fixture_path
+        return PlaintextFixtureDict(
+            pk=pk,
+            model=FULLTEXT_DJANGO_MODEL,
+            fields=PlaintextFixtureFieldsDict(
+                text="billel\n\nB. RANNS,\n\nDRAPER & OUTFITTER,\nSTATION ROAD,"
+                "\nCHAPELTOWN,\nu NNW SWIM I • LUSA LIMIT\nOF MI\n\n' "
+                "NE'TEST Gi\n\n110111 TEM SIMON.\n",
+                path=str(fixture_path),
+                compressed_path=str(fixture_compressed_path),
+                errors=errors,
+            ),
+        )
+
+    return make_plaintext_fixture_dict
 
 
 @pytest.fixture
@@ -150,7 +172,7 @@ def is_platform_win() -> bool:
 
 @pytest.fixture()
 def is_platform_darwin() -> bool:
-    """Check if `sys.platform` is windows."""
+    """Check if `sys.platform` is `Darwin` (macOS)."""
     return sys.platform.startswith("darwin")
 
 
