@@ -2,7 +2,11 @@
 name = "alto2txt2fixture"
 version = "0.1.0"
 description = ""
-authors = ["Kalle Westerling <kalle.westerling@bl.uk>"]
+authors = [
+  "Aoife Hughes <ahughes@turing.ac.uk>",
+  "Griffith Rees <grees@turing.ac.uk>",
+  "Kalle Westerling <kalle.westerling@bl.uk>",
+]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"

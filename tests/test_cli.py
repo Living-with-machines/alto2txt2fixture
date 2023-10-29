@@ -9,7 +9,7 @@ import pytest
 from typer.testing import CliRunner
 
 from alto2txt2fixture.cli import COMPRESSED_PATH_DEFAULT, cli, rename
-from alto2txt2fixture.plaintext import PlaintextFixtureDict
+from alto2txt2fixture.plaintext import FULLTEXT_DJANGO_MODEL, PlainTextFixtureDict
 from alto2txt2fixture.types import FixtureDict
 from alto2txt2fixture.utils import rename_by_0_padding
 
@@ -21,7 +21,7 @@ def test_plaintext_cli(
     tmp_path: Path,
     bl_lwm: Path,
     lwm_plaintext_json_dict_factory: Callable[
-        [int, PathLike, PathLike, str], PlaintextFixtureDict
+        [int, PathLike, PathLike, str], PlainTextFixtureDict
     ],
 ) -> None:
     """Test running `plaintext` file export via `cli`."""
@@ -53,20 +53,20 @@ def test_plaintext_cli(
     exported_json: list[FixtureDict] = json.loads(
         (Path(save_folder) / "plaintext_fixture-000001.json").read_text()
     )
-    assert exported_json[0]["model"] == "fulltext.fulltext"
+    assert exported_json[0]["model"] == FULLTEXT_DJANGO_MODEL
     assert exported_json[0]["pk"] == 5
     # assert "DRAPER & OUTFITTER" in exported_json[0]["fields"]["text"]
     first_lwm_plaintext_json_dict = lwm_plaintext_json_dict_factory()
     if not platform.startswith("win"):
         assert (
-            exported_json[0]["fields"]["text"]
-            == first_lwm_plaintext_json_dict["fields"]["text"]
+            exported_json[0]["fields"]["text_path"]
+            == first_lwm_plaintext_json_dict["fields"]["text_path"]
         )
-    assert exported_json[0]["fields"]["path"] == str(
-        first_lwm_plaintext_json_dict["fields"]["path"]
+    assert exported_json[0]["fields"]["text_path"] == str(
+        first_lwm_plaintext_json_dict["fields"]["text_path"]
     )
-    assert exported_json[0]["fields"]["compressed_path"] == str(
-        first_lwm_plaintext_json_dict["fields"]["compressed_path"]
+    assert exported_json[0]["fields"]["text_compressed_path"] == str(
+        first_lwm_plaintext_json_dict["fields"]["text_compressed_path"]
     )
     assert (
         exported_json[0]["fields"]["updated_at"]

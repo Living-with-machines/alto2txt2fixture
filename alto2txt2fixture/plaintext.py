@@ -14,8 +14,8 @@ from tqdm.rich import tqdm
 from .settings import NEWSPAPER_DATA_PROVIDER_CODE_DICT
 from .types import (
     DataProviderFixtureDict,
-    PlaintextFixtureDict,
-    PlaintextFixtureFieldsDict,
+    PlainTextFixtureDict,
+    PlainTextFixtureFieldsDict,
 )
 from .utils import (
     COMPRESSED_PATH_DEFAULT,
@@ -29,6 +29,7 @@ from .utils import (
     compress_fixture,
     console,
     dirs_in_path,
+    file_path_to_item_code,
     files_in_path,
     free_hd_space_in_GB,
     path_globs_to_tuple,
@@ -63,17 +64,17 @@ class FullTextPathDict(TypedDict):
     """A `dict` of `lwmdb.newspapers.models.FullText` fixture structure.
 
     Attributes:
-        path:
+        text_path:
             PlainText file path.
-        compressed_path:
+        text_compressed_path:
             If `path` is within a compressed file,
             `compressed_path` is that source. Else None.
         primary_key:
             An `int >= 1` for a `SQL` table primary key (`pk`).
     """
 
-    path: PathLike
-    compressed_path: PathLike | None
+    text_path: PathLike
+    text_compressed_path: PathLike | None
     primary_key: int
 
 
@@ -113,18 +114,20 @@ class PlainTextFixture:
             on that `FullText` `class` and the `json` `fixture` structure generated
             from this class is where records will be stored.
 
-        extract_subdir:
-            Folder to extract `self.compressed_files` to.
+        fixture_info: Text to include in the `info` portion for output fixture.
 
-        plaintext_extension:
-            What file extension to use to filter `plaintext` files.
+        is_canonical: Set the `canonical` field for output Fixture.
 
-        data_provider_code_dict:
-            A `dict` of metadata for preconfigured `DataProvider` records in `lwmdb`.
+        extract_subdir: Folder to extract `self.compressed_files` to.
 
-        max_plaintext_per_fixture_file:
-            A maximum number of fixtures per fixture file, designed to configure
-            chunking fixtures.
+        plaintext_extension: What file extension to use to
+            filter `plaintext` files.
+
+        data_provider_code_dict: A `dict` of metadata for
+            preconfigured `DataProvider` records in `lwmdb`.
+
+        max_plaintext_per_fixture_file: A maximum number of fixtures per
+            fixture file, designed to configure chunking fixtures.
 
         saved_fixture_prefix:
             A `str` to prefix all saved `json` fixture filenames.
@@ -205,9 +208,11 @@ class PlainTextFixture:
     saved_fixture_prefix: str = DEFAULT_PLAINTEXT_FILE_NAME_PREFIX
     export_directory: PathLike = DEFAULT_PLAINTEXT_FIXTURE_OUTPUT
     empty_info_default_str: str = "None"
+    fixture_info: str = ""
     json_0_file_name_padding: int = FILE_NAME_0_PADDING_DEFAULT
     json_export_compression_subdir: PathLike = COMPRESSED_PATH_DEFAULT
     json_export_compression_format: ArchiveFormatEnum = COMPRESSION_TYPE_DEFAULT
+    is_canonical: bool = False
     _trunc_head_paths: int = TRUNC_HEADS_PATH_DEFAULT
     _trunc_tails_paths: int = TRUNC_TAILS_PATH_DEFAULT
     _trunc_tails_sub_paths: int = TRUNC_TAILS_SUBPATH_DEFAULT
@@ -566,14 +571,14 @@ class PlainTextFixture:
             ...Extract path: 'bl_lwm/test-extracted'...
             >>> plaintext_paths = plaintext_bl_lwm.plaintext_paths()
             >>> first_path_fixture_dict = next(iter(plaintext_paths))
-            >>> first_path_fixture_dict['path'].name
+            >>> first_path_fixture_dict['text_path'].name
             '0003079_18980107_art0001.txt'
-            >>> first_path_fixture_dict['compressed_path'].name
+            >>> first_path_fixture_dict['text_compressed_path'].name
             '0003079-test_plaintext.zip'
             >>> len(plaintext_bl_lwm._pk_plaintext_dict)
             1
             >>> plaintext_bl_lwm._pk_plaintext_dict[
-            ...     first_path_fixture_dict['path']
+            ...     first_path_fixture_dict['text_path']
             ... ] # This demonstrates the `pk` begins from 1 following `SQL` standards
             1
 
@@ -597,8 +602,8 @@ class PlainTextFixture:
                     pk = i + self.initial_pk  # Most `SQL` `pk` begins at 1
                     self._pk_plaintext_dict[uncompressed_tuple[0]] = pk
                     yield FullTextPathDict(
-                        path=uncompressed_tuple[0],
-                        compressed_path=uncompressed_tuple[1],
+                        text_path=uncompressed_tuple[0],
+                        text_compressed_path=uncompressed_tuple[1],
                         primary_key=pk,
                     )
             if self.plaintext_provided_uncompressed:
@@ -616,8 +621,10 @@ class PlainTextFixture:
                     )
 
     def plaintext_paths_to_dicts(
-        self, convert_to_relative_paths: bool = True
-    ) -> Generator[PlaintextFixtureDict, None, None]:
+        self,
+        convert_to_relative_paths: bool = True,
+        infer_item_code_from_path: bool = True,
+    ) -> Generator[PlainTextFixtureDict, None, None]:
         """Generate fixture dicts from `self.plaintext_paths`.
 
         Note:
@@ -646,30 +653,50 @@ class PlainTextFixture:
         for plaintext_path_dict in self.plaintext_paths():
             error_str = None
             try:
-                text = Path(plaintext_path_dict["path"]).read_text()
+                text = Path(plaintext_path_dict["text_path"]).read_text()
             except UnicodeDecodeError as err:
                 logger.warning(err)
                 text = ""
                 error_str = str(err)
             path_for_json: str = (
-                str(Path(plaintext_path_dict["path"]).relative_to(self.extract_path))
+                str(
+                    Path(plaintext_path_dict["text_path"]).relative_to(
+                        self.extract_path
+                    )
+                )
                 if convert_to_relative_paths
-                else str(plaintext_path_dict["path"])
+                else str(plaintext_path_dict["text_path"])
             )
             compressed_path_for_json: str = (
-                str(Path(plaintext_path_dict["compressed_path"]).relative_to(self.path))
-                if (
-                    convert_to_relative_paths and plaintext_path_dict["compressed_path"]
+                str(
+                    Path(plaintext_path_dict["text_compressed_path"]).relative_to(
+                        self.path
+                    )
                 )
-                else str(plaintext_path_dict["compressed_path"])
+                if (
+                    convert_to_relative_paths
+                    and plaintext_path_dict["text_compressed_path"]
+                )
+                else str(plaintext_path_dict["text_compressed_path"])
             )
-            fields: PlaintextFixtureFieldsDict = PlaintextFixtureFieldsDict(
+            item_code: str | None = (
+                file_path_to_item_code(Path(path_for_json))
+                if infer_item_code_from_path
+                else None
+            )
+
+            fields: PlainTextFixtureFieldsDict = PlainTextFixtureFieldsDict(
                 text=text,
-                path=path_for_json,
-                compressed_path=compressed_path_for_json,
+                item=None,
+                item_code=item_code,
+                text_path=path_for_json,
+                text_fixture_path=None,
+                text_compressed_path=compressed_path_for_json,
                 errors=error_str,
+                info=self.fixture_info,
+                canonical=self.is_canonical,
             )
-            yield PlaintextFixtureDict(
+            yield PlainTextFixtureDict(
                 model=self.model_str,
                 fields=fields,
                 pk=plaintext_path_dict["primary_key"],
@@ -700,7 +727,7 @@ class PlainTextFixture:
             >>> if is_platform_win:
             ...     pytest.skip('decompression fails on Windows: issue #55')
             >>> bl_lwm: Path = getfixture("bl_lwm")
-            >>> first_lwm_plaintext_json_dict: PlaintextFixtureDict = getfixture(
+            >>> first_lwm_plaintext_json_dict: PlainTextFixtureDict = getfixture(
             ...     'lwm_plaintext_json_dict_factory')()  # Factory returns `dict`
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
             <BLANKLINE>
@@ -723,11 +750,11 @@ class PlainTextFixture:
             >>> (exported_json[0]['fields']['text'] ==
             ...  first_lwm_plaintext_json_dict['fields']['text'])
             True
-            >>> (exported_json[0]['fields']['path'] ==
-            ...  str(first_lwm_plaintext_json_dict['fields']['path']))
+            >>> (exported_json[0]['fields']['text_path'] ==
+            ...  str(first_lwm_plaintext_json_dict['fields']['text_path']))
             True
-            >>> (exported_json[0]['fields']['compressed_path'] ==
-            ...  str(first_lwm_plaintext_json_dict['fields']['compressed_path']))
+            >>> (exported_json[0]['fields']['text_compressed_path'] ==
+            ...  str(first_lwm_plaintext_json_dict['fields']['text_compressed_path']))
             True
             >>> exported_json[0]['fields']['created_at']
             '20...'

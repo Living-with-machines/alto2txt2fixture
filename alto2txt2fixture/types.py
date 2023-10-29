@@ -106,7 +106,7 @@ class PlainTextFixtureFieldsDict(TypedDict):
             May have unusual or unreadable sequences of characters
             due to issues with Optical Character Recognition quality.
         item:
-            An integer of the ForiengKey the j
+            An integer of the ForiengKey to the relate `lwmdb.Newspaper.Item` record.
         item_code:
             A unique `str` to match to `lwmdb.Newspaper.Item` record.
         text_path:
@@ -136,12 +136,12 @@ class PlainTextFixtureFieldsDict(TypedDict):
     canonical: bool
 
 
-class PlaintextFixtureDict(FixtureDictBaseClass):
+class PlainTextFixtureDict(FixtureDictBaseClass):
     """A `dict` structure for `Fulltext` sources in line with `lwmdb`.
 
     Attributes:
         model: `str` in `django` fixture spec to indicate what model a record is for
-        fields: a `PlaintextFixtureFieldsDict` `dict` instance
+        fields: a `PlainTextFixtureFieldsDict` `dict` instance
         pk: `int` id for fixture record
 
     Note:

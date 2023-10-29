@@ -63,6 +63,9 @@ def plaintext(
     records_per_json: Annotated[
         int, typer.Option(help="Max records per json fixture")
     ] = DEFAULT_MAX_PLAINTEXT_PER_FIXTURE_FILE,
+    is_canonical: Annotated[
+        bool, typer.Option(help="Whether record are canonical ")
+    ] = False,
     digit_padding: Annotated[
         int, typer.Option(help="Padding '0's for indexing json fixture filenames")
     ] = FILE_NAME_0_PADDING_DEFAULT,
@@ -74,6 +77,9 @@ def plaintext(
         ArchiveFormatEnum,
         typer.Option(case_sensitive=False, help="Compression format"),
     ] = COMPRESSION_TYPE_DEFAULT,
+    fixture_info: Annotated[
+        str, typer.Option(help="Info string to include in export records")
+    ] = "",
     log_level: Annotated[
         int, typer.Option(help="Set logging level for debugging")
     ] = WARNING,
@@ -90,6 +96,8 @@ def plaintext(
         json_0_file_name_padding=digit_padding,
         json_export_compression_format=compress_format,
         json_export_compression_subdir=compress_path,
+        fixture_info=fixture_info,
+        is_canonical=is_canonical,
     )
     plaintext_fixture.info()
     while (

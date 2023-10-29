@@ -15,8 +15,8 @@ from alto2txt2fixture.plaintext import (
     DEFAULT_INITIAL_PK,
     FULLTEXT_DJANGO_MODEL,
     PlainTextFixture,
-    PlaintextFixtureDict,
-    PlaintextFixtureFieldsDict,
+    PlainTextFixtureDict,
+    PlainTextFixtureFieldsDict,
 )
 from alto2txt2fixture.utils import load_multiple_json
 
@@ -134,23 +134,23 @@ def bl_lwm_plaintext_json_export(
 
 @pytest.fixture
 def lwm_plaintext_json_dict_factory() -> (
-    Callable[[int, PathLike, PathLike, str], PlaintextFixtureDict]
+    Callable[[int, PathLike, PathLike, str], PlainTextFixtureDict]
 ):
     def make_plaintext_fixture_dict(
         pk: int = DEFAULT_INITIAL_PK,
         fixture_path: PathLike = LWM_FIRST_PLAINTEXT_FIXTURE_EXTRACTED_PATH,
         fixture_compressed_path: PathLike = LWM_FIRST_PLAINTEXT_FIXTURE_ZIP_FILE_NAME,
         errors: str | None = None,
-    ) -> PlaintextFixtureDict:
-        return PlaintextFixtureDict(
+    ) -> PlainTextFixtureDict:
+        return PlainTextFixtureDict(
             pk=pk,
             model=FULLTEXT_DJANGO_MODEL,
-            fields=PlaintextFixtureFieldsDict(
+            fields=PlainTextFixtureFieldsDict(
                 text="billel\n\nB. RANNS,\n\nDRAPER & OUTFITTER,\nSTATION ROAD,"
                 "\nCHAPELTOWN,\nu NNW SWIM I • LUSA LIMIT\nOF MI\n\n' "
                 "NE'TEST Gi\n\n110111 TEM SIMON.\n",
-                path=str(fixture_path),
-                compressed_path=str(fixture_compressed_path),
+                text_path=str(fixture_path),
+                text_compressed_path=str(fixture_compressed_path),
                 errors=errors,
             ),
         )
@@ -192,6 +192,12 @@ def tmp_json_fixtures(tmp_path: Path) -> Generator[tuple[Path, ...], None, None]
     yield test_paths
     for path in test_paths:
         path.unlink()
+
+
+@pytest.fixture
+def text_fixture_path_dict(json_export_filename: str) -> dict[str, str]:
+    """Example field to add in fixture generation."""
+    return {"text_fixture_path": json_export_filename}
 
 
 @pytest.fixture(autouse=True)

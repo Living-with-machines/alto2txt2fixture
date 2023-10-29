@@ -92,6 +92,9 @@ TRUNC_TAILS_PATH_DEFAULT: int = 1
 FILE_NAME_0_PADDING_DEFAULT: int = 6
 PADDING_0_REGEX_DEFAULT: str = r"\b\d*\b"
 
+CODE_SEPERATOR_CHAR: Final[str] = "-"
+FILE_NAME_SEPERATOR_CHAR: Final[str] = "_"
+
 
 @overload
 def get_now(as_str: Literal[True]) -> str:
@@ -330,7 +333,11 @@ def get_size_from_path(p: str | Path, raw: bool = False) -> str | float:
 
 
 def write_json(
-    p: str | Path, o: dict, add_created: bool = True, json_indent: int = JSON_INDENT
+    p: str | Path,
+    o: dict,
+    add_created: bool = True,
+    json_indent: int = JSON_INDENT,
+    extra_dict_fields: dict = {},
 ) -> None:
     """
     Easier access to writing `json` files. Checks whether parent exists.
@@ -351,15 +358,19 @@ def write_json(
     Example:
         ```pycon
         >>> tmp_path: Path = getfixture('tmp_path')
+        >>> extra_fields: dict[str, str] = getfixture('text_fixture_path_dict')
         >>> path: Path = tmp_path / 'test-write-json-example.json'
+        >>>
         >>> write_json(p=path,
         ...            o=NEWSPAPER_COLLECTION_METADATA,
-        ...            add_created=True)
+        ...            add_created=True, extra_dict_fields=extra_fields)
         >>> imported_fixture = load_json(path)
         >>> imported_fixture[1]['pk']
         2
         >>> imported_fixture[1]['fields'][DATA_PROVIDER_INDEX]
         'hmd'
+        >>> imported_fixture[1]['fields']['text_fixture_path']
+        'plaintext_fixture-000001.json'
 
         ```
         `
@@ -381,6 +392,7 @@ def write_json(
                     if not k == "created_at" and not k == "updated_at"
                 },
                 **{"created_at": NOW_str, "updated_at": NOW_str},
+                **extra_dict_fields,
             ),
         )
 
@@ -784,6 +796,9 @@ def save_fixture(
     output_path: PathLike | str = settings.OUTPUT,
     max_elements_per_file: int = settings.MAX_ELEMENTS_PER_FILE,
     add_created: bool = True,
+    add_fixture_name: bool = False,
+    fixture_name_field: str = "",
+    extra_dict_fields: dict[str, Any] = {},
     json_indent: int = JSON_INDENT,
     file_name_0_padding: int = FILE_NAME_0_PADDING_DEFAULT,
 ) -> None:
@@ -794,10 +809,8 @@ def save_fixture(
     is determined by the ``max_elements_per_file`` parameter.
 
     Args:
-        generator:
-            A generator that yields the fixtures to be saved.
-        prefix:
-            A string prefix to be added to the file names of the
+        generator: A generator that yields the fixtures to be saved.
+        prefix: A string prefix to be added to the file names of the
             saved fixtures.
         output_path:
             Path to folder fixtures are saved to
@@ -805,6 +818,10 @@ def save_fixture(
             Maximum `JSON` records saved in each file
         add_created:
             Whether to add `created_at` and `updated_at` `timestamps`
+        add_fixture_name: If `fixture_name_field` is also set, add the
+            fixture name as a field within `extra_dict_fields`
+        fixture_name_field: If `add_fixture_name` is also set, the
+            field name as a key to the fixture file name
         json_indent:
             Number of indent spaces per line in saved `JSON`
         file_name_0_padding:
@@ -818,7 +835,8 @@ def save_fixture(
         ```pycon
         >>> tmp_path: Path = getfixture('tmp_path')
         >>> save_fixture(NEWSPAPER_COLLECTION_METADATA,
-        ...              prefix='test', output_path=tmp_path)
+        ...              prefix='test', output_path=tmp_path,
+        ...              add_fixture_name=True, fixture_name_field='fixture_path')
         >>> imported_fixture = load_json(tmp_path / 'test-000001.json')
         >>> imported_fixture[1]['pk']
         2
@@ -826,25 +844,30 @@ def save_fixture(
         'hmd'
         >>> 'created_at' in imported_fixture[1]['fields']
         True
+        >>> imported_fixture[1]['fields']['fixture_path']
+        'test-000001.json'
 
         ```
 
     """
-    internal_counter = 1
-    counter = 1
-    lst = []
+    internal_counter: int = 1
+    counter: int = 1
+    lst: list[PathLike] = []
     file_name: str
     Path(output_path).mkdir(parents=True, exist_ok=True)
     for item in generator:
         lst.append(item)
         internal_counter += 1
         if internal_counter > max_elements_per_file:
-            file_name = f"{prefix}-{str(counter).zfill(file_name_0_padding)}.json"
+            file_name: str = f"{prefix}-{str(counter).zfill(file_name_0_padding)}.json"
+            if add_fixture_name and fixture_name_field:
+                extra_dict_fields[fixture_name_field] = file_name
             write_json(
                 p=Path(f"{output_path}/{file_name}"),
                 o=lst,
                 add_created=add_created,
                 json_indent=json_indent,
+                extra_dict_fields=extra_dict_fields,
             )
 
             # Save up some memory
@@ -857,11 +880,14 @@ def save_fixture(
             counter += 1
     else:
         file_name = f"{prefix}-{str(counter).zfill(file_name_0_padding)}.json"
+        if add_fixture_name and fixture_name_field:
+            extra_dict_fields[fixture_name_field] = file_name
         write_json(
             p=Path(f"{output_path}/{file_name}"),
             o=lst,
             add_created=add_created,
             json_indent=json_indent,
+            extra_dict_fields=extra_dict_fields,
         )
 
     return
@@ -945,10 +971,12 @@ def export_fixtures(
     path: str | PathLike = settings.FIXTURE_TABLES_OUTPUT,
     prefix: str = "test-",
     add_created: bool = True,
+    add_fixutre_name: bool = False,
+    fixture_name_field: str = "",
     formats: Sequence[EXPORT_FORMATS] = settings.FIXTURE_TABLES_FORMATS,
     file_name_0_padding: int = FILE_NAME_0_PADDING_DEFAULT,
 ) -> None:
-    """Export ``fixture_tables`` in ``formats``.
+    """Export `fixture_tables` in `formats`.
 
     Note:
         This is still in experimental phase of development and not recommended
@@ -1695,3 +1723,20 @@ def files_in_path(path: PathLike) -> Generator[Path, None, None]:
     for sub_path in Path(path).iterdir():
         if sub_path.is_file():
             yield sub_path
+
+
+def file_path_to_item_code(
+    path: PathLike,
+    separation_char: str = CODE_SEPERATOR_CHAR,
+    file_name_separtion_char: str = FILE_NAME_SEPERATOR_CHAR,
+) -> str:
+    """Extract `lwmdb.newspapers.Item.item_code` from `path`.
+
+    Example:
+        ```pycon
+        >>> file_path_to_item_code('0003548/1904/0707/0003548_19040707_art0037.txt')
+        '0003548-19040707-art0037'
+
+        ```
+    """
+    return Path(path).stem.replace(file_name_separtion_char, separation_char)
