@@ -4,7 +4,7 @@ import json
 import logging
 from collections import OrderedDict
 from enum import StrEnum
-from os import PathLike, chdir, getcwd, sep
+from os import PathLike, getcwd, sep
 from os.path import normpath
 from pathlib import Path, PureWindowsPath
 from pprint import pformat
@@ -968,18 +968,19 @@ def export_fixtures(
 
     Example:
         ```pycon
+        >>> tmp_path = getfixture('tmp_path')
         >>> test_fixture_tables: dict[str, FixtureDict] = {
         ...     'test0': NEWSPAPER_COLLECTION_METADATA,
         ...     'test1': NEWSPAPER_COLLECTION_METADATA}
-        >>> export_fixtures(test_fixture_tables, path='tests/')
+        >>> export_fixtures(test_fixture_tables, path=tmp_path / 'exports')
         <BLANKLINE>
         ...Warning: Saving test0...
         ...Warning: Saving test1...
         >>> from pandas import read_csv
-        >>> fixture0_json = load_json('tests/test-test0-000001.json')
-        >>> fixture0_df = read_csv('tests/test-test0-000001.csv')
-        >>> fixture1_json = load_json('tests/test-test1-000001.json')
-        >>> fixture1_df = read_csv('tests/test-test1-000001.csv')
+        >>> fixture0_json = load_json(tmp_path / 'exports/test-test0-000001.json')
+        >>> fixture0_df = read_csv(tmp_path / 'exports/test-test0-000001.csv')
+        >>> fixture1_json = load_json(tmp_path / 'exports/test-test1-000001.json')
+        >>> fixture1_df = read_csv(tmp_path / 'exports/test-test1-000001.csv')
         >>> fixture0_json == fixture1_json
         True
         >>> all(fixture0_df == fixture1_df)
@@ -1071,7 +1072,7 @@ def free_hd_space_in_GB(
     Example:
         ```pycon
         >>> space_in_gb = free_hd_space_in_GB()
-        >>> space_in_gb > 1  # Hopefully true wherever run...
+        >>> space_in_gb > 1  # Hopefully true when run...
         True
 
         ```
@@ -1140,27 +1141,34 @@ def compress_fixture(
             `suffix=_compressed`, then the saved file might be called
             `plaintext_fixture-1_compressed.json.zip`
 
+        force_overwrite:
+            Force overwriting `output_path` if it already exists.
+
+        dry_run:
+            Attempt compression without modifying any files.
+
     Example:
         ```pycon
+        >>> logger_initial_level: int = logger.level
+        >>> logger.setLevel(logging.DEBUG)
         >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_json_export')
         <BLANKLINE>
         ...
         >>> tmp_path = getfixture('tmp_path')
         >>> json_path: Path = next(plaintext_bl_lwm.exported_json_paths)
-        >>> assert 'pytest-of' in str(json_path)
+        >>> assert 'lwm_test_output' in str(json_path)
         >>> compressed_path: Path = compress_fixture(path=json_path,
         ...                                          output_path=tmp_path,
         ...                                          dry_run=True)
         <BLANKLINE>
-        ...creating...'...plain...-...01.json.zip...'...addin...
-        ...'plain...01.json'...to...it...
+        ...Compressing...'...01.json'...to...'zip'...
         >>> compressed_path.exists()
         False
         >>> compressed_path: Path = compress_fixture(path=json_path,
         ...                                          output_path=tmp_path,
         ...                                          dry_run=False)
         <BLANKLINE>
-        ...creating...'...plain...-...01.json.zip...'...addin...
+        ...creating...'...01.json.zip...'...adding...
         ...'plain...01.json'...to...it...
         >>> from zipfile import ZipFile, ZipInfo
         >>> zipfile_info_list: list[ZipInfo] = ZipFile(
@@ -1170,15 +1178,16 @@ def compress_fixture(
         1
         >>> Path(zipfile_info_list[0].filename).name
         'plaintext_fixture-000001.json'
+        >>> logger.setLevel(logger_initial_level)
 
         ```
     """
     path = Path(path)
-    current_dir: Path = Path()
+    absolute_path = path.absolute()
     root_dir: str | None = None
     base_dir: str | None = None
     if not path.exists():
-        raise ValueError(f"Cannot compress not existent 'path': {path}")
+        raise ValueError(f"Cannot compress; 'path' does not exist: {path}")
     if isinstance(format, str):
         try:
             format = ArchiveFormatEnum(format)
@@ -1188,22 +1197,19 @@ def compress_fixture(
                 f"options are:'\n{pformat(ARCHIVE_FORMATS)}"
             )
 
-    chdir(str(Path(path).parent))
-
-    if path.is_file():
+    if absolute_path.is_file():
         root_dir = str(Path(path).parent)
         base_dir = path.name
-        # chdir(str(Path(path).parent))
-    elif path.is_dir():
-        # chdir(str(path))
-        root_dir = path.name
+    elif absolute_path.is_dir():
+        root_dir = str(absolute_path)
 
     else:
-        raise ValueError(f"Path type {type(path)} is not supported.")
+        raise ValueError(
+            f"Path must exist and be a file or folder. " f"Not valid: '{path}'"
+        )
 
     save_file_name: Path = Path(Path(path).stem + suffix + "".join(Path(path).suffixes))
     save_path: Path = Path(output_path) / save_file_name
-    # root_dir: Path = save_path.parent
     if Path(str(save_path) + f".{format}").exists():
         error_message: str = f"Path to save to already exists: '{save_path}'"
         if force_overwrite:
@@ -1212,9 +1218,6 @@ def compress_fixture(
         else:
             raise ValueError(error_message)
     logger.info(f"Compressing '{path}' to '{format}' in: '{save_path.parent}'")
-    # if Path(path).is_file():
-    #     logger.info(f"'path' to {format} is a file. Setting 'base_dir' to: '{path}'")
-    #     base_dir = path
 
     archive_path: Path = Path(
         make_archive(
@@ -1222,13 +1225,11 @@ def compress_fixture(
             format=str(format),
             root_dir=root_dir,
             base_dir=base_dir,
-            # root_dir=str(Path()),
-            # base_dir=path,
             dry_run=dry_run,
             logger=logger,
         )
     )
-    chdir(current_dir)
+
     return archive_path
 
 
@@ -1247,10 +1248,8 @@ def paths_with_newlines(
         ...     paths_with_newlines(plaintext_bl_lwm.compressed_files,
         ...                         truncate=True)
         ... )
-        <BLANKLINE>
-        ...
-        '...0003079-test_plaintext.zip'
-        '...0003548-test_plaintext.zip'
+        'bl_lwm/0003079-test_plaintext.zip'
+        'bl_lwm/0003548-test_plaintext.zip'
 
         ```
     """
@@ -1298,6 +1297,7 @@ def truncate_path_str(
 
     Example:
         ```pycon
+        >>> logger.setLevel(WARNING)
         >>> love_shadows: Path = (
         ...     Path('Standing') / 'in' / 'the' / 'shadows'/ 'of' / 'love.')
         >>> truncate_path_str(love_shadows)
@@ -1308,16 +1308,12 @@ def truncate_path_str(
         'Standing...*...*...*...*...love.'
         >>> root_love_shadows: Path = Path(sep) / love_shadows
         >>> truncate_path_str(root_love_shadows, folder_filler_str="*")
-        <BLANKLINE>
-        ...
         '...Standing...*...*...*...*...love.'
         >>> if is_platform_win:
         ...     pytest.skip('fails on certain Windows root paths: issue #56')
         >>> truncate_path_str(root_love_shadows,
         ...                   folder_filler_str="*", tail_parts=3)
-        <BLANKLINE>
-        ...
-        '...Standing...*...*...shadows...of...love.'...
+        '...Standing...*...*...shadows...of...love.'
 
         ```
     """
@@ -1583,36 +1579,41 @@ def copy_dict_paths(copy_path_dict: dict[PathLike, PathLike]) -> None:
     Example:
         ```pycon
         >>> tmp_path: Path = getfixture('tmp_path')
+        >>> test_files_path: Path = (tmp_path / 'copy_dict')
+        >>> test_files_path.mkdir(exist_ok=True)
         >>> for i in range(4):
-        ...     (tmp_path / f'test_file-{i}.txt').touch(exist_ok=True)
-        >>> pprint(sorted(tmp_path.iterdir()))
-        [...Path('...test_file-0.txt'),
-         ...Path('...test_file-1.txt'),
-         ...Path('...test_file-2.txt'),
-         ...Path('...test_file-3.txt')]
-        >>> output_path = tmp_path / 'save'
+        ...     (test_files_path / f'test_file-{i}.txt').touch(exist_ok=True)
+        >>> pprint(sorted(test_files_path.iterdir()))
+        [...Path('...file-0.txt'),
+         ...Path('...file-1.txt'),
+         ...Path('...file-2.txt'),
+         ...Path('...file-3.txt')]
+        >>> output_path = test_files_path / 'save'
         >>> output_path.mkdir(exist_ok=True)
+        >>> logger_initial_level: int = logger.level
+        >>> logger.setLevel(logging.DEBUG)
         >>> copy_dict_paths(
-        ...     glob_path_rename_by_0_padding(tmp_path,
+        ...     glob_path_rename_by_0_padding(test_files_path,
         ...                                   glob_regex_str="*.txt",
         ...                                   output_path=output_path))
         <BLANKLINE>
-        ...Specified...'...save'...for...saving...file...copies...
+        ...Specified...'...'...for...saving...file...copies...
         ...'...-0...txt'...to...'...-00...txt...'...
         ...'...-1...txt'...to...'...-01...txt...'
         ...'...-2...txt'...to...'...-02...txt...'
         ...'...-3...txt'...to...'...-03...txt...'
-        >>> pprint(sorted(tmp_path.iterdir()))
+        >>> pprint(sorted(test_files_path.iterdir()))
         [...Path('...save'),
          ...Path('...test_file-0.txt'),
          ...Path('...test_file-1.txt'),
          ...Path('...test_file-2.txt'),
          ...Path('...test_file-3.txt')]
-        >>> pprint(sorted((tmp_path / 'save').iterdir()))
+        >>> pprint(sorted((test_files_path / 'save').iterdir()))
          [...Path('...test_file-00.txt'),
           ...Path('...test_file-01.txt'),
           ...Path('...test_file-02.txt'),
           ...Path('...test_file-03.txt')]
+        >>> logger.setLevel(logger_initial_level)
 
         ```
     """

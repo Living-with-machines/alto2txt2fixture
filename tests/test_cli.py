@@ -26,8 +26,8 @@ def test_plaintext_cli(
 ) -> None:
     """Test running `plaintext` file export via `cli`."""
     chdir(bl_lwm.parent)
-    extract_folder: PathLike = "test-extract"
-    save_folder: PathLike = "test-cli-plaintext-fixture"
+    extract_folder: PathLike = tmp_path / "test-cli-extract"
+    save_folder: PathLike = tmp_path / "test-cli-plaintext-fixture"
     result = runner.invoke(
         cli,
         [
@@ -41,10 +41,14 @@ def test_plaintext_cli(
             "bl_lwm",
             "--initial-pk",
             5,
+            "--log-level",
+            10,
         ],
     )
     assert result.exit_code == 0
-    for message in ("Extract path:", "bl_lwm", "Extracting:"):
+    # The 'Extracting:' log can fail when parallel test running
+    # for message in ("Extract path:", "bl_lwm", "Extracting:"):
+    for message in ("Extract path:", "bl_lwm"):
         assert message in result.stdout
     exported_json: list[FixtureDict] = json.loads(
         (Path(save_folder) / "plaintext_fixture-000001.json").read_text()

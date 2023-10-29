@@ -35,6 +35,7 @@ LWM_FIRST_PLAINTEXT_FIXTURE_EXTRACTED_PATH: Final[PathLike] = Path(
     "0003079/1898/0107/0003079_18980107_art0001.txt",
 )
 LWM_OUTPUT_FOLDER: Final[Path] = Path("lwm_test_output")
+TEST_EXTRACT_SUBDIR: Final[Path] = Path("test-extracted")
 # HMD_PLAINTEXT_FIXTURE: Path = (
 #     Path("tests") / "bl_hmd"
 # )  # "0002645_plaintext.zip"
@@ -51,15 +52,22 @@ LWM_OUTPUT_FOLDER: Final[Path] = Path("lwm_test_output")
 #     return HMD_PLAINTEXT_FIXTURE
 
 
-# @pytest.fixture
-# def uncached_folder(monkeypatch, tmp_path) -> None:
-#     """Change local path to avoid using pre-cached data."""
-#     monkeypatch.chdir(tmp_path)
-#
-#
-# @pytest.fixture(autouse=True)
-# def package_path(monkeypatch) -> None:
-#     monkeypatch.chdir(MODULE_PATH)
+@pytest.fixture
+def lwm_output_path() -> Path:
+    """Return `LWM_OUTPUT_FOLDER` for testing."""
+    return LWM_OUTPUT_FOLDER
+
+
+@pytest.fixture
+def json_export_filename() -> str:
+    """Return default first `plaintext` `json` file name for testing."""
+    return "plaintext_fixture-000001.json"
+
+
+@pytest.fixture
+def json_export_filename_zip(json_export_filename: str) -> str:
+    """Return `LWM_OUTPUT_FOLDER` for testing."""
+    return json_export_filename + ".zip"
 
 
 @pytest.fixture(scope="session")
@@ -98,28 +106,28 @@ def bl_lwm(tmp_path) -> Generator[Path, None, None]:
 
 @pytest.fixture
 def bl_lwm_plaintext(bl_lwm) -> Generator[PlainTextFixture, None, None]:
-    chdir(bl_lwm)
+    chdir(bl_lwm.parent)
     bl_lwm_fixture: PlainTextFixture = PlainTextFixture(
-        path=Path(), data_provider_code="bl_lwm"
+        path=Path(bl_lwm.name),
+        data_provider_code="bl_lwm",
     )
     yield bl_lwm_fixture
-    bl_lwm_fixture.delete_decompressed()
 
 
 @pytest.fixture
 def bl_lwm_plaintext_extracted(
     bl_lwm_plaintext,
 ) -> Generator[PlainTextFixture, None, None]:
+    bl_lwm_plaintext.extract_subdir = TEST_EXTRACT_SUBDIR
     bl_lwm_plaintext.extract_compressed()
     yield bl_lwm_plaintext
+    bl_lwm_plaintext.delete_decompressed()
 
 
 @pytest.fixture
 def bl_lwm_plaintext_json_export(
     bl_lwm_plaintext_extracted,
-    tmp_path,
 ) -> Generator[PlainTextFixture, None, None]:
-    chdir(tmp_path)
     bl_lwm_plaintext_extracted.export_to_json_fixtures(output_path=LWM_OUTPUT_FOLDER)
     yield bl_lwm_plaintext_extracted
 
@@ -130,13 +138,10 @@ def lwm_plaintext_json_dict_factory() -> (
 ):
     def make_plaintext_fixture_dict(
         pk: int = DEFAULT_INITIAL_PK,
-        # extract_path: PathLike = COMPRESSED_PATH_DEFAULT,
         fixture_path: PathLike = LWM_FIRST_PLAINTEXT_FIXTURE_EXTRACTED_PATH,
         fixture_compressed_path: PathLike = LWM_FIRST_PLAINTEXT_FIXTURE_ZIP_FILE_NAME,
         errors: str | None = None,
     ) -> PlaintextFixtureDict:
-        # if extract_path:
-        #     fixture_path = Path(extract_path) / fixture_path
         return PlaintextFixtureDict(
             pk=pk,
             model=FULLTEXT_DJANGO_MODEL,

@@ -32,6 +32,8 @@ from .utils import (
     logger,
 )
 
+utils_set_logger_level: int = logger.level
+
 cli = typer.Typer(pretty_exceptions_show_locals=False)
 
 FILE_RENAME_TABLE_TITLE_DEFAULT: Final[str] = "Current to New File Names"
@@ -72,8 +74,12 @@ def plaintext(
         ArchiveFormatEnum,
         typer.Option(case_sensitive=False, help="Compression format"),
     ] = COMPRESSION_TYPE_DEFAULT,
+    log_level: Annotated[
+        int, typer.Option(help="Set logging level for debugging")
+    ] = WARNING,
 ) -> None:
     """Create a PlainTextFixture and save to `save_path`."""
+    logger.level = log_level
     plaintext_fixture = PlainTextFixture(
         path=path,
         data_provider_code=data_provider_code,
@@ -226,6 +232,10 @@ def rename(
             if delete_uncompressed and renumber:
                 console.print(f"Deleting {new_path}")
                 Path(new_path).unlink()
+
+
+# Reset logger level to `utils` to ease testing
+logger.setLevel(utils_set_logger_level)
 
 
 def show_setup(clear: bool = True, title: str = SETUP_TITLE, **kwargs) -> None:
