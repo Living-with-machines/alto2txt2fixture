@@ -45,6 +45,8 @@ FULLTEXT_DJANGO_MODEL: Final[str] = "newspapers.fulltext"
 
 DEFAULT_EXTRACTED_SUBDIR: Final[PathLike] = Path("extracted")
 
+TEXT_FIXTURE_PATH_FIELD_NAME: Final[str] = "text_fixture_path"
+
 FULLTEXT_FILE_NAME_SUFFIX: Final[str] = "_plaintext"
 FULLTEXT_DEFAULT_PLAINTEXT_ZIP_GLOB_REGEX: Final[
     str
@@ -115,6 +117,9 @@ class PlainTextFixture:
             from this class is where records will be stored.
 
         fixture_info: Text to include in the `info` portion for output fixture.
+
+        include_text_fixture_paths: Include `text_fixture_path` fields in output
+            fixture.
 
         is_canonical: Set the `canonical` field for output Fixture.
 
@@ -213,6 +218,8 @@ class PlainTextFixture:
     json_export_compression_subdir: PathLike = COMPRESSED_PATH_DEFAULT
     json_export_compression_format: ArchiveFormatEnum = COMPRESSION_TYPE_DEFAULT
     is_canonical: bool = False
+    include_text_fixture_paths: bool = True
+    text_fixture_path_field_name: str = TEXT_FIXTURE_PATH_FIELD_NAME
     _trunc_head_paths: int = TRUNC_HEADS_PATH_DEFAULT
     _trunc_tails_paths: int = TRUNC_TAILS_PATH_DEFAULT
     _trunc_tails_sub_paths: int = TRUNC_TAILS_SUBPATH_DEFAULT
@@ -690,7 +697,7 @@ class PlainTextFixture:
                 item=None,
                 item_code=item_code,
                 text_path=path_for_json,
-                text_fixture_path=None,
+                # text_fixture_path=None,
                 text_compressed_path=compressed_path_for_json,
                 errors=error_str,
                 info=self.fixture_info,
@@ -779,6 +786,8 @@ class PlainTextFixture:
             add_created=True,
             max_elements_per_file=self.max_plaintext_per_fixture_file,
             file_name_0_padding=json_0_file_name_padding,
+            add_fixture_name=self.include_text_fixture_paths,
+            fixture_name_field="text_fixture_path",
         )
         self.set_exported_json_paths(
             export_directory=output_path, saved_fixture_prefix=prefix
