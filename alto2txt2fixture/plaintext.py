@@ -40,7 +40,7 @@ from .utils import (
 
 logger = getLogger("rich")
 
-FULLTEXT_DJANGO_MODEL: Final[str] = "fulltext.fulltext"
+FULLTEXT_DJANGO_MODEL: Final[str] = "newspapers.fulltext"
 
 DEFAULT_EXTRACTED_SUBDIR: Final[PathLike] = Path("extracted")
 
@@ -59,12 +59,12 @@ TRUNC_TAILS_SUBPATH_DEFAULT: int = 1
 SAS_ENV_VARIABLE = "FULLTEXT_SAS_TOKEN"
 
 
-class FulltextPathDict(TypedDict):
-    """A `dict` of `lwmdb.fulltext.models.Fulltext` fixture structure.
+class FullTextPathDict(TypedDict):
+    """A `dict` of `lwmdb.newspapers.models.FullText` fixture structure.
 
     Attributes:
         path:
-            Plaintext file path.
+            PlainText file path.
         compressed_path:
             If `path` is within a compressed file,
             `compressed_path` is that source. Else None.
@@ -80,7 +80,7 @@ class FulltextPathDict(TypedDict):
 @dataclass
 class PlainTextFixture:
 
-    """Manage exporting `plaintext` `alto2txt` results for `lwmdb.fulltext.models.Fulltext`.
+    """Manage exporting `plaintext` for `lwmdb.newspapers.models.FullText`.
 
     Attributes:
         path:
@@ -106,11 +106,11 @@ class PlainTextFixture:
             The name of the `lwmdb` `django` model the fixture is for. This is of
             the form `app_name.model_name`. Following the default config for `lwmdb`:
             ```python
-            FULLTEXT_DJANGO_MODEL: Final[str] = "fulltext.fulltext"
+            FULLTEXT_DJANGO_MODEL: Final[str] = "newspapers.fulltext"
             ```
-            the `fulltext` app has a `fulltext` `model` `class` specified in
-            `lwmdb.fulltext.models.fulltext`. A `sql` table is generated from
-            on that `fulltext` `class` and the `json` `fixture` structure generated
+            the `newspapers` app has a `fulltext` `model` `class` specified in
+            `lwmdb.newspapers.models.fulltext`. A `sql` table is generated from
+            on that `FullText` `class` and the `json` `fixture` structure generated
             from this class is where records will be stored.
 
         extract_subdir:
@@ -556,7 +556,7 @@ class PlainTextFixture:
 
     def plaintext_paths(
         self, reset_cache=False
-    ) -> Generator[FulltextPathDict, None, None]:
+    ) -> Generator[FullTextPathDict, None, None]:
         """Return a generator of all `plaintext` files for potential fixtures.
 
         Example:
@@ -596,7 +596,7 @@ class PlainTextFixture:
                 ):
                     pk = i + self.initial_pk  # Most `SQL` `pk` begins at 1
                     self._pk_plaintext_dict[uncompressed_tuple[0]] = pk
-                    yield FulltextPathDict(
+                    yield FullTextPathDict(
                         path=uncompressed_tuple[0],
                         compressed_path=uncompressed_tuple[1],
                         primary_key=pk,
@@ -611,7 +611,7 @@ class PlainTextFixture:
                 ):
                     pk = j + i + self.initial_pk
                     self._pk_plaintext_dict[path] = pk
-                    yield FulltextPathDict(
+                    yield FullTextPathDict(
                         path=path, compressed_path=None, primary_key=pk
                     )
 

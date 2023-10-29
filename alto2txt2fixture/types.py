@@ -96,27 +96,44 @@ class TranslatorTuple(NamedTuple):
     lst: list[dict]
 
 
-class PlaintextFixtureFieldsDict(TypedDict):
+class PlainTextFixtureFieldsDict(TypedDict):
 
-    """A typed `dict` for Plaintext Fixutres to match `lwmdb.Fulltext` `model`
+    """A typed `dict` for PlainText Fixutres to match `lwmdb.newspapers.FullText` `model`
 
     Attributes:
         text:
-            Plaintext, potentially quite large newspaper articles.
+            PlainText, potentially quite large newspaper articles.
             May have unusual or unreadable sequences of characters
             due to issues with Optical Character Recognition quality.
-        path:
+        item:
+            An integer of the ForiengKey the j
+        item_code:
+            A unique `str` to match to `lwmdb.Newspaper.Item` record.
+        text_path:
             Path of provided plaintext file. If `compressed_path` is
-            `None`, this is the original relative `Path` of the `plaintext` file.
-        compressed_path:
+            `None`, this is the original relative `Path` of the `PlainText` file.
+        text_compressed_path:
             The path of a compressed data source, the extraction of which provides
-            access to `plaintext` files.
+            access to `PlainText` files.
+        text_fixture_path:
+            Path to relavant generated FixtureFile (likely `json`).
+        errors:
+            Text to document errors in the process the text was created.
+        info:
+            Further information about the text, including potential OCR method.
+        canonical:
+            Whether this record is the default record for the related `Item`.
     """
 
     text: str
-    path: str
-    compressed_path: str | None
+    item: int | None
+    item_code: str | None
+    text_path: str | None
+    text_compressed_path: str | None
+    text_fixture_path: str | None
     errors: str | None
+    info: str | None
+    canonical: bool
 
 
 class PlaintextFixtureDict(FixtureDictBaseClass):
@@ -134,4 +151,4 @@ class PlaintextFixtureDict(FixtureDictBaseClass):
 
     pk: int
     model: str
-    fields: PlaintextFixtureFieldsDict
+    fields: PlainTextFixtureFieldsDict
