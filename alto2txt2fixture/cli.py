@@ -126,7 +126,15 @@ def plaintext(
     )
     plaintext_fixture.export_to_json_fixtures()
     if compress:
-        console.print(plaintext_fixture.compress_json_exports())
+        json_exports: tuple[Path, ...] = tuple(
+            plaintext_fixture.compress_json_exports()
+        )
+        export_count: int = len(json_exports)
+        console.print(f"{export_count} fixtures compressed to {compress_format} files")
+        if export_count > 10:
+            console.print(json_exports[:3])
+            console.print("...")
+            console.print(json_exports[-3:])
 
 
 @cli.command()
