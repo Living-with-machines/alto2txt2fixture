@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from logging import WARNING
 from pathlib import Path
 from typing import Any, Callable, Final, get_args, get_type_hints
@@ -125,16 +126,21 @@ def plaintext(
         use_saved_if_exists=skip_extract,
     )
     plaintext_fixture.export_to_json_fixtures()
+    console.print(f"Exports to 'json' fixtures finished at {datetime.now()}")
+    console.print(f"'json' exports saved to: '{save_path}")
     if compress:
         json_exports: tuple[Path, ...] = tuple(
             plaintext_fixture.compress_json_exports()
         )
         export_count: int = len(json_exports)
+        console.print(f"Compression of 'json' fixtures finished at {datetime.now()}")
         console.print(f"{export_count} fixtures compressed to {compress_format} files")
         if export_count > 10:
-            console.print(json_exports[:3])
+            for compressed_path in json_exports[:3]:
+                console.print(compressed_path)
             console.print("...")
-            console.print(json_exports[-3:])
+            for compressed_path in json_exports[-3:]:
+                console.print(compressed_path)
 
 
 @cli.command()
