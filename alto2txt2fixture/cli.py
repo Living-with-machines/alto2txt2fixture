@@ -127,19 +127,24 @@ def plaintext(
     )
     plaintext_fixture.export_to_json_fixtures()
     console.print(f"Exports to 'json' fixtures finished at {datetime.now()}")
-    console.print(f"'json' exports saved to: '{save_path}")
+    console.print(f"'json' exports saved to: '{save_path.absolute()}")
     if compress:
+        console.print(
+            f"Compressing 'json' fixtures to {compress_format} at {compress_path.absolute()}"
+        )
         json_exports: tuple[Path, ...] = tuple(
             plaintext_fixture.compress_json_exports()
         )
         export_count: int = len(json_exports)
-        console.print(f"Compression of 'json' fixtures finished at {datetime.now()}")
-        console.print(f"{export_count} fixtures compressed to {compress_format} files")
+        console.print(f"{export_count} 'json' fixtures compressed at {datetime.now()}")
         if export_count > 10:
             for compressed_path in json_exports[:3]:
                 console.print(compressed_path)
             console.print("...")
             for compressed_path in json_exports[-3:]:
+                console.print(compressed_path)
+        else:
+            for compressed_path in json_exports:
                 console.print(compressed_path)
 
 
