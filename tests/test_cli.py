@@ -17,12 +17,14 @@ runner = CliRunner()
 
 
 @pytest.mark.slow
+@pytest.mark.parametrize("run", [True, False])
 def test_plaintext_cli(
     tmp_path: Path,
     bl_lwm: Path,
     lwm_plaintext_json_dict_factory: Callable[
         [int, PathLike, PathLike, str], PlainTextFixtureDict
     ],
+    run: bool,
 ) -> None:
     """Test running `plaintext` file export via `cli`."""
     chdir(bl_lwm.parent)
@@ -43,35 +45,40 @@ def test_plaintext_cli(
             5,
             "--log-level",
             10,
+            "--run" if run else "--dry-run",
         ],
     )
     assert result.exit_code == 0
-    # The 'Extracting:' log can fail when parallel test running
-    # for message in ("Extract path:", "bl_lwm", "Extracting:"):
-    for message in ("Extract path:", "bl_lwm"):
-        assert message in result.stdout
-    exported_json: list[FixtureDict] = json.loads(
-        (Path(save_folder) / "plaintext_fixture-000001.json").read_text()
-    )
-    assert exported_json[0]["model"] == FULLTEXT_DJANGO_MODEL
-    assert exported_json[0]["pk"] == 5
-    # assert "DRAPER & OUTFITTER" in exported_json[0]["fields"]["text"]
-    first_lwm_plaintext_json_dict = lwm_plaintext_json_dict_factory()
-    if not platform.startswith("win"):
-        assert (
-            exported_json[0]["fields"]["text_path"]
-            == first_lwm_plaintext_json_dict["fields"]["text_path"]
+
+    if not run:
+        assert not Path(save_folder).exists()
+    else:
+        # The 'Extracting:' log can fail when parallel test running
+        # for message in ("Extract path:", "bl_lwm", "Extracting:"):
+        for message in ("Extract path:", "bl_lwm"):
+            assert message in result.stdout
+        exported_json: list[FixtureDict] = json.loads(
+            (Path(save_folder) / "plaintext_fixture-000001.json").read_text()
         )
-    assert exported_json[0]["fields"]["text_path"] == str(
-        first_lwm_plaintext_json_dict["fields"]["text_path"]
-    )
-    assert exported_json[0]["fields"]["text_compressed_path"] == str(
-        first_lwm_plaintext_json_dict["fields"]["text_compressed_path"]
-    )
-    assert (
-        exported_json[0]["fields"]["updated_at"]
-        == exported_json[0]["fields"]["updated_at"]
-    )
+        assert exported_json[0]["model"] == FULLTEXT_DJANGO_MODEL
+        assert exported_json[0]["pk"] == 5
+        # assert "DRAPER & OUTFITTER" in exported_json[0]["fields"]["text"]
+        first_lwm_plaintext_json_dict = lwm_plaintext_json_dict_factory()
+        if not platform.startswith("win"):
+            assert (
+                exported_json[0]["fields"]["text_path"]
+                == first_lwm_plaintext_json_dict["fields"]["text_path"]
+            )
+        assert exported_json[0]["fields"]["text_path"] == str(
+            first_lwm_plaintext_json_dict["fields"]["text_path"]
+        )
+        assert exported_json[0]["fields"]["text_compressed_path"] == str(
+            first_lwm_plaintext_json_dict["fields"]["text_compressed_path"]
+        )
+        assert (
+            exported_json[0]["fields"]["updated_at"]
+            == exported_json[0]["fields"]["updated_at"]
+        )
 
 
 def test_plaintext_cli_empty_path(bl_lwm) -> None:
@@ -94,7 +101,7 @@ def test_plaintext_cli_empty_path(bl_lwm) -> None:
     (
         ("--dry-run", "n\nn\nn\nn\n"),
         ("--dry-run", "n\ny\nn\n"),
-        ("--no-dry-run", "n\n"),
+        ("--run", "n\n"),
     ),
 )
 def test_rename_cli(
@@ -126,7 +133,7 @@ def test_rename_cli(
         assert str(path.name) in result.stdout
     if run_type == "--dry-run" and "n" not in input:
         assert not output_path.is_dir()
-    if run_type == "--no-dry-run" or "y" in input:
+    if run_type == "--run" or "y" in input:
         assert output_path.is_dir()
         for i, path in enumerate(tmp_json_fixtures):
             original_file_name: Path = Path(Path(path).name)

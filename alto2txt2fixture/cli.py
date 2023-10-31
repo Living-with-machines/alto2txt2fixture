@@ -43,6 +43,10 @@ FILE_RENAME_TABLE_TITLE_DEFAULT: Final[str] = "Current to New File Names"
 @cli.command()
 def plaintext(
     path: Annotated[Path, typer.Argument(help="Path to raw plaintext files")],
+    run: Annotated[
+        bool,
+        typer.Option("--run/--dry-run", help="Whether to execute"),
+    ] = False,
     save_path: Annotated[
         Path, typer.Option(help="Path to save json export files")
     ] = Path(DEFAULT_PLAINTEXT_FIXTURE_OUTPUT),
@@ -121,6 +125,8 @@ def plaintext(
         else:
             return
         plaintext_fixture.info()
+    if not run:
+        raise typer.Exit()
     plaintext_fixture.extract_compressed(
         overwite_extracts=clear_extract_path,
         use_saved_if_exists=skip_extract,
@@ -162,7 +168,9 @@ def rename(
         int, typer.Option(help="Digits to pad file name")
     ] = FILE_NAME_0_PADDING_DEFAULT,
     prefix: Annotated[str, typer.Option(help="Prefix for new file names")] = "",
-    dry_run: Annotated[bool, typer.Option(help="Show changes without applying")] = True,
+    run: Annotated[
+        bool, typer.Option("--run/--dry-run", help="Whether to apply changes")
+    ] = False,
     compress: Annotated[bool, typer.Option(help="Whether to compress files")] = False,
     compress_format: Annotated[
         ArchiveFormatEnum,
@@ -234,7 +242,7 @@ def rename(
     )
     console.print(file_names_table)
 
-    if dry_run:
+    if not run:
         if not force:
             renumber = Confirm.ask(
                 f"Copy {'and compress ' if compress else ''}"
@@ -249,6 +257,8 @@ def rename(
                     f"\n'{compress_path}'\n",
                     default="n",
                 )
+        else:
+            typer.Exit()
     if renumber:
         copy_dict_paths(paths_dict)
     if compress:
