@@ -162,7 +162,7 @@ class PlainTextFixture:
         >>> logger_initial_level: int = logger.level
         >>> logger.setLevel(INFO)
         >>> plaintext_bl_lwm = PlainTextFixture(
-        ...     data_provider_code='bl_lwm',
+        ...     data_provider_code='bl-lwm',
         ...     path=path,
         ...     compressed_glob_regex="*_plaintext.zip",
         ...     )
@@ -170,7 +170,7 @@ class PlainTextFixture:
         <PlainTextFixture(path='...bl_lwm')>
         >>> plaintext_bl_lwm.info()
         <BLANKLINE>
-        ...PlainTextFixture for 2 'bl_lwm' files...
+        ...PlainTextFixture for 2 'bl-lwm' files...
         ┌─────────────────────┬────────────────────────────────...┐
         │ Path                │ '...bl_lwm'                    ...│
         │ Compressed Files    │ '...bl_lwm...0003079-test_plain...│
@@ -292,10 +292,10 @@ class PlainTextFixture:
             ```pycon
             >>> hmd_plaintext_fixture = PlainTextFixture(
             ...     path=".",
-            ...     data_provider_code="bl_hmd")
+            ...     data_provider_code="bl-hmd")
             >>> table = hmd_plaintext_fixture.info_table
             >>> table.title
-            "PlainTextFixture for 0 'bl_hmd' files"
+            "PlainTextFixture for 0 'bl-hmd' files"
 
             ```
 
@@ -344,12 +344,12 @@ class PlainTextFixture:
             ```pycon
             >>> bl_hmd = PlainTextFixture(
             ...     path=".",
-            ...     data_provider_code="bl_hmd")
+            ...     data_provider_code="bl-hmd")
             >>> bl_hmd.data_provider_name
             'Heritage Made Digital'
             >>> bl_lwm = PlainTextFixture(
             ...     path='.',
-            ...     data_provider=NEWSPAPER_DATA_PROVIDER_CODE_DICT['bl_lwm'],
+            ...     data_provider=NEWSPAPER_DATA_PROVIDER_CODE_DICT['bl-lwm'],
             ...     )
             >>> bl_lwm.data_provider_name
             'Living with Machines'

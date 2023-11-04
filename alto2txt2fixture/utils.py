@@ -608,7 +608,7 @@ def dict_from_list_fixture_fields(
         >>> fixture_dict['hmd']['fields'][DATA_PROVIDER_INDEX]
         'hmd'
         >>> fixture_dict['hmd']['fields']['code']
-        'bl_hmd'
+        'bl-hmd'
 
         ```
     """
@@ -730,7 +730,7 @@ def fixture_fields(
         >>> hmd_dict: dict[str, Any] = fixture_fields(
         ...     NEWSPAPER_COLLECTION_METADATA[1], as_dict=True)
         >>> hmd_dict['code']
-        'bl_hmd'
+        'bl-hmd'
         >>> hmd_dict['pk']
         2
         >>> hmd_dict = fixture_fields(

@@ -109,7 +109,7 @@ def bl_lwm_plaintext(bl_lwm) -> Generator[PlainTextFixture, None, None]:
     chdir(bl_lwm.parent)
     bl_lwm_fixture: PlainTextFixture = PlainTextFixture(
         path=Path(bl_lwm.name),
-        data_provider_code="bl_lwm",
+        data_provider_code="bl-lwm",
     )
     yield bl_lwm_fixture
 

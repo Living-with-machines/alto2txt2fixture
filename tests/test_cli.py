@@ -40,7 +40,7 @@ def test_plaintext_cli(
             "--save-path",
             save_folder,
             "--data-provider-code",
-            "bl_lwm",
+            "bl-lwm",
             "--initial-pk",
             5,
             "--log-level",

@@ -1,7 +1,7 @@
 from typing import Any, Literal, NamedTuple, TypedDict
 
 LEGACY_NEWSPAPER_OCR_FORMATS = Literal["bna", "hmd", "jisc", "lwm"]
-NEWSPAPER_OCR_FORMATS = Literal["fmp", "bl_hmd", "jisc", "bl_lwm"]
+NEWSPAPER_OCR_FORMATS = Literal["fmp", "bl-hmd", "jisc", "bl-lwm"]
 
 
 class dotdict(dict):

@@ -326,7 +326,7 @@ def show_fixture_tables(
         ['pk', 'name', 'code', 'legacy_code', 'collection', 'source_note']
         >>> fixture_tables = show_fixture_tables(settings)
         <BLANKLINE>
-        ...dataprovider...Heritage...│ bl_hmd...│ hmd...
+        ...dataprovider...Heritage...│ bl-hmd...│ hmd...
 
         ```
 
