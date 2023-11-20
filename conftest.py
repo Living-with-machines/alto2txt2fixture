@@ -25,9 +25,13 @@ MODULE_PATH: Path = Path().absolute()
 BADGE_PATH: Path = Path("docs") / "img" / "coverage.svg"
 
 LWM_PLAINTEXT_FIXTURE_FOLDER: Final[Path] = Path("bl_lwm")
+HMD_FIXTURE_FOLDER: Final[Path] = Path("bl_hmd")
 LWM_PLAINTEXT_FIXTURE: Final[Path] = (
     MODULE_PATH / "tests" / LWM_PLAINTEXT_FIXTURE_FOLDER
 )
+HMD_FIXTURE_PATH: Path = (
+    MODULE_PATH / "tests" / HMD_FIXTURE_FOLDER
+)  # "0002645_plaintext.zip"
 LWM_FIRST_PLAINTEXT_FIXTURE_ZIP_FILE_NAME: Final[PathLike] = Path(
     "0003079-test_plaintext.zip"
 )
@@ -36,15 +40,21 @@ LWM_FIRST_PLAINTEXT_FIXTURE_EXTRACTED_PATH: Final[PathLike] = Path(
 )
 LWM_OUTPUT_FOLDER: Final[Path] = Path("lwm_test_output")
 TEST_EXTRACT_SUBDIR: Final[Path] = Path("test-extracted")
-# HMD_PLAINTEXT_FIXTURE: Path = (
-#     Path("tests") / "bl_hmd"
-# )  # "0002645_plaintext.zip"
+
 
 # @pytest.fixture
-# l def hmd_metadata_fixture() -> Path:
-#     """Path for 0002645 1853 metadata fixture."""
-#     return Path("tests") / "0002645_metadata.zip"
-#
+@pytest.fixture
+def bl_hmd(tmp_path) -> Generator[Path, None, None]:
+    yield copytree(HMD_FIXTURE_PATH, tmp_path / HMD_FIXTURE_FOLDER)
+    rmtree(tmp_path / HMD_FIXTURE_FOLDER)
+
+
+@pytest.fixture
+def bl_hmd_meta(bl_hmd) -> Generator[Path, None, None]:
+    """Path for '0002645-1853' metadata fixture."""
+    yield bl_hmd / "metadata" / "0002645_metadata.zip"
+
+
 #
 # @pytest.fixture
 # def hmd_plaintext_fixture() -> Path:

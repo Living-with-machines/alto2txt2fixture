@@ -1102,7 +1102,7 @@ class PlainTextFixture:
             else:
                 raise ValueError(
                     f"'self.data_provider_code' {self.data_provider_code} "
-                    f"not in 'self.data_provider_code_dict'."
+                    f"not in 'self.data_provider_code_dict'. "
                     f"Available 'codes': {self.data_provider_code_dict.keys()}"
                 )
         else:

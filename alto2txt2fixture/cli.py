@@ -9,6 +9,8 @@ from rich.prompt import Confirm, Prompt
 from rich.table import Table
 from typing_extensions import Annotated
 
+from . import create_adjacent_tables as create_adj
+from .parser import parse
 from .plaintext import (
     DEFAULT_EXTRACTED_SUBDIR,
     DEFAULT_INITIAL_PK,
@@ -16,7 +18,13 @@ from .plaintext import (
     DEFAULT_PLAINTEXT_FIXTURE_OUTPUT,
     PlainTextFixture,
 )
-from .settings import DATA_PROVIDER_INDEX, SETUP_TITLE, settings
+from .router import route
+from .settings import (
+    DATA_PROVIDER_INDEX,
+    NEWSPAPER_DATA_PROVIDER_CODE_DICT,
+    SETUP_TITLE,
+    settings,
+)
 from .types import dotdict
 from .utils import (
     COMPRESSED_PATH_DEFAULT,
@@ -24,9 +32,11 @@ from .utils import (
     FILE_NAME_0_PADDING_DEFAULT,
     ArchiveFormatEnum,
     check_newspaper_collection_configuration,
+    clear_cache,
     compress_fixture,
     console,
     copy_dict_paths,
+    export_fixtures,
     free_hd_space_in_GB,
     gen_fixture_tables,
     glob_path_rename_by_0_padding,
@@ -91,9 +101,15 @@ def plaintext(
     log_level: Annotated[
         int, typer.Option(help="Set logging level for debugging")
     ] = WARNING,
+    # legacy_codes: Annotated[
+    #     bool, typer.Option(help="Whether to legacy (backwards compatibler) data provider codes")
+    #     ] = True,
 ) -> None:
     """Create a PlainTextFixture and save to `save_path`."""
     logger.level = log_level
+    # if legacy_codes and data_provider_code in settings.NEWSPAPER_DATA_PROVIDER_CODE_DICT:
+    #     data_provider_code = settings.NEWSPAPER_COLLECTION_METADATA[data_provider_code]['legacy_code']
+
     plaintext_fixture = PlainTextFixture(
         path=path,
         data_provider_code=data_provider_code,
@@ -273,6 +289,149 @@ def rename(
             if delete_uncompressed and renumber:
                 console.print(f"Deleting {new_path}")
                 Path(new_path).unlink()
+
+
+@cli.command()
+def metadata(
+    collections: Annotated[
+        list[str], typer.Option("--collections", "-c", help="Set collections")
+    ] = settings.COLLECTIONS,
+    mountpoint: Annotated[
+        Path, typer.Option("--mountpoint", "-m", help="Mountpoint of xml files")
+    ] = Path(settings.MOUNTPOINT),
+    output: Annotated[
+        Path, typer.Option("--output", "-o", help="Set an output directory")
+    ] = Path(settings.OUTPUT),
+    run: Annotated[
+        bool,
+        typer.Option("--run/--dry-run", help="Whether to execute"),
+    ] = False,
+    print_fixture_tables: Annotated[
+        bool,
+        typer.Option(
+            "--show-fixture-tables",
+            "-f",
+            help="Print included fixture table configurations",
+        ),
+    ] = True,
+    export_fixture_tables: Annotated[
+        bool,
+        typer.Option(
+            "--export-fixture-tables",
+            help="Export fixture tables prior to data processing",
+        ),
+    ] = True,
+    # data_provider_index: Annotated[str, typer.Option("--data-provider-field", help="Key for indexing DataProvider records")] = DATA_PROVIDER_INDEX,
+    # legacy_codes: Annotated[
+    #     bool, typer.Option(help="Whether to legacy (backwards compatibler) data provider codes")
+    #     ] = True,
+    use_legacy_codes: Annotated[
+        bool,
+        typer.Option(
+            help="Whether to legacy (backwards compatibler) data provider codes"
+        ),
+    ] = True,
+) -> None:
+    """Manage running newspaper `XML` to `JSON` conversion.
+
+    The core opitions for `XML` processing are:
+
+    - `collections`
+    - `output`
+    - `mountpoint`
+
+    If any of these arguments are specified, they will be used, otherwise they
+    will default to the values in the `settings` module.
+
+    The `show_setup` function is then called to display the configurations
+    being used.
+
+    The `route` function is then called to route the alto2txt files into
+    subdirectories with structured files.
+
+    The `parse` function is then called to parse the resulting JSON files.
+
+    Finally, the `clear_cache` function is called to clear the cache
+    (pending the user's confirmation).
+
+    Arguments:
+        collections: Which of the pre-configured `XML` collections to process.
+        output: Which folder to save `JSON` fixtures to
+        mountpoint: Path to `XML` files to process
+        print_fixture_tables: Show a table of fixtures used, defaults to `DataProvider`
+        export_fixture_tables: Whether to export fixture tables prior to processing.
+        use_legacy_codes: Allow using legacy code spec
+
+    Returns:
+        None
+    """
+    if use_legacy_codes:
+        collections = [
+            NEWSPAPER_DATA_PROVIDER_CODE_DICT[collection]["fields"]["legacy_code"]
+            for collection in collections
+        ]
+    show_setup(
+        COLLECTIONS=collections,
+        OUTPUT=output,
+        CACHE_HOME=settings.CACHE_HOME,
+        MOUNTPOINT=mountpoint,
+        JISC_PAPERS_CSV=settings.JISC_PAPERS_CSV,
+        REPORT_DIR=settings.REPORT_DIR,
+        MAX_ELEMENTS_PER_FILE=settings.MAX_ELEMENTS_PER_FILE,
+    )
+
+    # if print_fixture_tables:
+    #     # Show a table of fixtures used, defaults to DataProvider Table
+    #     show_fixture_tables(settings, data_provider_index=data_provider_index)
+
+    if export_fixture_tables:
+        export_fixtures(
+            fixture_tables=settings.FIXTURE_TABLES,
+            path=output,
+            formats=settings.FIXTURE_TABLES_FORMATS,
+        )
+
+    if run:
+        # Routing alto2txt into subdirectories with structured files
+        route(
+            collections=collections,
+            cache_home=str(settings.CACHE_HOME),
+            mountpoint=str(mountpoint),
+            jisc_papers_path=str(settings.JISC_PAPERS_CSV),
+            report_dir=str(settings.REPORT_DIR),
+        )
+
+        # Parsing the resulting JSON files
+        parse(
+            collections=collections,
+            cache_home=str(settings.CACHE_HOME),
+            output=str(output),
+            max_elements_per_file=int(settings.MAX_ELEMENTS_PER_FILE),
+        )
+
+        clear_cache(dir=str(settings.CACHE_HOME))
+
+
+@cli.command()
+def adj_metadata(
+    over_write: Annotated[
+        bool, typer.Option("--over-write", "-f", help="Overwrite local data files")
+    ] = False,
+    output_path: Annotated[
+        Path, typer.Option("--output", "-o", help="Set output directory")
+    ] = Path(create_adj.OUTPUT),
+) -> list[os.PathLike]:
+    """Download, process, link and export `Mitchells` and `Gazetteer` fixtures.
+
+    Note:
+        This will require access to `https://zooniversedata.blob.core.windows.net/downloads/`.
+    """
+    return create_adj.run(
+        files_dict={},
+        files_to_download_overwrite=over_write,
+        saved=create_adj.SAVED,
+        output_path=output_path,
+    )
 
 
 # Reset logger level to `utils` to ease testing

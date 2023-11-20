@@ -8,7 +8,7 @@ from typing import Callable
 import pytest
 from typer.testing import CliRunner
 
-from alto2txt2fixture.cli import COMPRESSED_PATH_DEFAULT, cli, rename
+from alto2txt2fixture.cli import COMPRESSED_PATH_DEFAULT, cli, metadata, rename
 from alto2txt2fixture.plaintext import FULLTEXT_DJANGO_MODEL, PlainTextFixtureDict
 from alto2txt2fixture.types import FixtureDict
 from alto2txt2fixture.utils import rename_by_0_padding
@@ -169,3 +169,68 @@ def test_rename_compress(
         zip_path: Path = path.parent / COMPRESSED_PATH_DEFAULT / (path.name + ".zip")
         assert zip_path.is_file()
         assert zip_path.name in stdout
+
+
+@pytest.mark.parametrize(
+    "export_fixture_tables, test_cli, run",
+    (
+        (True, False, False),
+        (False, False, False),
+        # pytest.param(True, True, False, marks=pytest.mark.xfail(reason='known issue with cli')),
+        # pytest.param(False, True, False, marks=pytest.mark.xfail(reason='known issue with cli')),
+    ),
+)
+def test_metadata_func(
+    bl_hmd_meta,
+    capsys,
+    export_fixture_tables: bool,
+    test_cli: bool,
+    run: bool,
+    tmp_path: Path,
+) -> None:
+    """Test running `metadata` `json` export as a function."""
+    test_data_provider_file_name_prefix: str = "test-dataprovider-000001"
+    chdir(bl_hmd_meta.parent)
+    test_out: Path = (
+        Path("test-func-hmd-meta-out")
+        if not test_cli
+        else Path("test-cli-hmd-meta-out")
+    )
+    if test_cli:
+        result = runner.invoke(
+            cli,
+            [
+                "metadata",
+                "--mountpoint",
+                bl_hmd_meta.parent,
+                "--output",
+                test_out,
+                "--export-fixture-tables",
+                export_fixture_tables,
+                "--no-use-legacy-codes",
+                "--run" if run else "--dry-run",
+            ],
+            # input="y\n..\nn\n",
+        )
+        assert result.exit_code == 0
+    else:
+        metadata(
+            collections=["bl-hmd"],
+            mountpoint=bl_hmd_meta.parent,
+            output=test_out,
+            export_fixture_tables=export_fixture_tables,
+        )
+    stdout: str = capsys.readouterr().out
+    assert str(test_out) in stdout
+    assert str("hmd") in stdout  # Currently still uses legacy_codes
+    for format in ".json", ".csv":
+        file_path = Path(test_out / (test_data_provider_file_name_prefix + format))
+        assert file_path.exists() == export_fixture_tables
+    chdir(tmp_path)
+
+
+# @pytest.mark.download
+# @pytest.mark.slow
+# @pytest.mark.xfail("not able to test without mock data")
+# def test_adjacent_cli(adj_test_path) -> None:
+#     """Test using/invoking cli `adj_metadata`."""
