@@ -376,7 +376,6 @@ class DataSource:
         >>> df = rsd_1851.read()
         <BLANKLINE>
         ...'census/data/demographics_england_wales_2015.csv'...
-        ...not found...
         >>> df.columns[:5].tolist()
         ['CEN_1851', 'REGCNTY', 'REGDIST', 'SUBDIST', 'POP_DENS']
         >>> rsd_1851.delete()
