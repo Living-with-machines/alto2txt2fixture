@@ -42,7 +42,7 @@ repos:
         args: ["--check", "--no-update"]
 
   - repo: https://github.com/hadialqattan/pycln
-    rev: v2.2.2
+    rev: v2.4.0
     hooks:
       - id: pycln
         args: [--config=pyproject.toml]

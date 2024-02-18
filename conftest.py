@@ -40,6 +40,9 @@ LWM_FIRST_PLAINTEXT_FIXTURE_EXTRACTED_PATH: Final[PathLike] = Path(
 )
 LWM_OUTPUT_FOLDER: Final[Path] = Path("lwm_test_output")
 TEST_EXTRACT_SUBDIR: Final[Path] = Path("test-extracted")
+DEMOGRAPHICS_ENGLAND_WALES_1851: Final[Path] = Path(
+    "census/data/demographics_england_wales_2015.csv"
+)
 
 
 # @pytest.fixture
@@ -210,11 +213,22 @@ def text_fixture_path_dict(json_export_filename: str) -> dict[str, str]:
     return {"text_fixture_path": json_export_filename}
 
 
+@pytest.fixture
+def demographics_1851_local_path() -> Path:
+    """Test path to save example demographics data."""
+    return DEMOGRAPHICS_ENGLAND_WALES_1851
+
+
 @pytest.fixture(autouse=True)
 def doctest_auto_fixtures(
-    doctest_namespace: dict, is_platform_win: bool, is_platform_darwin: bool
+    doctest_namespace: dict,
+    is_platform_win: bool,
+    is_platform_darwin: bool,
+    demographics_1851_local_path: Path,
 ) -> None:
     """Elements to add to default `doctest` namespace."""
+    if demographics_1851_local_path.exists():
+        demographics_1851_local_path.unlink()
     doctest_namespace["is_platform_win"] = is_platform_win
     doctest_namespace["is_platform_darwin"] = is_platform_darwin
     doctest_namespace["pprint"] = pprint
@@ -222,6 +236,7 @@ def doctest_auto_fixtures(
     doctest_namespace["DEBUG"] = DEBUG
     doctest_namespace["INFO"] = INFO
     doctest_namespace["WARNING"] = WARNING
+    doctest_namespace["demographics_1851_local_path"] = demographics_1851_local_path
 
 
 def pytest_sessionfinish(session, exitstatus):

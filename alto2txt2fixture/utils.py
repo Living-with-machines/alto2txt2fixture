@@ -3,6 +3,7 @@ import gc
 import json
 import logging
 from collections import OrderedDict
+from dataclasses import dataclass
 from enum import StrEnum
 from os import PathLike, getcwd, sep
 from os.path import normpath
@@ -11,6 +12,7 @@ from pprint import pformat
 from re import findall
 from shutil import (
     copyfile,
+    copyfileobj,
     disk_usage,
     get_archive_formats,
     get_unpack_formats,
@@ -18,6 +20,7 @@ from shutil import (
 )
 from typing import (
     Any,
+    Callable,
     Final,
     Generator,
     Hashable,
@@ -29,13 +32,16 @@ from typing import (
     TypeAlias,
     overload,
 )
+from urllib.error import URLError
+from urllib.request import urlopen
 
 import pytz
 from numpy import array_split
-from pandas import DataFrame
+from pandas import DataFrame, Series
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.table import Table
+from validators.url import url as validate_url
 
 from .log import error, info, warning
 from .settings import (
@@ -84,6 +90,7 @@ COMPRESSED_PATH_DEFAULT: Final[Path] = Path("compressed")
 JSON_FILE_EXTENSION: str = "json"
 JSON_FILE_GLOB_STRING: str = f"**/*{JSON_FILE_EXTENSION}"
 
+DEFAULT_MAX_LOG_STR_LENGTH: Final[int] = 30
 MAX_TRUNCATE_PATH_STR_LEN: Final[int] = 30
 INTERMEDIATE_PATH_TRUNCATION_STR: Final[str] = "."
 
@@ -94,6 +101,10 @@ PADDING_0_REGEX_DEFAULT: str = r"\b\d*\b"
 
 CODE_SEPERATOR_CHAR: Final[str] = "-"
 FILE_NAME_SEPERATOR_CHAR: Final[str] = "_"
+DEFAULT_TRUNCATION_CHARS: Final[str] = "..."
+"""Default characters to trail a truncated string."""
+
+DEFAULT_APP_DATA_FOLDER: Final[Path] = Path("data")
 
 
 @overload
@@ -127,6 +138,339 @@ def get_now(as_str: bool = False) -> datetime.datetime | str:
 
 
 NOW_str = get_now(as_str=True)
+
+
+def _short_text_trunc(text: str, trail_str: str = DEFAULT_TRUNCATION_CHARS) -> str:
+    """Return a `str` truncated to 15 characters followed by `trail_str`."""
+    return truncate_str(
+        text=text, trail_str=trail_str + path_or_str_suffix(text), max_length=15
+    )
+
+
+def truncate_str(
+    text: str,
+    max_length: int = DEFAULT_MAX_LOG_STR_LENGTH,
+    trail_str: str = DEFAULT_TRUNCATION_CHARS,
+) -> str:
+    """If `len(text) > max_length` return `text` followed by `trail_str`.
+
+    Args:
+        text: `str` to truncate
+        max_length: maximum length of `text` to allow, anything belond truncated
+        trail_str: what is appended to the end of `text` if truncated
+
+    Returns:
+        `text` truncated to `max_length` (if longer than `max_length`),
+        appended with `tail_str`
+
+    Example:
+        ```pycon
+        >>> truncate_str('Standing in the shadows of love.', 15)
+        'Standing in the...'
+
+        ```
+    """
+    return text[:max_length] + trail_str if len(text) > max_length else text
+
+
+def path_or_str_suffix(
+    str_or_path: str | PathLike,
+    max_extension_len: int = 10,
+    force: bool = False,
+    split_str: str = ".",
+) -> str:
+    """Return suffix of `str_or_path`, else `''`.
+
+    Args:
+        str_or_path: `str` or `PathLike` instance to extract `suffix` from.
+        max_extension_len: Maximum `extension` allowed for `suffix` to extract.
+        force: `bool` for overrised `max_extension_len` constraint.
+        split_str: `str` to split `str_or_path` by, usually `.` for file path.
+
+    Returns:
+        `str` extracted from the end of `str_or_path`.
+
+    Example:
+        ```pycon
+        >>> path_or_str_suffix('https://lwmd.livingwithmachines.ac.uk/file.bz2')
+        'bz2'
+        >>> path_or_str_suffix('https://lwmd.livingwithmachines.ac.uk/file')
+        <BLANKLINE>
+        ...''...
+        >>> path_or_str_suffix(Path('cat') / 'dog' / 'fish.csv')
+        'csv'
+        >>> path_or_str_suffix(Path('cat') / 'dog' / 'fish')
+        ''
+
+        ```
+    """
+    suffix: str = ""
+    if isinstance(str_or_path, Path):
+        if str_or_path.suffix:
+            suffix = str_or_path.suffix[1:]  # Skip the `.` for consistency
+        else:
+            """"""
+    else:
+        split_str_or_path: list[str] = str(str_or_path).split(split_str)
+        if len(split_str_or_path) > 1:
+            suffix = split_str_or_path[-1]
+            if "/" in suffix:
+                logger.debug(
+                    f"Split via {split_str} of "
+                    f"{str_or_path} has a `/` `char`. "
+                    "Returning ''",
+                )
+                return ""
+        else:
+            logger.debug(
+                f"Can't split via {split_str} in "
+                f"{_short_text_trunc(str(str_or_path))}",
+            )
+            return ""
+    if len(suffix) > max_extension_len:
+        if force:
+            console.log(
+                f"Force return of suffix {suffix}",
+            )
+            return suffix
+        else:
+            console.log(
+                f"suffix {_short_text_trunc(suffix)} too long "
+                f"(max={max_extension_len})",
+            )
+            return ""
+    else:
+        return suffix
+
+
+def download_file(
+    local_path: PathLike,
+    url: str,
+    force: bool = False,
+) -> bool:
+    """If `force` or not available, download `url` to `local_path`.
+
+    Example:
+        ```pycon
+        >>> jpg_url: str = "https://commons.wikimedia.org/wiki/File:Wassily_Leontief_1973.jpg"
+        >>> local_path: Path = Path('test.jpg')
+        >>> local_path.unlink(missing_ok=True)  # Ensure png deleted
+        >>> success: bool = download_file(local_path, jpg_url)
+        <BLANKLINE>
+        ...'test.jpg' not found, downloading ...wiki/File:Wassily_Leonti..._1973.jpg'...
+        ...Saved to 'test.jpg'...
+        >>> success
+        True
+        >>> local_path.unlink()  # Delete downloaded jpg
+
+        ```
+    """
+    local_path = Path(local_path)
+    if not validate_url(url):
+        console.log(
+            f"'{url}' is not a valid url",  # terminal_print=terminal_print, LEVEL=ERROR
+        )
+        return False
+    if not local_path.exists() or force:
+        if force:
+            console.log(
+                f"Overwriting '{local_path}' by downloading from '{url}'",
+            )
+        else:
+            console.log(
+                f"'{local_path}' not found, downloading from '{url}'",
+            )
+        try:
+            with (
+                urlopen(url) as response,
+                open(str(local_path), "wb") as out_file,
+            ):
+                copyfileobj(response, out_file)
+        except IsADirectoryError:
+            console.log(
+                f"'{local_path}' must be a file, not a directory",
+            )
+            return False
+        except URLError:
+            console.log(
+                f"Download error (likely no internet connection): '{url}'",
+            )
+            return False
+        else:
+            console.log(f"Saved to '{local_path}'")
+    if not local_path.is_file():
+        console.log(
+            f"'{local_path}' is not a file",
+        )
+        return False
+    if not local_path.stat().st_size > 0:
+        console.log(
+            f"'{local_path}' from '{url}' is empty",
+        )
+        return False
+    else:
+        logger.debug(
+            f"'{url}' file available from '{local_path}'",
+        )
+        return True
+
+
+def app_data_path(app_name: str, data_path: PathLike = DEFAULT_APP_DATA_FOLDER) -> Path:
+    """Return `app_name` data `Path` and ensure exists.
+
+    Example:
+        ```pycon
+        >>> tmp_path: Path = getfixture("tmp_path")
+        >>> chdir(tmp_path)
+        >>> app_data_path('mitchells')
+        PosixPath('mitchells/data')
+
+        ```
+    """
+    path = Path(app_name) / Path(data_path)
+    path.mkdir(exist_ok=True, parents=True)
+    return path
+
+
+class DataSourceDownloadError(Exception):
+    ...
+
+
+@dataclass
+class DataSource:
+    """Class to manage storing/deleting data files.
+
+    Attr:
+        file_name: Name of file (not local path).
+        app: Name of app the file is for to generate a local path.
+        url: Url to dowload file from.
+        read_func: Function to call on downloaded file.
+        description: Text descriping the data source.
+        citation: An optional link (ideally DOI) for citation.
+        license: License data is available through.
+        _download_exception: Exception to raise if download fails.
+        _str_truncation_length: Maximum lenght of `str` to use in
+            print outs.
+
+    Example:
+        ```pycon
+        >>> tmp_path: Path = getfixture("tmp_path")
+        >>> chdir(tmp_path)
+        >>> from pandas import read_csv
+
+        >>> rsd_1851: DataSource = DataSource(
+        ...     file_name=demographics_1851_local_path.name,
+        ...     app="census",
+        ...     url="https://reshare.ukdataservice.ac.uk/853547/4/1851_RSD_data.csv",
+        ...     read_func=read_csv,
+        ...     description="Demographic and socio-economic variables for "
+        ...                 "Registration Sub-Districts (RSDs) in England and Wales, "
+        ...                 "1851",
+        ...     citation="https://dx.doi.org/10.5255/UKDA-SN-853547",
+        ...     license="http://creativecommons.org/licenses/by/4.0/",
+        ... )
+        >>> assert rsd_1851.local_path == demographics_1851_local_path
+        >>> df = rsd_1851.read()
+        [...]...'census/data/demographics_england_wales_2015.csv'
+        ...not found...
+        >>> df.columns[:5].tolist()
+        ['CEN_1851', 'REGCNTY', 'REGDIST', 'SUBDIST', 'POP_DENS']
+        >>> rsd_1851.delete()
+        Deleting local copy of 'de...csv'...
+
+        ```
+    """
+
+    file_name: PathLike | str
+    app: str
+    url: str
+    read_func: Callable[[PathLike], DataFrame | Series]
+    description: str | None = None
+    citation: str | None = None
+    license: str | None = None
+    _download_exception: DataSourceDownloadError | None = None
+    _str_truncation_length: int = 15
+
+    def __str__(self) -> str:
+        """Readable description of which `file_name` from which `app`."""
+        return f"'{_short_text_trunc(str(self.file_name))}' " f"for `{self.app}`"
+
+    def __repr__(self) -> str:
+        """Detailed, truncated reprt of `file_name` for `app`."""
+        return (
+            f"{self.__class__.__name__}({self.app!r}, "
+            f"'{_short_text_trunc(str(self.file_name))}')"
+        )
+
+    @property
+    def url_suffix(self) -> str:
+        """Return suffix of `self.url` or None if not found."""
+        return path_or_str_suffix(self.url)
+
+    @property
+    def _trunc_url_str_suffix(self) -> str:
+        """Return DEFAULT_TRUNCATION_CHARS + `self.url_suffix`."""
+        return DEFAULT_TRUNCATION_CHARS + self.url_suffix
+
+    def _file_name_truncated(self) -> str:
+        """Return truncated `file_name` for logging."""
+        return truncate_str(
+            text=Path(self.file_name).suffix,
+            max_length=self._str_truncation_length,
+            trail_str=self._trunc_url_str_suffix,
+        )
+
+    @property
+    def local_path(self) -> Path:
+        """Return path to store `self.file_name`."""
+        return app_data_path(self.app) / self.file_name
+
+    @property
+    def is_empty(self) -> bool:
+        """Return if `Path` to store `self.file_name` has 0 file size."""
+        return self.local_path.stat().st_size == 0
+
+    @property
+    def is_file(self) -> bool:
+        """Return if `self.local_path` is a file."""
+        return self.local_path.is_file()
+
+    @property
+    def is_local(self) -> bool:
+        """Return if `self.url` is storred locally at `self.file_name`."""
+        return self.is_file and not self.is_empty
+
+    def download(self, force: bool = False) -> bool:
+        """Download `self.url` to save locally at `self.file_name`."""
+        if self.is_local and not force:
+            console.log(f"{self} already downloaded " f"(add `force=True` to override)")
+            return True
+        else:
+            return download_file(self.local_path, self.url)
+
+    def delete(self) -> None:
+        """Delete local save of `self.url` at `self.file_name`.
+
+        Note:
+            No error raised if missing.
+        """
+        if self.is_local:
+            console.log(f"Deleting local copy of {self}.")
+            self.local_path.unlink(missing_ok=True)
+        else:
+            console.info(f"'{self.local_path}' cannot be deleted (not saved locally)")
+
+    def read(self, force: bool = False) -> DataFrame | Series:
+        """Return data in `self.local_path` processed by `self.read_func`."""
+        if not self.is_local:
+            success: bool = self.download(force=force)
+            if not success:
+                self._download_exception = DataSourceDownloadError(
+                    f"Failed to access {self} data from {self.url}"
+                )
+                logger.error(str(self._download_exception))
+        assert self.is_local
+        return self.read_func(self.local_path)
 
 
 def get_key(x: dict = dict(), on: list = []) -> str:
@@ -373,7 +717,6 @@ def write_json(
         'plaintext_fixture-000001.json'
 
         ```
-        `
     """
 
     p = get_path_from(p)
