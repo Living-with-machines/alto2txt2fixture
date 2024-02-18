@@ -354,6 +354,7 @@ class DataSource:
 
     Example:
         ```pycon
+        >>> from os import chdir
         >>> tmp_path: Path = getfixture("tmp_path")
         >>> chdir(tmp_path)
         >>> from pandas import read_csv
