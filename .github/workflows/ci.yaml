@@ -5,9 +5,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, census]
   pull_request:
-    branches: [main]
+    branches: [main, census]
 
 permissions:
   contents: write
