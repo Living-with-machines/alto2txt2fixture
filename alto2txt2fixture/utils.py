@@ -257,7 +257,8 @@ def download_file(
         >>> local_path.unlink(missing_ok=True)  # Ensure png deleted
         >>> success: bool = download_file(local_path, jpg_url)
         <BLANKLINE>
-        ...'test.jpg' not found, downloading ...wiki/File:Wassily_Leonti..._1973.jpg'...
+        ...'test.jpg' not...found...downloading...
+        ...wiki/File:Wassily_Leonti..._1973.jpg'...
         ...Saved to 'test.jpg'...
         >>> success
         True
@@ -268,7 +269,7 @@ def download_file(
     local_path = Path(local_path)
     if not validate_url(url):
         console.log(
-            f"'{url}' is not a valid url",  # terminal_print=terminal_print, LEVEL=ERROR
+            f"'{url}' is not a valid url",
         )
         return False
     if not local_path.exists() or force:
@@ -320,6 +321,7 @@ def app_data_path(app_name: str, data_path: PathLike = DEFAULT_APP_DATA_FOLDER) 
 
     Example:
         ```pycon
+        >>> from os import chdir
         >>> tmp_path: Path = getfixture("tmp_path")
         >>> chdir(tmp_path)
         >>> app_data_path('mitchells')

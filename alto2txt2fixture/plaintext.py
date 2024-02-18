@@ -1040,7 +1040,7 @@ class PlainTextFixture:
             2
             >>> plaintext_lwm._check_and_set_files_attr(force=True)
             <BLANKLINE>
-            ...DEBUG...Force change to...<PlainText...'files'...zip...
+            ...DEBUG...Force change to...<PlainText...zip...
             >>> plaintext_lwm.files
             (...Path('bl_lwm/0003079-test_plaintext.zip'),)
             >>> len(plaintext_lwm)
