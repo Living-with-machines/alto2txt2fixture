@@ -72,6 +72,7 @@ addopts = """
 markers = [
   "slow: slow (deselect with '-m \"not slow\"')",
   "download: requires downloading (deselect with '-m \"not download\"')",
+  "ci_error: sensitive to errors in continuous integration",
 ]
 doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS",]
 log_cli_level = 'DEBUG'

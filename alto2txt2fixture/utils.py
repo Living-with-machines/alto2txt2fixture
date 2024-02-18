@@ -374,7 +374,8 @@ class DataSource:
         ... )
         >>> assert rsd_1851.local_path == demographics_1851_local_path
         >>> df = rsd_1851.read()
-        [...]...'census/data/demographics_england_wales_2015.csv'
+        <BLANKLINE>
+        ...'census/data/demographics_england_wales_2015.csv'...
         ...not found...
         >>> df.columns[:5].tolist()
         ['CEN_1851', 'REGCNTY', 'REGDIST', 'SUBDIST', 'POP_DENS']

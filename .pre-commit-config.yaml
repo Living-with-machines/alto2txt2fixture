@@ -38,8 +38,7 @@ repos:
     rev: "1.6.0" # add version here
     hooks:
       - id: poetry-check
-      - id: poetry-lock
-        args: ["--check", "--no-update"]
+        args: ["--lock"]
 
   - repo: https://github.com/hadialqattan/pycln
     rev: v2.4.0

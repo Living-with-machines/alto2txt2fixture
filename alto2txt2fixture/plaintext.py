@@ -965,7 +965,7 @@ class PlainTextFixture:
             >>> compressed_paths: Path = plaintext_bl_lwm.compress_json_exports(
             ...     format='tar')
             <BLANKLINE>
-            ...Compressing...'...01.json'...to...'tar'...in:...
+            ...Compressing...'...01.json...'...to...'tar'...in:...
             >>> tuple(plaintext_bl_lwm.compressed_json_export_paths)
             (...Path('...plaintext_fixture-000001.json.tar'),)
             >>> compressed_paths == tuple(

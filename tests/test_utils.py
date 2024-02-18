@@ -108,6 +108,7 @@ def test_windows_root_path_truncate(
     assert short_root == correct_win_path_trunc_str
 
 
+@pytest.mark.ci_error
 @pytest.mark.parametrize(
     "compress_files_count, compress_type", ((1, "zip"), (2, "zip"), (1, "tar"))
 )
