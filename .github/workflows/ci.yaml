@@ -34,7 +34,7 @@ jobs:
       - name: Run pre-commit
         uses: pre-commit/action@main
       - name: Run pytest
-        run: poetry run pytest -n auto -m "not download" -m "not ci_error"
+        run: poetry run pytest -n auto -m "not download and not ci_error"
       - name: Archive coverage svg
         uses: actions/upload-artifact@v3
         with:
