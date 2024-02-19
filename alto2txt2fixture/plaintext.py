@@ -922,7 +922,7 @@ class PlainTextFixture:
             >>> compressed_paths: Path = plaintext_bl_lwm.compress_json_exports(
             ...     format='tar')
             <BLANKLINE>
-            ...Compressing...'...01.json'...to...'tar'...in:...
+            ...Compressing...'...01.json...'...to...'tar'...in:...
             >>> compressed_paths
             (...Path('.../plaintext_fixture-000001.json.tar'),)
             >>> logger.setLevel(logger_initial_level)

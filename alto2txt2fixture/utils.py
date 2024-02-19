@@ -1535,7 +1535,7 @@ def compress_fixture(
         ...                                          output_path=tmp_path,
         ...                                          dry_run=True)
         <BLANKLINE>
-        ...Compressing...'...01.json'...to...'zip'...
+        ...Compressing...'...01.json...'...to...'zip'...
         >>> compressed_path.exists()
         False
         >>> compressed_path: Path = compress_fixture(path=json_path,
@@ -2019,11 +2019,11 @@ def dirs_in_path(path: PathLike) -> Generator[Path, None, None]:
         ('test_dir',)
         >>> [(tmp_path / f'new_dir_{i}').mkdir() for i in range(3)]
         [None, None, None]
-        >>> tuple(dir.name for dir in dirs_in_path(tmp_path))
-        ('new_dir_1', 'new_dir_0', 'test_dir', 'new_dir_2')
+        >>> tuple(dir.name for dir in sorted(dirs_in_path(tmp_path)))
+        ('new_dir_0', 'new_dir_1', 'new_dir_2', 'test_dir')
         >>> (tmp_path / 'test_dir' / 'another_dir').mkdir()
-        >>> tuple(dir.name for dir in dirs_in_path(tmp_path))
-        ('new_dir_1', 'new_dir_0', 'test_dir', 'new_dir_2')
+        >>> tuple(dir.name for dir in sorted(dirs_in_path(tmp_path)))
+        ('new_dir_0', 'new_dir_1', 'new_dir_2', 'test_dir')
 
         ```
     """
