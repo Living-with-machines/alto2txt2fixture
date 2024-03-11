@@ -10,9 +10,7 @@ from typing import Callable, Final, Generator
 import pytest
 from coverage_badge.__main__ import main as gen_cov_badge
 
-from alto2txt2fixture.census import (  # , GAZETEER_JSON_FIXTURES, GAZETEER_JSON_FIXTURES_FILES,
-    AdjacentFixturesManager,
-)
+from alto2txt2fixture.census import AdjacentFixturesManager
 from alto2txt2fixture.create_adjacent_tables import OUTPUT, run
 from alto2txt2fixture.plaintext import (
     DEFAULT_INITIAL_PK,
@@ -48,7 +46,6 @@ DEMOGRAPHICS_ENGLAND_WALES_1851: Final[Path] = Path(
 )
 
 
-# @pytest.fixture
 @pytest.fixture
 def bl_hmd(tmp_path) -> Generator[Path, None, None]:
     yield copytree(HMD_FIXTURE_PATH, tmp_path / HMD_FIXTURE_FOLDER)
@@ -61,7 +58,6 @@ def bl_hmd_meta(bl_hmd) -> Generator[Path, None, None]:
     yield bl_hmd / "metadata" / "0002645_metadata.zip"
 
 
-#
 # @pytest.fixture
 # def hmd_plaintext_fixture() -> Path:
 #     """Path for 0002645 1853 plaintext fixture."""
