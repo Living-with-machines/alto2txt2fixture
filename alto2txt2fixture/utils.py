@@ -87,6 +87,7 @@ ZIP_FILE_EXTENSION: Final[ArchiveFormatEnum] = ArchiveFormatEnum.ZIP
 COMPRESSION_TYPE_DEFAULT: Final[ArchiveFormatEnum] = ZIP_FILE_EXTENSION
 COMPRESSED_PATH_DEFAULT: Final[Path] = Path("compressed")
 
+CSV_FILE_EXTENSION: str = "csv"
 JSON_FILE_EXTENSION: str = "json"
 JSON_FILE_GLOB_STRING: str = f"**/*{JSON_FILE_EXTENSION}"
 
@@ -258,7 +259,7 @@ def download_file(
         >>> success: bool = download_file(local_path, jpg_url)
         <BLANKLINE>
         ...'test.jpg' not...found...downloading...
-        ...wiki/File:Wassily_Leonti..._1973.jpg'...
+        ...wiki/File:Wassily_Leonti....jpg...
         ...Saved to 'test.jpg'...
         >>> success
         True
@@ -692,8 +693,7 @@ def write_json(
     Args:
         p: Path to write `json` to
         o: Object to write to `json` file
-        add_created:
-            If set to True will add `created_at` and `updated_at`
+        add_created: If set to True will add `created_at` and `updated_at`
             to the dictionary's fields. If `created_at` and `updated_at`
             already exist in the fields, they will be forcefully updated.
         json_indent:
@@ -1491,9 +1491,10 @@ def compress_fixture(
     output_path: PathLike | str = settings.OUTPUT,
     suffix: str = "",
     format: str | ArchiveFormatEnum = ZIP_FILE_EXTENSION,
-    # base_dir: PathLike | None = None,
     force_overwrite: bool = False,
     dry_run: bool = False,
+    # Below was used as an option in some cases, leaving as a reminder
+    # base_dir: PathLike | None = None,
 ) -> Path:
     """Compress exported `fixtures` files using `make_archive`.
 

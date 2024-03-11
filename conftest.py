@@ -10,6 +10,9 @@ from typing import Callable, Final, Generator
 import pytest
 from coverage_badge.__main__ import main as gen_cov_badge
 
+from alto2txt2fixture.census import (  # , GAZETEER_JSON_FIXTURES, GAZETEER_JSON_FIXTURES_FILES,
+    AdjacentFixturesManager,
+)
 from alto2txt2fixture.create_adjacent_tables import OUTPUT, run
 from alto2txt2fixture.plaintext import (
     DEFAULT_INITIAL_PK,
@@ -219,12 +222,23 @@ def demographics_1851_local_path() -> Path:
     return DEMOGRAPHICS_ENGLAND_WALES_1851
 
 
+@pytest.fixture
+def census_adjacent_fixtures(adjacent_data_run_results) -> AdjacentFixturesManager:
+    """Return an `AdjacentFixturesManager` instance with related results."""
+    return AdjacentFixturesManager(
+        historic_counties=adjacent_data_run_results / "gazetteer.HistoricCounty.csv",
+        admin_counties=adjacent_data_run_results / "gazetteer.AdminCounty.csv",
+        places=adjacent_data_run_results / "gazetteer.Place.csv",
+    )
+
+
 @pytest.fixture(autouse=True)
 def doctest_auto_fixtures(
     doctest_namespace: dict,
     is_platform_win: bool,
     is_platform_darwin: bool,
     demographics_1851_local_path: Path,
+    census_adjacent_fixtures: AdjacentFixturesManager,
 ) -> None:
     """Elements to add to default `doctest` namespace."""
     if demographics_1851_local_path.exists():
@@ -237,6 +251,7 @@ def doctest_auto_fixtures(
     doctest_namespace["INFO"] = INFO
     doctest_namespace["WARNING"] = WARNING
     doctest_namespace["demographics_1851_local_path"] = demographics_1851_local_path
+    doctest_namespace["census_adjacent_fixtures"] = census_adjacent_fixtures
 
 
 def pytest_sessionfinish(session, exitstatus):
