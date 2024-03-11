@@ -14,8 +14,8 @@ from tqdm.rich import tqdm
 from .settings import NEWSPAPER_DATA_PROVIDER_CODE_DICT
 from .types import (
     DataProviderFixtureDict,
-    PlaintextFixtureDict,
-    PlaintextFixtureFieldsDict,
+    PlainTextFixtureDict,
+    PlainTextFixtureFieldsDict,
 )
 from .utils import (
     COMPRESSED_PATH_DEFAULT,
@@ -28,6 +28,9 @@ from .utils import (
     DiskUsageTuple,
     compress_fixture,
     console,
+    dirs_in_path,
+    file_path_to_item_code,
+    files_in_path,
     free_hd_space_in_GB,
     path_globs_to_tuple,
     paths_with_newlines,
@@ -38,9 +41,11 @@ from .utils import (
 
 logger = getLogger("rich")
 
-FULLTEXT_DJANGO_MODEL: Final[str] = "fulltext.fulltext"
+FULLTEXT_DJANGO_MODEL: Final[str] = "newspapers.fulltext"
 
 DEFAULT_EXTRACTED_SUBDIR: Final[PathLike] = Path("extracted")
+
+TEXT_FIXTURE_PATH_FIELD_NAME: Final[str] = "text_fixture_path"
 
 FULLTEXT_FILE_NAME_SUFFIX: Final[str] = "_plaintext"
 FULLTEXT_DEFAULT_PLAINTEXT_ZIP_GLOB_REGEX: Final[
@@ -57,28 +62,28 @@ TRUNC_TAILS_SUBPATH_DEFAULT: int = 1
 SAS_ENV_VARIABLE = "FULLTEXT_SAS_TOKEN"
 
 
-class FulltextPathDict(TypedDict):
-    """A `dict` of `lwmdb.fulltext.models.Fulltext` fixture structure.
+class FullTextPathDict(TypedDict):
+    """A `dict` of `lwmdb.newspapers.models.FullText` fixture structure.
 
     Attributes:
-        path:
-            Plaintext file path.
-        compressed_path:
+        text_path:
+            PlainText file path.
+        text_compressed_path:
             If `path` is within a compressed file,
             `compressed_path` is that source. Else None.
         primary_key:
             An `int >= 1` for a `SQL` table primary key (`pk`).
     """
 
-    path: PathLike
-    compressed_path: PathLike | None
+    text_path: PathLike
+    text_compressed_path: PathLike | None
     primary_key: int
 
 
 @dataclass
 class PlainTextFixture:
 
-    """Manage exporting `plaintext` `alto2txt` results for `lwmdb.fulltext.models.Fulltext`.
+    """Manage exporting `plaintext` for `lwmdb.newspapers.models.FullText`.
 
     Attributes:
         path:
@@ -104,25 +109,30 @@ class PlainTextFixture:
             The name of the `lwmdb` `django` model the fixture is for. This is of
             the form `app_name.model_name`. Following the default config for `lwmdb`:
             ```python
-            FULLTEXT_DJANGO_MODEL: Final[str] = "fulltext.fulltext"
+            FULLTEXT_DJANGO_MODEL: Final[str] = "newspapers.fulltext"
             ```
-            the `fulltext` app has a `fulltext` `model` `class` specified in
-            `lwmdb.fulltext.models.fulltext`. A `sql` table is generated from
-            on that `fulltext` `class` and the `json` `fixture` structure generated
+            the `newspapers` app has a `fulltext` `model` `class` specified in
+            `lwmdb.newspapers.models.fulltext`. A `sql` table is generated from
+            on that `FullText` `class` and the `json` `fixture` structure generated
             from this class is where records will be stored.
 
-        extract_subdir:
-            Folder to extract `self.compressed_files` to.
+        fixture_info: Text to include in the `info` portion for output fixture.
 
-        plaintext_extension:
-            What file extension to use to filter `plaintext` files.
+        include_text_fixture_paths: Include `text_fixture_path` fields in output
+            fixture.
 
-        data_provider_code_dict:
-            A `dict` of metadata for preconfigured `DataProvider` records in `lwmdb`.
+        is_canonical: Set the `canonical` field for output Fixture.
 
-        max_plaintext_per_fixture_file:
-            A maximum number of fixtures per fixture file, designed to configure
-            chunking fixtures.
+        extract_subdir: Folder to extract `self.compressed_files` to.
+
+        plaintext_extension: What file extension to use to
+            filter `plaintext` files.
+
+        data_provider_code_dict: A `dict` of metadata for
+            preconfigured `DataProvider` records in `lwmdb`.
+
+        max_plaintext_per_fixture_file: A maximum number of fixtures per
+            fixture file, designed to configure chunking fixtures.
 
         saved_fixture_prefix:
             A `str` to prefix all saved `json` fixture filenames.
@@ -147,10 +157,12 @@ class PlainTextFixture:
 
     Example:
         ```pycon
+        >>> tmp_path = getfixture('tmp_path')
         >>> path = getfixture('bl_lwm')
+        >>> logger_initial_level: int = logger.level
         >>> logger.setLevel(INFO)
         >>> plaintext_bl_lwm = PlainTextFixture(
-        ...     data_provider_code='bl_lwm',
+        ...     data_provider_code='bl-lwm',
         ...     path=path,
         ...     compressed_glob_regex="*_plaintext.zip",
         ...     )
@@ -158,7 +170,7 @@ class PlainTextFixture:
         <PlainTextFixture(path='...bl_lwm')>
         >>> plaintext_bl_lwm.info()
         <BLANKLINE>
-        ...PlainTextFixture for 2 'bl_lwm' files...
+        ...PlainTextFixture for 2 'bl-lwm' files...
         ┌─────────────────────┬────────────────────────────────...┐
         │ Path                │ '...bl_lwm'                    ...│
         │ Compressed Files    │ '...bl_lwm...0003079-test_plain...│
@@ -174,12 +186,12 @@ class PlainTextFixture:
         True
         >>> plaintext_bl_lwm.extract_compressed()
         <BLANKLINE>
-        ...Extract path:...'...lwm...extracted...
+        ...Extract path:...
         ...Extracting:...'...lwm...00030...
         ...Extracting:...'...lwm...00035...
-        ...%...[...]...
         >>> plaintext_bl_lwm.delete_decompressed()
         Deleting all files in:...'...bl_lwm...tracted'
+        >>> logger.setLevel(logger_initial_level)
 
         ```
     """
@@ -201,9 +213,13 @@ class PlainTextFixture:
     saved_fixture_prefix: str = DEFAULT_PLAINTEXT_FILE_NAME_PREFIX
     export_directory: PathLike = DEFAULT_PLAINTEXT_FIXTURE_OUTPUT
     empty_info_default_str: str = "None"
+    fixture_info: str = ""
     json_0_file_name_padding: int = FILE_NAME_0_PADDING_DEFAULT
     json_export_compression_subdir: PathLike = COMPRESSED_PATH_DEFAULT
     json_export_compression_format: ArchiveFormatEnum = COMPRESSION_TYPE_DEFAULT
+    is_canonical: bool = False
+    include_text_fixture_paths: bool = True
+    text_fixture_path_field_name: str = TEXT_FIXTURE_PATH_FIELD_NAME
     _trunc_head_paths: int = TRUNC_HEADS_PATH_DEFAULT
     _trunc_tails_paths: int = TRUNC_TAILS_PATH_DEFAULT
     _trunc_tails_sub_paths: int = TRUNC_TAILS_SUBPATH_DEFAULT
@@ -276,10 +292,10 @@ class PlainTextFixture:
             ```pycon
             >>> hmd_plaintext_fixture = PlainTextFixture(
             ...     path=".",
-            ...     data_provider_code="bl_hmd")
+            ...     data_provider_code="bl-hmd")
             >>> table = hmd_plaintext_fixture.info_table
             >>> table.title
-            "PlainTextFixture for 0 'bl_hmd' files"
+            "PlainTextFixture for 0 'bl-hmd' files"
 
             ```
 
@@ -328,25 +344,26 @@ class PlainTextFixture:
             ```pycon
             >>> bl_hmd = PlainTextFixture(
             ...     path=".",
-            ...     data_provider_code="bl_hmd")
+            ...     data_provider_code="bl-hmd")
             >>> bl_hmd.data_provider_name
             'Heritage Made Digital'
             >>> bl_lwm = PlainTextFixture(
             ...     path='.',
-            ...     data_provider=NEWSPAPER_DATA_PROVIDER_CODE_DICT['bl_lwm'],
+            ...     data_provider=NEWSPAPER_DATA_PROVIDER_CODE_DICT['bl-lwm'],
             ...     )
             >>> bl_lwm.data_provider_name
             'Living with Machines'
-            >>> plaintext_fixture = PlainTextFixture(
-            ...     path=".")
+            >>> logger_initial_level: int = logger.level
+            >>> logger.setLevel(DEBUG)
+            >>> no_provider_fixture = PlainTextFixture(path=".")
             <BLANKLINE>
-            ...`.data_provider` and `.data_provider_code`...
+            ...'.data_provider' and '.data_provider_code'...
             ...are...'None'...in...<PlainTextFixture(path='.')>...
-            >>> plaintext_fixture.data_provider_name
+            >>> no_provider_fixture.data_provider
+            >>> no_provider_fixture.data_provider_name
+            >>> logger.setLevel(logger_initial_level)
 
             ```
-
-            `
         """
         if self.data_provider and "name" in self.data_provider["fields"]:
             return self.data_provider["fields"]["name"]
@@ -368,11 +385,11 @@ class PlainTextFixture:
             self.files = file_path_tuple
         elif self.files == file_path_tuple:
             logger.debug(
-                f"No change from running " f"{repr(self)}._set_and_check_path_is_file()"
+                f"No change from running {repr(self)}._set_and_check_path_is_file()"
             )
         elif force:
             self.files = file_path_tuple
-            logger.debug(f"Force change to {repr(self)}\n" f"`files`: {self.files}")
+            logger.debug(f"Force change to {repr(self)}\n'files': {self.files}")
         else:
             raise ValueError(
                 f"{repr(self)} `path` inconsistent with `files`.\n"
@@ -388,7 +405,7 @@ class PlainTextFixture:
         if self.files:
             if self.files == file_paths_tuple:
                 logger.debug(
-                    f"No changes from " f"{repr(self)}._set_and_check_path_is_dir()"
+                    f"No changes from {repr(self)}._set_and_check_path_is_dir()"
                 )
                 return
             if force:
@@ -410,9 +427,9 @@ class PlainTextFixture:
     def extract_path(self) -> Path:
         """Path any compressed files would be extracted to."""
         if Path(self.path).is_file():
-            return Path(self.path).parent / self.extract_subdir
+            return Path(self.path).parent / Path(self.extract_subdir)
         else:
-            return Path(self.path) / self.extract_subdir
+            return Path(self.path) / Path(self.extract_subdir)
 
     @property
     def compressed_files(self) -> tuple[PathLike, ...]:
@@ -445,7 +462,7 @@ class PlainTextFixture:
             ```pycon
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext')
             >>> zipfile_info_list: list[ZipInfo] = list(plaintext_bl_lwm.zipinfo)
-            Getting zipfile info from <PlainTextFixture(path='...bl_lwm')>
+            Getting zipfile info from <PlainTextFixture(path='bl_lwm')>
             >>> zipfile_info_list[0][-1].filename
             '0003079...1898...0204...0003079_18980204_sect0001.txt'
             >>> zipfile_info_list[-1][-1].filename
@@ -466,7 +483,9 @@ class PlainTextFixture:
             console.log(f"No `self.compressed_files` end with `.zip` for {repr(self)}.")
 
     # def extract_compressed(self, index: int | str | None = None) -> None:
-    def extract_compressed(self) -> None:
+    def extract_compressed(
+        self, overwite_extracts: bool = False, use_saved_if_exists: bool = False
+    ) -> None:
         """Extract `self.compressed_files` to `self.extracted_subdir_name`.
 
         Example:
@@ -491,38 +510,82 @@ class PlainTextFixture:
             ```
 
         """
-        self.extract_path.mkdir(parents=True, exist_ok=True)
+        if self.extract_path.exists():
+            logger.info(f"Extract path exists: '{self.extract_path}'")
+            if self.extract_path.is_file():
+                raise FileExistsError(
+                    f"Cannot extract to existing file: '{self.extract_path}'"
+                )
+            shallow_sub_dirs: tuple[Path, ...] = tuple(
+                self.yield_extract_path_root_dirs
+            )
+            shallow_sub_files: tuple[Path, ...] = tuple(
+                files_in_path(self.extract_path)
+            )
+            if shallow_sub_files or shallow_sub_dirs:
+                logger.info(
+                    f"{len(shallow_sub_dirs)} folders and "
+                    f"{len(shallow_sub_files)} files"
+                )
+                if overwite_extracts:
+                    self.delete_decompressed()
+                    self._extract_all_from_extract_path()
+                elif use_saved_if_exists:
+                    logger.info(f"Checking existing extracts: '{self.extract_path}'")
+                    for compressed_file in tqdm(
+                        self.compressed_files,
+                        total=len(self.compressed_files),
+                    ):
+                        self._add_path_to_uncompressed(compressed_file)
+                else:
+                    logger.warning(
+                        f"Cannot extract to folder with files: '{self.extract_path}'"
+                    )
+        else:
+            self._extract_all_from_extract_path()
+
+    def _add_path_to_uncompressed(self, compressed_file: PathLike) -> None:
+        """Add `self.extract_path` `Path`s to `self._uncompressed_source_file_dict`."""
+        for path in sorted(self.extract_path.glob(self.plaintext_glob_regex)):
+            if path not in self._uncompressed_source_file_dict:
+                self._uncompressed_source_file_dict[path] = compressed_file
+
+    def _extract_all_from_extract_path(self) -> None:
+        """Extract files from `self.extract_path`."""
         console.log(f"Extract path: '{self.extract_path}'")
+        self.extract_path.mkdir(parents=True, exist_ok=True)
         for compressed_file in tqdm(
             self.compressed_files,
             total=len(self.compressed_files),
         ):
             logger.info(f"Extracting: '{compressed_file}' ...")
             unpack_archive(compressed_file, self.extract_path)
-            for path in sorted(self.extract_path.glob(self.plaintext_glob_regex)):
-                if path not in self._uncompressed_source_file_dict:
-                    self._uncompressed_source_file_dict[path] = compressed_file
+            self._add_path_to_uncompressed(compressed_file)
+
+    @property
+    def yield_extract_path_root_dirs(self) -> Generator[Path, None, None]:
+        yield from dirs_in_path(self.extract_path)
 
     def plaintext_paths(
         self, reset_cache=False
-    ) -> Generator[FulltextPathDict, None, None]:
+    ) -> Generator[FullTextPathDict, None, None]:
         """Return a generator of all `plaintext` files for potential fixtures.
 
         Example:
             ```pycon
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
             <BLANKLINE>
-            ...Extract path:...bl_lwm...extracted...
+            ...Extract path: 'bl_lwm/test-extracted'...
             >>> plaintext_paths = plaintext_bl_lwm.plaintext_paths()
             >>> first_path_fixture_dict = next(iter(plaintext_paths))
-            >>> first_path_fixture_dict['path'].name
+            >>> first_path_fixture_dict['text_path'].name
             '0003079_18980107_art0001.txt'
-            >>> first_path_fixture_dict['compressed_path'].name
+            >>> first_path_fixture_dict['text_compressed_path'].name
             '0003079-test_plaintext.zip'
             >>> len(plaintext_bl_lwm._pk_plaintext_dict)
             1
             >>> plaintext_bl_lwm._pk_plaintext_dict[
-            ...     first_path_fixture_dict['path']
+            ...     first_path_fixture_dict['text_path']
             ... ] # This demonstrates the `pk` begins from 1 following `SQL` standards
             1
 
@@ -545,9 +608,9 @@ class PlainTextFixture:
                 ):
                     pk = i + self.initial_pk  # Most `SQL` `pk` begins at 1
                     self._pk_plaintext_dict[uncompressed_tuple[0]] = pk
-                    yield FulltextPathDict(
-                        path=uncompressed_tuple[0],
-                        compressed_path=uncompressed_tuple[1],
+                    yield FullTextPathDict(
+                        text_path=uncompressed_tuple[0],
+                        text_compressed_path=uncompressed_tuple[1],
                         primary_key=pk,
                     )
             if self.plaintext_provided_uncompressed:
@@ -560,11 +623,15 @@ class PlainTextFixture:
                 ):
                     pk = j + i + self.initial_pk
                     self._pk_plaintext_dict[path] = pk
-                    yield FulltextPathDict(
+                    yield FullTextPathDict(
                         path=path, compressed_path=None, primary_key=pk
                     )
 
-    def plaintext_paths_to_dicts(self) -> Generator[PlaintextFixtureDict, None, None]:
+    def plaintext_paths_to_dicts(
+        self,
+        convert_to_relative_paths: bool = True,
+        infer_item_code_from_path: bool = True,
+    ) -> Generator[PlainTextFixtureDict, None, None]:
         """Generate fixture dicts from `self.plaintext_paths`.
 
         Note:
@@ -575,6 +642,8 @@ class PlainTextFixture:
             ```pycon
             >>> if is_platform_win:
             ...     pytest.skip('decompression fails on Windows: issue #55')
+            >>> logger_initial_level: int = logger.level
+            >>> logger.setLevel(DEBUG)
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
             <BLANKLINE>
             ...Extract path:...bl_lwm...extracted...
@@ -582,6 +651,7 @@ class PlainTextFixture:
             Compressed configs  :...%...[ ... it/s ]
             >>> plaintext_bl_lwm.delete_decompressed()
             Deleting all files in: '...tracted'
+            >>> logger.setLevel(logger_initial_level)
 
             ```
         """
@@ -590,18 +660,50 @@ class PlainTextFixture:
         for plaintext_path_dict in self.plaintext_paths():
             error_str = None
             try:
-                text = Path(plaintext_path_dict["path"]).read_text()
+                text = Path(plaintext_path_dict["text_path"]).read_text()
             except UnicodeDecodeError as err:
                 logger.warning(err)
                 text = ""
                 error_str = str(err)
-            fields: PlaintextFixtureFieldsDict = PlaintextFixtureFieldsDict(
-                text=text,
-                path=str(plaintext_path_dict["path"]),
-                compressed_path=str(plaintext_path_dict["compressed_path"]),
-                errors=error_str,
+            path_for_json: str = (
+                str(
+                    Path(plaintext_path_dict["text_path"]).relative_to(
+                        self.extract_path
+                    )
+                )
+                if convert_to_relative_paths
+                else str(plaintext_path_dict["text_path"])
             )
-            yield PlaintextFixtureDict(
+            compressed_path_for_json: str = (
+                str(
+                    Path(plaintext_path_dict["text_compressed_path"]).relative_to(
+                        self.path
+                    )
+                )
+                if (
+                    convert_to_relative_paths
+                    and plaintext_path_dict["text_compressed_path"]
+                )
+                else str(plaintext_path_dict["text_compressed_path"])
+            )
+            item_code: str | None = (
+                file_path_to_item_code(Path(path_for_json))
+                if infer_item_code_from_path
+                else None
+            )
+
+            fields: PlainTextFixtureFieldsDict = PlainTextFixtureFieldsDict(
+                text=text,
+                item=None,
+                item_code=item_code,
+                text_path=path_for_json,
+                # text_fixture_path=None,
+                text_compressed_path=compressed_path_for_json,
+                errors=error_str,
+                info=self.fixture_info,
+                canonical=self.is_canonical,
+            )
+            yield PlainTextFixtureDict(
                 model=self.model_str,
                 fields=fields,
                 pk=plaintext_path_dict["primary_key"],
@@ -632,9 +734,8 @@ class PlainTextFixture:
             >>> if is_platform_win:
             ...     pytest.skip('decompression fails on Windows: issue #55')
             >>> bl_lwm: Path = getfixture("bl_lwm")
-            >>> first_lwm_plaintext_json_dict: PlaintextFixtureDict = (
-            ...     getfixture("first_lwm_plaintext_json_dict")
-            ... )
+            >>> first_lwm_plaintext_json_dict: PlainTextFixtureDict = getfixture(
+            ...     'lwm_plaintext_json_dict_factory')()  # Factory returns `dict`
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_extracted')
             <BLANKLINE>
             ...Extract path:...bl_lwm...extracted...
@@ -656,11 +757,11 @@ class PlainTextFixture:
             >>> (exported_json[0]['fields']['text'] ==
             ...  first_lwm_plaintext_json_dict['fields']['text'])
             True
-            >>> (exported_json[0]['fields']['path'] ==
-            ...  str(first_lwm_plaintext_json_dict['fields']['path']))
+            >>> (exported_json[0]['fields']['text_path'] ==
+            ...  str(first_lwm_plaintext_json_dict['fields']['text_path']))
             True
-            >>> (exported_json[0]['fields']['compressed_path'] ==
-            ...  str(first_lwm_plaintext_json_dict['fields']['compressed_path']))
+            >>> (exported_json[0]['fields']['text_compressed_path'] ==
+            ...  str(first_lwm_plaintext_json_dict['fields']['text_compressed_path']))
             True
             >>> exported_json[0]['fields']['created_at']
             '20...'
@@ -677,6 +778,7 @@ class PlainTextFixture:
             if not json_0_file_name_padding
             else json_0_file_name_padding
         )
+        # Consider iterating over self.plaintext_paths_to_dicts(),
         save_fixture(
             self.plaintext_paths_to_dicts(),
             prefix=prefix,
@@ -684,6 +786,8 @@ class PlainTextFixture:
             add_created=True,
             max_elements_per_file=self.max_plaintext_per_fixture_file,
             file_name_0_padding=json_0_file_name_padding,
+            add_fixture_name=self.include_text_fixture_paths,
+            fixture_name_field="text_fixture_path",
         )
         self.set_exported_json_paths(
             export_directory=output_path, saved_fixture_prefix=prefix
@@ -714,7 +818,7 @@ class PlainTextFixture:
                 f"run after 'self.export_to_json_fixtures()' for {self}"
             )
         for path in self._exported_json_paths:
-            yield path
+            yield Path(path)
 
     def set_exported_json_paths(
         self,
@@ -752,6 +856,8 @@ class PlainTextFixture:
             ValueError: Cannot overwrite 'self._exported_json_paths' without
             'overwrite' = True. Current 'self._exported_json_paths':
             (...Path('...plaintext_fixture-000001.json'),)
+            >>> logger_initial_level: int = logger.level
+            >>> logger.setLevel(DEBUG)
             >>> plaintext_bl_lwm.set_exported_json_paths(tmp_path,
             ...     'check-prefix', overwrite=True)
             <BLANKLINE>
@@ -760,6 +866,7 @@ class PlainTextFixture:
             True
             >>> plaintext_bl_lwm.saved_fixture_prefix
             'check-prefix'
+            >>> logger.setLevel(logger_initial_level)
 
             ```
         """
@@ -807,17 +914,21 @@ class PlainTextFixture:
             ```pycon
             >>> if is_platform_win:
             ...     pytest.skip('decompression fails on Windows: issue #55')
+            >>> logger_initial_level: int = logger.level
+            >>> logger.setLevel(DEBUG)
             >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_json_export')
             <BLANKLINE>
             ...
             >>> compressed_paths: Path = plaintext_bl_lwm.compress_json_exports(
             ...     format='tar')
             <BLANKLINE>
-            ...Compressing...'...01.json' to...'tar'...in:...
+            ...Compressing...'...01.json...'...to...'tar'...in:...
             >>> compressed_paths
             (...Path('.../plaintext_fixture-000001.json.tar'),)
+            >>> logger.setLevel(logger_initial_level)
 
             ```
+
         """
         output_path = (
             Path(self.json_export_compression_subdir)
@@ -830,7 +941,49 @@ class PlainTextFixture:
             compressed_paths.append(
                 compress_fixture(json_path, output_path=output_path, format=format)
             )
-        return tuple(compressed_paths)
+        self._compressed_exported_json_paths: tuple[Path, ...] = tuple(compressed_paths)
+        return self._compressed_exported_json_paths
+
+    @property
+    def compressed_json_export_paths(self) -> Generator[Path, None, None]:
+        """Yield from `self._compressed_exported_json_paths` if it exists.
+
+        Yields:
+            Each path from `self._compressed_exported_json_paths` if set, else None.
+
+        Example:
+            ```pycon
+            >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_json_export')
+            <BLANKLINE>
+            ...
+            >>> tuple(plaintext_bl_lwm.compressed_json_export_paths)
+            <BLANKLINE>
+            ...No compressed paths set. Try running...'.compress_json_exports()'...
+            ()
+            >>> logger_initial_level: int = logger.level
+            >>> logger.setLevel(DEBUG)
+            >>> compressed_paths: Path = plaintext_bl_lwm.compress_json_exports(
+            ...     format='tar')
+            <BLANKLINE>
+            ...Compressing...'...01.json...'...to...'tar'...in:...
+            >>> tuple(plaintext_bl_lwm.compressed_json_export_paths)
+            (...Path('...plaintext_fixture-000001.json.tar'),)
+            >>> compressed_paths == tuple(
+            ...     plaintext_bl_lwm.compressed_json_export_paths)
+            True
+            >>> logger.setLevel(logger_initial_level)
+
+            ```
+
+        """
+        if hasattr(self, "_compressed_exported_json_paths"):
+            for path in self._compressed_exported_json_paths:
+                yield path
+        else:
+            logger.warning(
+                f"No compressed paths set. Try running "
+                f"'.compress_json_exports()' on {self}"
+            )
 
     # def delete_compressed(self, index: int | str | None = None) -> None:
     def delete_decompressed(self, ignore_errors: bool = True) -> None:
@@ -871,12 +1024,14 @@ class PlainTextFixture:
             >>> plaintext_lwm = getfixture('bl_lwm_plaintext')
             >>> len(plaintext_lwm)
             2
+            >>> logger_initial_level: int = logger.level
+            >>> logger.setLevel(DEBUG)
             >>> plaintext_lwm._check_and_set_files_attr()
             <BLANKLINE>
             ...DEBUG...No changes from...
             ...<PlainText..._set...d...
             >>> plaintext_lwm.path = (
-            ...    plaintext_lwm.path / '0003079-test_plaintext.zip')
+            ...    Path(plaintext_lwm.path) / '0003079-test_plaintext.zip')
             >>> plaintext_lwm._check_and_set_files_attr()
             Traceback (most recent call last):
                 ...
@@ -885,11 +1040,12 @@ class PlainTextFixture:
             2
             >>> plaintext_lwm._check_and_set_files_attr(force=True)
             <BLANKLINE>
-            ...DEBUG...Force change to...<PlainText...`files`...zip...
+            ...DEBUG...Force change to...<PlainText...zip...
             >>> plaintext_lwm.files
-            (...('...bl_lwm...0003079-test_plaintext.zip'),)
+            (...Path('bl_lwm/0003079-test_plaintext.zip'),)
             >>> len(plaintext_lwm)
             1
+            >>> logger.setLevel(logger_initial_level)
 
             ```
         """
@@ -899,7 +1055,7 @@ class PlainTextFixture:
             self._set_and_check_path_is_dir(force=force)
         else:
             raise ValueError(
-                f"`self.path` must be a file or directory. " f"Currently: {self.path}"
+                f"`self.path` must be a file or directory. Currently: {self.path}"
             )
 
     def _check_and_set_data_provider(self, force: bool = False) -> None:
@@ -907,11 +1063,13 @@ class PlainTextFixture:
 
         Example:
             ```pycon
+            >>> logger_initial_level: int = logger.level
             >>> logger.setLevel(DEBUG)
             >>> plaintext_fixture = PlainTextFixture(path=".")
             <BLANKLINE>
-            ...`.data_provider` and `.data_provider_code`...'None' in...
+            ...'.data_provider' and '.data_provider_code'...'None'...in...
             ...<PlainTextFixture(path='.')>...
+            >>> logger.setLevel(logger_initial_level)
 
             ```
         """
@@ -921,20 +1079,20 @@ class PlainTextFixture:
                 self.data_provider_code = data_provider_fields_code
             elif self.data_provider_code == data_provider_fields_code:
                 logger.debug(
-                    f"{repr(self)} `self.data_provider['fields']['code']` "
-                    f"== `self.data_provider_code`"
+                    f"{repr(self)} \"self.data_provider['fields']['code']\" "
+                    f"== 'self.data_provider_code'"
                 )
             elif force:
                 logger.warning(
-                    f"Forcing {repr(self)} `data_provider_code` to "
+                    f"Forcing {repr(self)} 'data_provider_code' to "
                     f"{self.data_provider['fields']['code']}\n"
-                    f"Orinal `data_provider_code`: {self.data_provider_code}"
+                    f"Original 'data_provider_code': {self.data_provider_code}"
                 )
                 self.data_provider_code = data_provider_fields_code
             else:
                 raise ValueError(
-                    f"`self.data_provider_code` {self.data_provider_code} "
-                    f"!= {self.data_provider} (`self.data_provider`)."
+                    f"'self.data_provider_code' {self.data_provider_code} "
+                    f"!= {self.data_provider} ('self.data_provider')."
                 )
         elif self.data_provider_code:
             if self.data_provider_code in self.data_provider_code_dict:
@@ -943,11 +1101,11 @@ class PlainTextFixture:
                 ]
             else:
                 raise ValueError(
-                    f"`self.data_provider_code` {self.data_provider_code} "
-                    f"not in `self.data_provider_code_dict`."
-                    f"Available `codes`: {self.data_provider_code_dict.keys()}"
+                    f"'self.data_provider_code' {self.data_provider_code} "
+                    f"not in 'self.data_provider_code_dict'. "
+                    f"Available 'codes': {self.data_provider_code_dict.keys()}"
                 )
         else:
             logger.debug(
-                f"`.data_provider` and `.data_provider_code` are 'None' in {repr(self)}"
+                f"'.data_provider' and '.data_provider_code' are 'None' in {repr(self)}"
             )

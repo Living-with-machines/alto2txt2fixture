@@ -48,7 +48,7 @@ NEWSPAPER_COLLECTION_METADATA: Final[list[DataProviderFixtureDict]] = [
         model="newspapers.dataprovider",
         fields={
             "name": "Heritage Made Digital",
-            "code": "bl_hmd",
+            "code": "bl-hmd",
             "legacy_code": "hmd",
             "collection": "newspapers",
             "source_note": "British Library-funded digitised newspapers provided by the British Newspaper Archive",
@@ -70,7 +70,7 @@ NEWSPAPER_COLLECTION_METADATA: Final[list[DataProviderFixtureDict]] = [
         model="newspapers.dataprovider",
         fields={
             "name": "Living with Machines",
-            "code": "bl_lwm",
+            "code": "bl-lwm",
             "legacy_code": "lwm",
             "collection": "newspapers",
             "source_note": "Living with Machines-funded digitised newspapers provided by the British Newspaper Archive",

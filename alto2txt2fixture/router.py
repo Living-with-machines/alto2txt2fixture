@@ -703,12 +703,11 @@ class DataProvider(Cache):
 
     Example:
         ```pycon
-        >>> from pprint import pprint
         >>> hmd = DataProvider("hmd")
         >>> hmd.pk
         2
         >>> pprint(hmd.as_dict())
-        {'code': 'bl_hmd',
+        {'code': 'bl-hmd',
          'collection': 'newspapers',
          'legacy_code': 'hmd',
          'name': 'Heritage Made Digital',

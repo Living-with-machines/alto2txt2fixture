@@ -3,14 +3,16 @@ import gc
 import json
 import logging
 from collections import OrderedDict
+from dataclasses import dataclass
 from enum import StrEnum
-from os import PathLike, chdir, getcwd, sep
+from os import PathLike, getcwd, sep
 from os.path import normpath
 from pathlib import Path, PureWindowsPath
 from pprint import pformat
 from re import findall
 from shutil import (
     copyfile,
+    copyfileobj,
     disk_usage,
     get_archive_formats,
     get_unpack_formats,
@@ -18,6 +20,7 @@ from shutil import (
 )
 from typing import (
     Any,
+    Callable,
     Final,
     Generator,
     Hashable,
@@ -29,13 +32,16 @@ from typing import (
     TypeAlias,
     overload,
 )
+from urllib.error import URLError
+from urllib.request import urlopen
 
 import pytz
 from numpy import array_split
-from pandas import DataFrame
+from pandas import DataFrame, Series
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.table import Table
+from validators.url import url as validate_url
 
 from .log import error, info, warning
 from .settings import (
@@ -81,9 +87,11 @@ ZIP_FILE_EXTENSION: Final[ArchiveFormatEnum] = ArchiveFormatEnum.ZIP
 COMPRESSION_TYPE_DEFAULT: Final[ArchiveFormatEnum] = ZIP_FILE_EXTENSION
 COMPRESSED_PATH_DEFAULT: Final[Path] = Path("compressed")
 
+CSV_FILE_EXTENSION: str = "csv"
 JSON_FILE_EXTENSION: str = "json"
 JSON_FILE_GLOB_STRING: str = f"**/*{JSON_FILE_EXTENSION}"
 
+DEFAULT_MAX_LOG_STR_LENGTH: Final[int] = 30
 MAX_TRUNCATE_PATH_STR_LEN: Final[int] = 30
 INTERMEDIATE_PATH_TRUNCATION_STR: Final[str] = "."
 
@@ -91,6 +99,13 @@ TRUNC_HEADS_PATH_DEFAULT: int = 1
 TRUNC_TAILS_PATH_DEFAULT: int = 1
 FILE_NAME_0_PADDING_DEFAULT: int = 6
 PADDING_0_REGEX_DEFAULT: str = r"\b\d*\b"
+
+CODE_SEPERATOR_CHAR: Final[str] = "-"
+FILE_NAME_SEPERATOR_CHAR: Final[str] = "_"
+DEFAULT_TRUNCATION_CHARS: Final[str] = "..."
+"""Default characters to trail a truncated string."""
+
+DEFAULT_APP_DATA_FOLDER: Final[Path] = Path("data")
 
 
 @overload
@@ -124,6 +139,342 @@ def get_now(as_str: bool = False) -> datetime.datetime | str:
 
 
 NOW_str = get_now(as_str=True)
+
+
+def _short_text_trunc(text: str, trail_str: str = DEFAULT_TRUNCATION_CHARS) -> str:
+    """Return a `str` truncated to 15 characters followed by `trail_str`."""
+    return truncate_str(
+        text=text, trail_str=trail_str + path_or_str_suffix(text), max_length=15
+    )
+
+
+def truncate_str(
+    text: str,
+    max_length: int = DEFAULT_MAX_LOG_STR_LENGTH,
+    trail_str: str = DEFAULT_TRUNCATION_CHARS,
+) -> str:
+    """If `len(text) > max_length` return `text` followed by `trail_str`.
+
+    Args:
+        text: `str` to truncate
+        max_length: maximum length of `text` to allow, anything belond truncated
+        trail_str: what is appended to the end of `text` if truncated
+
+    Returns:
+        `text` truncated to `max_length` (if longer than `max_length`),
+        appended with `tail_str`
+
+    Example:
+        ```pycon
+        >>> truncate_str('Standing in the shadows of love.', 15)
+        'Standing in the...'
+
+        ```
+    """
+    return text[:max_length] + trail_str if len(text) > max_length else text
+
+
+def path_or_str_suffix(
+    str_or_path: str | PathLike,
+    max_extension_len: int = 10,
+    force: bool = False,
+    split_str: str = ".",
+) -> str:
+    """Return suffix of `str_or_path`, else `''`.
+
+    Args:
+        str_or_path: `str` or `PathLike` instance to extract `suffix` from.
+        max_extension_len: Maximum `extension` allowed for `suffix` to extract.
+        force: `bool` for overrised `max_extension_len` constraint.
+        split_str: `str` to split `str_or_path` by, usually `.` for file path.
+
+    Returns:
+        `str` extracted from the end of `str_or_path`.
+
+    Example:
+        ```pycon
+        >>> path_or_str_suffix('https://lwmd.livingwithmachines.ac.uk/file.bz2')
+        'bz2'
+        >>> path_or_str_suffix('https://lwmd.livingwithmachines.ac.uk/file')
+        <BLANKLINE>
+        ...''...
+        >>> path_or_str_suffix(Path('cat') / 'dog' / 'fish.csv')
+        'csv'
+        >>> path_or_str_suffix(Path('cat') / 'dog' / 'fish')
+        ''
+
+        ```
+    """
+    suffix: str = ""
+    if isinstance(str_or_path, Path):
+        if str_or_path.suffix:
+            suffix = str_or_path.suffix[1:]  # Skip the `.` for consistency
+        else:
+            """"""
+    else:
+        split_str_or_path: list[str] = str(str_or_path).split(split_str)
+        if len(split_str_or_path) > 1:
+            suffix = split_str_or_path[-1]
+            if "/" in suffix:
+                logger.debug(
+                    f"Split via {split_str} of "
+                    f"{str_or_path} has a `/` `char`. "
+                    "Returning ''",
+                )
+                return ""
+        else:
+            logger.debug(
+                f"Can't split via {split_str} in "
+                f"{_short_text_trunc(str(str_or_path))}",
+            )
+            return ""
+    if len(suffix) > max_extension_len:
+        if force:
+            console.log(
+                f"Force return of suffix {suffix}",
+            )
+            return suffix
+        else:
+            console.log(
+                f"suffix {_short_text_trunc(suffix)} too long "
+                f"(max={max_extension_len})",
+            )
+            return ""
+    else:
+        return suffix
+
+
+def download_file(
+    local_path: PathLike,
+    url: str,
+    force: bool = False,
+) -> bool:
+    """If `force` or not available, download `url` to `local_path`.
+
+    Example:
+        ```pycon
+        >>> jpg_url: str = "https://commons.wikimedia.org/wiki/File:Wassily_Leontief_1973.jpg"
+        >>> local_path: Path = Path('test.jpg')
+        >>> local_path.unlink(missing_ok=True)  # Ensure png deleted
+        >>> success: bool = download_file(local_path, jpg_url)
+        <BLANKLINE>
+        ...'test.jpg' not...found...downloading...
+        ...wiki/File:Wassily_Leonti....jpg...
+        ...Saved to 'test.jpg'...
+        >>> success
+        True
+        >>> local_path.unlink()  # Delete downloaded jpg
+
+        ```
+    """
+    local_path = Path(local_path)
+    if not validate_url(url):
+        console.log(
+            f"'{url}' is not a valid url",
+        )
+        return False
+    if not local_path.exists() or force:
+        if force:
+            console.log(
+                f"Overwriting '{local_path}' by downloading from '{url}'",
+            )
+        else:
+            console.log(
+                f"'{local_path}' not found, downloading from '{url}'",
+            )
+        try:
+            with (
+                urlopen(url) as response,
+                open(str(local_path), "wb") as out_file,
+            ):
+                copyfileobj(response, out_file)
+        except IsADirectoryError:
+            console.log(
+                f"'{local_path}' must be a file, not a directory",
+            )
+            return False
+        except URLError:
+            console.log(
+                f"Download error (likely no internet connection): '{url}'",
+            )
+            return False
+        else:
+            console.log(f"Saved to '{local_path}'")
+    if not local_path.is_file():
+        console.log(
+            f"'{local_path}' is not a file",
+        )
+        return False
+    if not local_path.stat().st_size > 0:
+        console.log(
+            f"'{local_path}' from '{url}' is empty",
+        )
+        return False
+    else:
+        logger.debug(
+            f"'{url}' file available from '{local_path}'",
+        )
+        return True
+
+
+def app_data_path(app_name: str, data_path: PathLike = DEFAULT_APP_DATA_FOLDER) -> Path:
+    """Return `app_name` data `Path` and ensure exists.
+
+    Example:
+        ```pycon
+        >>> from os import chdir
+        >>> tmp_path: Path = getfixture("tmp_path")
+        >>> chdir(tmp_path)
+        >>> app_data_path('mitchells')
+        PosixPath('mitchells/data')
+
+        ```
+    """
+    path = Path(app_name) / Path(data_path)
+    path.mkdir(exist_ok=True, parents=True)
+    return path
+
+
+class DataSourceDownloadError(Exception):
+    ...
+
+
+@dataclass
+class DataSource:
+    """Class to manage storing/deleting data files.
+
+    Attr:
+        file_name: Name of file (not local path).
+        app: Name of app the file is for to generate a local path.
+        url: Url to dowload file from.
+        read_func: Function to call on downloaded file.
+        description: Text descriping the data source.
+        citation: An optional link (ideally DOI) for citation.
+        license: License data is available through.
+        _download_exception: Exception to raise if download fails.
+        _str_truncation_length: Maximum lenght of `str` to use in
+            print outs.
+
+    Example:
+        ```pycon
+        >>> from os import chdir
+        >>> tmp_path: Path = getfixture("tmp_path")
+        >>> chdir(tmp_path)
+        >>> from pandas import read_csv
+
+        >>> rsd_1851: DataSource = DataSource(
+        ...     file_name=demographics_1851_local_path.name,
+        ...     app="census",
+        ...     url="https://reshare.ukdataservice.ac.uk/853547/4/1851_RSD_data.csv",
+        ...     read_func=read_csv,
+        ...     description="Demographic and socio-economic variables for "
+        ...                 "Registration Sub-Districts (RSDs) in England and Wales, "
+        ...                 "1851",
+        ...     citation="https://dx.doi.org/10.5255/UKDA-SN-853547",
+        ...     license="http://creativecommons.org/licenses/by/4.0/",
+        ... )
+        >>> assert rsd_1851.local_path == demographics_1851_local_path
+        >>> df = rsd_1851.read()
+        <BLANKLINE>
+        ...'census/data/demographics_england_wales_2015.csv'...
+        >>> df.columns[:5].tolist()
+        ['CEN_1851', 'REGCNTY', 'REGDIST', 'SUBDIST', 'POP_DENS']
+        >>> rsd_1851.delete()
+        Deleting local copy of 'de...csv'...
+
+        ```
+    """
+
+    file_name: PathLike | str
+    app: str
+    url: str
+    read_func: Callable[[PathLike], DataFrame | Series]
+    description: str | None = None
+    citation: str | None = None
+    license: str | None = None
+    _download_exception: DataSourceDownloadError | None = None
+    _str_truncation_length: int = 15
+
+    def __str__(self) -> str:
+        """Readable description of which `file_name` from which `app`."""
+        return f"'{_short_text_trunc(str(self.file_name))}' " f"for `{self.app}`"
+
+    def __repr__(self) -> str:
+        """Detailed, truncated reprt of `file_name` for `app`."""
+        return (
+            f"{self.__class__.__name__}({self.app!r}, "
+            f"'{_short_text_trunc(str(self.file_name))}')"
+        )
+
+    @property
+    def url_suffix(self) -> str:
+        """Return suffix of `self.url` or None if not found."""
+        return path_or_str_suffix(self.url)
+
+    @property
+    def _trunc_url_str_suffix(self) -> str:
+        """Return DEFAULT_TRUNCATION_CHARS + `self.url_suffix`."""
+        return DEFAULT_TRUNCATION_CHARS + self.url_suffix
+
+    def _file_name_truncated(self) -> str:
+        """Return truncated `file_name` for logging."""
+        return truncate_str(
+            text=Path(self.file_name).suffix,
+            max_length=self._str_truncation_length,
+            trail_str=self._trunc_url_str_suffix,
+        )
+
+    @property
+    def local_path(self) -> Path:
+        """Return path to store `self.file_name`."""
+        return app_data_path(self.app) / self.file_name
+
+    @property
+    def is_empty(self) -> bool:
+        """Return if `Path` to store `self.file_name` has 0 file size."""
+        return self.local_path.stat().st_size == 0
+
+    @property
+    def is_file(self) -> bool:
+        """Return if `self.local_path` is a file."""
+        return self.local_path.is_file()
+
+    @property
+    def is_local(self) -> bool:
+        """Return if `self.url` is storred locally at `self.file_name`."""
+        return self.is_file and not self.is_empty
+
+    def download(self, force: bool = False) -> bool:
+        """Download `self.url` to save locally at `self.file_name`."""
+        if self.is_local and not force:
+            console.log(f"{self} already downloaded " f"(add `force=True` to override)")
+            return True
+        else:
+            return download_file(self.local_path, self.url)
+
+    def delete(self) -> None:
+        """Delete local save of `self.url` at `self.file_name`.
+
+        Note:
+            No error raised if missing.
+        """
+        if self.is_local:
+            console.log(f"Deleting local copy of {self}.")
+            self.local_path.unlink(missing_ok=True)
+        else:
+            console.info(f"'{self.local_path}' cannot be deleted (not saved locally)")
+
+    def read(self, force: bool = False) -> DataFrame | Series:
+        """Return data in `self.local_path` processed by `self.read_func`."""
+        if not self.is_local:
+            success: bool = self.download(force=force)
+            if not success:
+                self._download_exception = DataSourceDownloadError(
+                    f"Failed to access {self} data from {self.url}"
+                )
+                logger.error(str(self._download_exception))
+        assert self.is_local
+        return self.read_func(self.local_path)
 
 
 def get_key(x: dict = dict(), on: list = []) -> str:
@@ -330,7 +681,11 @@ def get_size_from_path(p: str | Path, raw: bool = False) -> str | float:
 
 
 def write_json(
-    p: str | Path, o: dict, add_created: bool = True, json_indent: int = JSON_INDENT
+    p: str | Path,
+    o: dict,
+    add_created: bool = True,
+    json_indent: int = JSON_INDENT,
+    extra_dict_fields: dict = {},
 ) -> None:
     """
     Easier access to writing `json` files. Checks whether parent exists.
@@ -338,8 +693,7 @@ def write_json(
     Args:
         p: Path to write `json` to
         o: Object to write to `json` file
-        add_created:
-            If set to True will add `created_at` and `updated_at`
+        add_created: If set to True will add `created_at` and `updated_at`
             to the dictionary's fields. If `created_at` and `updated_at`
             already exist in the fields, they will be forcefully updated.
         json_indent:
@@ -351,18 +705,21 @@ def write_json(
     Example:
         ```pycon
         >>> tmp_path: Path = getfixture('tmp_path')
+        >>> extra_fields: dict[str, str] = getfixture('text_fixture_path_dict')
         >>> path: Path = tmp_path / 'test-write-json-example.json'
+        >>>
         >>> write_json(p=path,
         ...            o=NEWSPAPER_COLLECTION_METADATA,
-        ...            add_created=True)
+        ...            add_created=True, extra_dict_fields=extra_fields)
         >>> imported_fixture = load_json(path)
         >>> imported_fixture[1]['pk']
         2
         >>> imported_fixture[1]['fields'][DATA_PROVIDER_INDEX]
         'hmd'
+        >>> imported_fixture[1]['fields']['text_fixture_path']
+        'plaintext_fixture-000001.json'
 
         ```
-        `
     """
 
     p = get_path_from(p)
@@ -381,6 +738,7 @@ def write_json(
                     if not k == "created_at" and not k == "updated_at"
                 },
                 **{"created_at": NOW_str, "updated_at": NOW_str},
+                **extra_dict_fields,
             ),
         )
 
@@ -596,7 +954,7 @@ def dict_from_list_fixture_fields(
         >>> fixture_dict['hmd']['fields'][DATA_PROVIDER_INDEX]
         'hmd'
         >>> fixture_dict['hmd']['fields']['code']
-        'bl_hmd'
+        'bl-hmd'
 
         ```
     """
@@ -718,7 +1076,7 @@ def fixture_fields(
         >>> hmd_dict: dict[str, Any] = fixture_fields(
         ...     NEWSPAPER_COLLECTION_METADATA[1], as_dict=True)
         >>> hmd_dict['code']
-        'bl_hmd'
+        'bl-hmd'
         >>> hmd_dict['pk']
         2
         >>> hmd_dict = fixture_fields(
@@ -784,6 +1142,9 @@ def save_fixture(
     output_path: PathLike | str = settings.OUTPUT,
     max_elements_per_file: int = settings.MAX_ELEMENTS_PER_FILE,
     add_created: bool = True,
+    add_fixture_name: bool = False,
+    fixture_name_field: str = "",
+    extra_dict_fields: dict[str, Any] = {},
     json_indent: int = JSON_INDENT,
     file_name_0_padding: int = FILE_NAME_0_PADDING_DEFAULT,
 ) -> None:
@@ -794,10 +1155,8 @@ def save_fixture(
     is determined by the ``max_elements_per_file`` parameter.
 
     Args:
-        generator:
-            A generator that yields the fixtures to be saved.
-        prefix:
-            A string prefix to be added to the file names of the
+        generator: A generator that yields the fixtures to be saved.
+        prefix: A string prefix to be added to the file names of the
             saved fixtures.
         output_path:
             Path to folder fixtures are saved to
@@ -805,6 +1164,10 @@ def save_fixture(
             Maximum `JSON` records saved in each file
         add_created:
             Whether to add `created_at` and `updated_at` `timestamps`
+        add_fixture_name: If `fixture_name_field` is also set, add the
+            fixture name as a field within `extra_dict_fields`
+        fixture_name_field: If `add_fixture_name` is also set, the
+            field name as a key to the fixture file name
         json_indent:
             Number of indent spaces per line in saved `JSON`
         file_name_0_padding:
@@ -818,7 +1181,8 @@ def save_fixture(
         ```pycon
         >>> tmp_path: Path = getfixture('tmp_path')
         >>> save_fixture(NEWSPAPER_COLLECTION_METADATA,
-        ...              prefix='test', output_path=tmp_path)
+        ...              prefix='test', output_path=tmp_path,
+        ...              add_fixture_name=True, fixture_name_field='fixture_path')
         >>> imported_fixture = load_json(tmp_path / 'test-000001.json')
         >>> imported_fixture[1]['pk']
         2
@@ -826,25 +1190,30 @@ def save_fixture(
         'hmd'
         >>> 'created_at' in imported_fixture[1]['fields']
         True
+        >>> imported_fixture[1]['fields']['fixture_path']
+        'test-000001.json'
 
         ```
 
     """
-    internal_counter = 1
-    counter = 1
-    lst = []
+    internal_counter: int = 1
+    counter: int = 1
+    lst: list[PathLike] = []
     file_name: str
     Path(output_path).mkdir(parents=True, exist_ok=True)
     for item in generator:
         lst.append(item)
         internal_counter += 1
         if internal_counter > max_elements_per_file:
-            file_name = f"{prefix}-{str(counter).zfill(file_name_0_padding)}.json"
+            file_name: str = f"{prefix}-{str(counter).zfill(file_name_0_padding)}.json"
+            if add_fixture_name and fixture_name_field:
+                extra_dict_fields[fixture_name_field] = file_name
             write_json(
-                p=Path(f"{output_path}/file_name"),
+                p=Path(f"{output_path}/{file_name}"),
                 o=lst,
                 add_created=add_created,
                 json_indent=json_indent,
+                extra_dict_fields=extra_dict_fields,
             )
 
             # Save up some memory
@@ -857,11 +1226,14 @@ def save_fixture(
             counter += 1
     else:
         file_name = f"{prefix}-{str(counter).zfill(file_name_0_padding)}.json"
+        if add_fixture_name and fixture_name_field:
+            extra_dict_fields[fixture_name_field] = file_name
         write_json(
             p=Path(f"{output_path}/{file_name}"),
             o=lst,
             add_created=add_created,
             json_indent=json_indent,
+            extra_dict_fields=extra_dict_fields,
         )
 
     return
@@ -945,10 +1317,12 @@ def export_fixtures(
     path: str | PathLike = settings.FIXTURE_TABLES_OUTPUT,
     prefix: str = "test-",
     add_created: bool = True,
+    add_fixutre_name: bool = False,
+    fixture_name_field: str = "",
     formats: Sequence[EXPORT_FORMATS] = settings.FIXTURE_TABLES_FORMATS,
     file_name_0_padding: int = FILE_NAME_0_PADDING_DEFAULT,
 ) -> None:
-    """Export ``fixture_tables`` in ``formats``.
+    """Export `fixture_tables` in `formats`.
 
     Note:
         This is still in experimental phase of development and not recommended
@@ -968,18 +1342,19 @@ def export_fixtures(
 
     Example:
         ```pycon
+        >>> tmp_path = getfixture('tmp_path')
         >>> test_fixture_tables: dict[str, FixtureDict] = {
         ...     'test0': NEWSPAPER_COLLECTION_METADATA,
         ...     'test1': NEWSPAPER_COLLECTION_METADATA}
-        >>> export_fixtures(test_fixture_tables, path='tests/')
+        >>> export_fixtures(test_fixture_tables, path=tmp_path / 'exports')
         <BLANKLINE>
         ...Warning: Saving test0...
         ...Warning: Saving test1...
         >>> from pandas import read_csv
-        >>> fixture0_json = load_json('tests/test-test0-000001.json')
-        >>> fixture0_df = read_csv('tests/test-test0-000001.csv')
-        >>> fixture1_json = load_json('tests/test-test1-000001.json')
-        >>> fixture1_df = read_csv('tests/test-test1-000001.csv')
+        >>> fixture0_json = load_json(tmp_path / 'exports/test-test0-000001.json')
+        >>> fixture0_df = read_csv(tmp_path / 'exports/test-test0-000001.csv')
+        >>> fixture1_json = load_json(tmp_path / 'exports/test-test1-000001.json')
+        >>> fixture1_df = read_csv(tmp_path / 'exports/test-test1-000001.csv')
         >>> fixture0_json == fixture1_json
         True
         >>> all(fixture0_df == fixture1_df)
@@ -1071,7 +1446,7 @@ def free_hd_space_in_GB(
     Example:
         ```pycon
         >>> space_in_gb = free_hd_space_in_GB()
-        >>> space_in_gb > 1  # Hopefully true wherever run...
+        >>> space_in_gb > 1  # Hopefully true when run...
         True
 
         ```
@@ -1116,9 +1491,10 @@ def compress_fixture(
     output_path: PathLike | str = settings.OUTPUT,
     suffix: str = "",
     format: str | ArchiveFormatEnum = ZIP_FILE_EXTENSION,
-    # base_dir: PathLike | None = None,
     force_overwrite: bool = False,
     dry_run: bool = False,
+    # Below was used as an option in some cases, leaving as a reminder
+    # base_dir: PathLike | None = None,
 ) -> Path:
     """Compress exported `fixtures` files using `make_archive`.
 
@@ -1140,27 +1516,34 @@ def compress_fixture(
             `suffix=_compressed`, then the saved file might be called
             `plaintext_fixture-1_compressed.json.zip`
 
+        force_overwrite:
+            Force overwriting `output_path` if it already exists.
+
+        dry_run:
+            Attempt compression without modifying any files.
+
     Example:
         ```pycon
+        >>> logger_initial_level: int = logger.level
+        >>> logger.setLevel(logging.DEBUG)
         >>> plaintext_bl_lwm = getfixture('bl_lwm_plaintext_json_export')
         <BLANKLINE>
         ...
         >>> tmp_path = getfixture('tmp_path')
         >>> json_path: Path = next(plaintext_bl_lwm.exported_json_paths)
-        >>> assert 'pytest-of' in str(json_path)
+        >>> assert 'lwm_test_output' in str(json_path)
         >>> compressed_path: Path = compress_fixture(path=json_path,
         ...                                          output_path=tmp_path,
         ...                                          dry_run=True)
         <BLANKLINE>
-        ...creating...'...plain...-...01.json.zip...'...addin...
-        ...'plain...01.json'...to...it...
+        ...Compressing...'...01.json...'...to...'zip'...
         >>> compressed_path.exists()
         False
         >>> compressed_path: Path = compress_fixture(path=json_path,
         ...                                          output_path=tmp_path,
         ...                                          dry_run=False)
         <BLANKLINE>
-        ...creating...'...plain...-...01.json.zip...'...addin...
+        ...creating...'...01.json.zip...'...adding...
         ...'plain...01.json'...to...it...
         >>> from zipfile import ZipFile, ZipInfo
         >>> zipfile_info_list: list[ZipInfo] = ZipFile(
@@ -1170,15 +1553,16 @@ def compress_fixture(
         1
         >>> Path(zipfile_info_list[0].filename).name
         'plaintext_fixture-000001.json'
+        >>> logger.setLevel(logger_initial_level)
 
         ```
     """
     path = Path(path)
-    current_dir: Path = Path()
+    absolute_path = path.absolute()
     root_dir: str | None = None
     base_dir: str | None = None
     if not path.exists():
-        raise ValueError(f"Cannot compress not existent 'path': {path}")
+        raise ValueError(f"Cannot compress; 'path' does not exist: {path}")
     if isinstance(format, str):
         try:
             format = ArchiveFormatEnum(format)
@@ -1188,22 +1572,19 @@ def compress_fixture(
                 f"options are:'\n{pformat(ARCHIVE_FORMATS)}"
             )
 
-    chdir(str(Path(path).parent))
-
-    if path.is_file():
+    if absolute_path.is_file():
         root_dir = str(Path(path).parent)
         base_dir = path.name
-        # chdir(str(Path(path).parent))
-    elif path.is_dir():
-        # chdir(str(path))
-        root_dir = path.name
+    elif absolute_path.is_dir():
+        root_dir = str(absolute_path)
 
     else:
-        raise ValueError(f"Path type {type(path)} is not supported.")
+        raise ValueError(
+            f"Path must exist and be a file or folder. " f"Not valid: '{path}'"
+        )
 
     save_file_name: Path = Path(Path(path).stem + suffix + "".join(Path(path).suffixes))
     save_path: Path = Path(output_path) / save_file_name
-    # root_dir: Path = save_path.parent
     if Path(str(save_path) + f".{format}").exists():
         error_message: str = f"Path to save to already exists: '{save_path}'"
         if force_overwrite:
@@ -1212,9 +1593,6 @@ def compress_fixture(
         else:
             raise ValueError(error_message)
     logger.info(f"Compressing '{path}' to '{format}' in: '{save_path.parent}'")
-    # if Path(path).is_file():
-    #     logger.info(f"'path' to {format} is a file. Setting 'base_dir' to: '{path}'")
-    #     base_dir = path
 
     archive_path: Path = Path(
         make_archive(
@@ -1222,13 +1600,11 @@ def compress_fixture(
             format=str(format),
             root_dir=root_dir,
             base_dir=base_dir,
-            # root_dir=str(Path()),
-            # base_dir=path,
             dry_run=dry_run,
             logger=logger,
         )
     )
-    chdir(current_dir)
+
     return archive_path
 
 
@@ -1247,10 +1623,8 @@ def paths_with_newlines(
         ...     paths_with_newlines(plaintext_bl_lwm.compressed_files,
         ...                         truncate=True)
         ... )
-        <BLANKLINE>
-        ...
-        '...0003079-test_plaintext.zip'
-        '...0003548-test_plaintext.zip'
+        'bl_lwm/0003079-test_plaintext.zip'
+        'bl_lwm/0003548-test_plaintext.zip'
 
         ```
     """
@@ -1298,6 +1672,7 @@ def truncate_path_str(
 
     Example:
         ```pycon
+        >>> logger.setLevel(WARNING)
         >>> love_shadows: Path = (
         ...     Path('Standing') / 'in' / 'the' / 'shadows'/ 'of' / 'love.')
         >>> truncate_path_str(love_shadows)
@@ -1308,16 +1683,12 @@ def truncate_path_str(
         'Standing...*...*...*...*...love.'
         >>> root_love_shadows: Path = Path(sep) / love_shadows
         >>> truncate_path_str(root_love_shadows, folder_filler_str="*")
-        <BLANKLINE>
-        ...
         '...Standing...*...*...*...*...love.'
         >>> if is_platform_win:
         ...     pytest.skip('fails on certain Windows root paths: issue #56')
         >>> truncate_path_str(root_love_shadows,
         ...                   folder_filler_str="*", tail_parts=3)
-        <BLANKLINE>
-        ...
-        '...Standing...*...*...shadows...of...love.'...
+        '...Standing...*...*...shadows...of...love.'
 
         ```
     """
@@ -1583,36 +1954,41 @@ def copy_dict_paths(copy_path_dict: dict[PathLike, PathLike]) -> None:
     Example:
         ```pycon
         >>> tmp_path: Path = getfixture('tmp_path')
+        >>> test_files_path: Path = (tmp_path / 'copy_dict')
+        >>> test_files_path.mkdir(exist_ok=True)
         >>> for i in range(4):
-        ...     (tmp_path / f'test_file-{i}.txt').touch(exist_ok=True)
-        >>> pprint(sorted(tmp_path.iterdir()))
-        [...Path('...test_file-0.txt'),
-         ...Path('...test_file-1.txt'),
-         ...Path('...test_file-2.txt'),
-         ...Path('...test_file-3.txt')]
-        >>> output_path = tmp_path / 'save'
+        ...     (test_files_path / f'test_file-{i}.txt').touch(exist_ok=True)
+        >>> pprint(sorted(test_files_path.iterdir()))
+        [...Path('...file-0.txt'),
+         ...Path('...file-1.txt'),
+         ...Path('...file-2.txt'),
+         ...Path('...file-3.txt')]
+        >>> output_path = test_files_path / 'save'
         >>> output_path.mkdir(exist_ok=True)
+        >>> logger_initial_level: int = logger.level
+        >>> logger.setLevel(logging.DEBUG)
         >>> copy_dict_paths(
-        ...     glob_path_rename_by_0_padding(tmp_path,
+        ...     glob_path_rename_by_0_padding(test_files_path,
         ...                                   glob_regex_str="*.txt",
         ...                                   output_path=output_path))
         <BLANKLINE>
-        ...Specified...'...save'...for...saving...file...copies...
+        ...Specified...'...'...for...saving...file...copies...
         ...'...-0...txt'...to...'...-00...txt...'...
         ...'...-1...txt'...to...'...-01...txt...'
         ...'...-2...txt'...to...'...-02...txt...'
         ...'...-3...txt'...to...'...-03...txt...'
-        >>> pprint(sorted(tmp_path.iterdir()))
+        >>> pprint(sorted(test_files_path.iterdir()))
         [...Path('...save'),
          ...Path('...test_file-0.txt'),
          ...Path('...test_file-1.txt'),
          ...Path('...test_file-2.txt'),
          ...Path('...test_file-3.txt')]
-        >>> pprint(sorted((tmp_path / 'save').iterdir()))
+        >>> pprint(sorted((test_files_path / 'save').iterdir()))
          [...Path('...test_file-00.txt'),
           ...Path('...test_file-01.txt'),
           ...Path('...test_file-02.txt'),
           ...Path('...test_file-03.txt')]
+        >>> logger.setLevel(logger_initial_level)
 
         ```
     """
@@ -1620,3 +1996,94 @@ def copy_dict_paths(copy_path_dict: dict[PathLike, PathLike]) -> None:
         logger.info(f"Copying '{current_path}' to '{copy_path}'")
         Path(copy_path).parent.mkdir(exist_ok=True)
         copyfile(current_path, copy_path)
+
+
+def dirs_in_path(path: PathLike) -> Generator[Path, None, None]:
+    """Yield all folder paths (not recursively) in `path`.
+
+    Args:
+        path: `Path` to count subfolders in.
+
+    Yields:
+        Each folder one walk length in `path`
+
+    Example:
+        ```pycon
+        >>> tmp_path = getfixture('tmp_path')
+        >>> len(tuple(dir.name for dir in dirs_in_path(tmp_path)))
+        0
+        >>> (tmp_path / 'a_file_not_dir').touch()
+        >>> len(tuple(dir.name for dir in dirs_in_path(tmp_path)))
+        0
+        >>> (tmp_path / 'test_dir').mkdir()
+        >>> tuple(dir.name for dir in dirs_in_path(tmp_path))
+        ('test_dir',)
+        >>> [(tmp_path / f'new_dir_{i}').mkdir() for i in range(3)]
+        [None, None, None]
+        >>> tuple(dir.name for dir in sorted(dirs_in_path(tmp_path)))
+        ('new_dir_0', 'new_dir_1', 'new_dir_2', 'test_dir')
+        >>> (tmp_path / 'test_dir' / 'another_dir').mkdir()
+        >>> tuple(dir.name for dir in sorted(dirs_in_path(tmp_path)))
+        ('new_dir_0', 'new_dir_1', 'new_dir_2', 'test_dir')
+
+        ```
+    """
+    for sub_path in Path(path).iterdir():
+        if sub_path.is_dir():
+            yield sub_path
+
+
+def files_in_path(path: PathLike) -> Generator[Path, None, None]:
+    """Yield all file paths (not recursively) in `path`.
+
+    Args:
+        path: `Path` to count files in.
+
+    Yields:
+        Each file one walk length in `path`
+
+    Example:
+        ```pycon
+        >>> tmp_path = getfixture('tmp_path')
+        >>> len(tuple(files_in_path(tmp_path)))
+        0
+        >>> (tmp_path / 'a_file_not_dir').touch()
+        >>> tuple(file.name for file in files_in_path(tmp_path))
+        ('a_file_not_dir',)
+        >>> (tmp_path / 'test_dir').mkdir()
+        >>> tuple(file.name for file in files_in_path(tmp_path))
+        ('a_file_not_dir',)
+        >>> [(tmp_path / f'new_dir_{i}').mkdir() for i in range(3)]
+        [None, None, None]
+        >>> tuple(file.name for file in files_in_path(tmp_path))
+        ('a_file_not_dir',)
+        >>> (tmp_path / 'test_dir' / 'another_dir').mkdir()
+        >>> (tmp_path / 'test_dir' / 'another_folder_file').touch()
+        >>> tuple(file.name for file in files_in_path(tmp_path))
+        ('a_file_not_dir',)
+        >>> (tmp_path / 'another_file_not_dir').touch()
+        >>> tuple(file.name for file in files_in_path(tmp_path))
+        ('a_file_not_dir', 'another_file_not_dir')
+
+        ```
+    """
+    for sub_path in Path(path).iterdir():
+        if sub_path.is_file():
+            yield sub_path
+
+
+def file_path_to_item_code(
+    path: PathLike,
+    separation_char: str = CODE_SEPERATOR_CHAR,
+    file_name_separtion_char: str = FILE_NAME_SEPERATOR_CHAR,
+) -> str:
+    """Extract `lwmdb.newspapers.Item.item_code` from `path`.
+
+    Example:
+        ```pycon
+        >>> file_path_to_item_code('0003548/1904/0707/0003548_19040707_art0037.txt')
+        '0003548-19040707-art0037'
+
+        ```
+    """
+    return Path(path).stem.replace(file_name_separtion_char, separation_char)
