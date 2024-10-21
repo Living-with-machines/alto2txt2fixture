@@ -94,13 +94,11 @@ PADDING_0_REGEX_DEFAULT: str = r"\b\d*\b"
 
 
 @overload
-def get_now(as_str: Literal[True]) -> str:
-    ...
+def get_now(as_str: Literal[True]) -> str: ...
 
 
 @overload
-def get_now(as_str: Literal[False]) -> datetime.datetime:
-    ...
+def get_now(as_str: Literal[False]) -> datetime.datetime: ...
 
 
 def get_now(as_str: bool = False) -> datetime.datetime | str:
@@ -1045,7 +1043,6 @@ def path_globs_to_tuple(
 
 
 class DiskUsageTuple(NamedTuple):
-
     """Type hint for `nametuple` returned from `disk_usage`."""
 
     total: int

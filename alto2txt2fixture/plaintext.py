@@ -43,9 +43,9 @@ FULLTEXT_DJANGO_MODEL: Final[str] = "fulltext.fulltext"
 DEFAULT_EXTRACTED_SUBDIR: Final[PathLike] = Path("extracted")
 
 FULLTEXT_FILE_NAME_SUFFIX: Final[str] = "_plaintext"
-FULLTEXT_DEFAULT_PLAINTEXT_ZIP_GLOB_REGEX: Final[
-    str
-] = f"*{FULLTEXT_FILE_NAME_SUFFIX}.{ZIP_FILE_EXTENSION}"
+FULLTEXT_DEFAULT_PLAINTEXT_ZIP_GLOB_REGEX: Final[str] = (
+    f"*{FULLTEXT_FILE_NAME_SUFFIX}.{ZIP_FILE_EXTENSION}"
+)
 TXT_FIXTURE_FILE_EXTENSION: Final[str] = "txt"
 TXT_FIXTURE_FILE_GLOB_REGEX: Final[str] = f"**/*.{TXT_FIXTURE_FILE_EXTENSION}"
 DEFAULT_MAX_PLAINTEXT_PER_FIXTURE_FILE: Final[int] = 100
@@ -77,7 +77,6 @@ class FulltextPathDict(TypedDict):
 
 @dataclass
 class PlainTextFixture:
-
     """Manage exporting `plaintext` `alto2txt` results for `lwmdb.fulltext.models.Fulltext`.
 
     Attributes:
@@ -213,9 +212,9 @@ class PlainTextFixture:
         self._check_and_set_files_attr(force=True)
         self._check_and_set_data_provider(force=True)
         self._disk_usage: DiskUsageTuple = disk_usage(self.path)
-        self._uncompressed_source_file_dict: OrderedDict[
-            PathLike, PathLike
-        ] = OrderedDict()
+        self._uncompressed_source_file_dict: OrderedDict[PathLike, PathLike] = (
+            OrderedDict()
+        )
         self._pk_plaintext_dict: OrderedDict[PathLike, int] = OrderedDict()
 
     def __len__(self) -> int:
