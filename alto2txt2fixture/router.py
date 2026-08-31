@@ -165,18 +165,14 @@ class Newspaper(Cache):
             # filename following alto2txt convention
             if not self.zip_file:
                 self._title = ""
-                warning(
-                    "JISC title found but zip file name was not passed so \
-                    title cannot be correctly processed."
-                )
+                warning("JISC title found but zip file name was not passed so \
+                    title cannot be correctly processed.")
                 return ""
 
             if not isinstance(self.jisc_papers, pd.DataFrame):
                 self._title = ""
-                warning(
-                    "JISC title found but zip file name was not passed so \
-                    title cannot be correctly processed."
-                )
+                warning("JISC title found but zip file name was not passed so \
+                    title cannot be correctly processed.")
                 return ""
 
             abbr = self.zip_file.split("_")[0]
