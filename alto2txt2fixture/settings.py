@@ -19,6 +19,7 @@ Attributes:
         a `docdict` configuration for running `newspaper` portions of `alto2txt2fixture`
 
 """
+
 from typing import Final, Literal, TypeAlias
 
 from .types import DataProviderFixtureDict, dotdict

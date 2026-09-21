@@ -97,7 +97,6 @@ class TranslatorTuple(NamedTuple):
 
 
 class PlaintextFixtureFieldsDict(TypedDict):
-
     """A typed `dict` for Plaintext Fixutres to match `lwmdb.Fulltext` `model`
 
     Attributes:
